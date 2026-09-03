@@ -12,13 +12,17 @@ It ships as one Python package with two front-ends:
 | **MCP server** | `flow5ctl mcp` | Claude Desktop, and any MCP-capable client |
 | **CLI** | `flow5ctl <verb>` | Claude Code, Codex, humans, CI |
 
-> **Status: the CLI works. The MCP server does not exist yet.**
+13 tools, 6 resources and 4 prompts over MCP; the same capabilities as CLI verbs.
+Both are thin adapters over one core, so neither can drift ahead of the other.
+
+> **Status: the CLI and the MCP server both work.**
 >
-> `analyze`, `trim` and `sweep` run real analyses today. flow5ctl computes the
-> geometry, generates and validates flow5's XML, computes 2D airfoil polars and caches
-> them, drives the solver through the two passes it requires, and returns summaries and
-> comparison tables. 210 tests, 17 of them against a real flow5 7.57. Phases 1 and 2 of
-> the [roadmap](docs/ROADMAP.md) are done bar Linux verification; **MCP is Phase 3**.
+> Claude Desktop can design an aircraft with this today — see
+> [docs/MCP.md](docs/MCP.md) for the one-line install. flow5ctl computes the geometry,
+> generates and validates flow5's XML, computes 2D airfoil polars and caches them,
+> drives the solver through the two passes it requires, solves trim conditions, runs
+> parameter studies, and draws charts. 276 tests, 19 of them against a real flow5 7.57.
+> Phases 1–3 of the [roadmap](docs/ROADMAP.md) are done bar Linux verification.
 >
 > Verified on **macOS only**, against **flow5 7.57** — Linux and Windows are the
 > largest remaining risk. The [verification log](docs/log/2026-09-03-poc-verification.md)
@@ -69,7 +73,28 @@ documented, and handled.
 
 Presets encode the defaults each of these needs; the underlying model is general.
 
-## Quickstart
+## Quickstart — Claude Desktop
+
+Install flow5 from [flow5.tech](https://flow5.tech), then add one entry to Claude
+Desktop's config:
+
+```json
+{
+  "mcpServers": {
+    "flow5": {
+      "command": "uvx",
+      "args": ["--from", "flow5ctl[plot]", "flow5ctl", "mcp"]
+    }
+  }
+}
+```
+
+Restart, and ask: *"Design a 3 m F5J glider for minimum sink, then show me what moving
+the CG from 30 % to 40 % MAC does."* Full setup notes, including where designs are
+kept and how to point flow5ctl at an unusual flow5 install, are in
+[docs/MCP.md](docs/MCP.md).
+
+## Quickstart — command line
 
 Install flow5 first, from [flow5.tech](https://flow5.tech). Then:
 
@@ -206,6 +231,7 @@ The YAML is the source; the XML is a build artifact. See
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers, data flow, why one core with two front-ends |
 | [docs/DOMAIN-MODEL.md](docs/DOMAIN-MODEL.md) | Vocabulary and the `design.yaml` schema |
+| [docs/MCP.md](docs/MCP.md) | Setting up Claude Desktop, and how to read what comes back |
 | [docs/MCP-TOOLS.md](docs/MCP-TOOLS.md) | The tool surface exposed to agents |
 | [docs/FLOW5-INTERFACE.md](docs/FLOW5-INTERFACE.md) | Verified reference for flow5's batch/XML interface |
 | [docs/DESIGN-GUIDE.md](docs/DESIGN-GUIDE.md) | Aerodynamic guardrails agents must respect |

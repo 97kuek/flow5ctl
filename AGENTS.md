@@ -11,39 +11,51 @@ Instructions for AI agents working **on** this repository.
 [flow5](https://flow5.tech), a potential-flow solver, in its headless batch mode.
 It ships as an MCP server and a CLI over one shared core.
 
-The core and the CLI work. The MCP server does not exist yet — that is Phase 3 of
-[the roadmap](docs/ROADMAP.md).
+The core, the CLI and the MCP server all work. See
+[the roadmap](docs/ROADMAP.md) for what is left.
 
 ## Layout
 
 ```
 src/flow5ctl/
-  model/      design.yaml schema, presets
-  geometry/   areas, span, MAC, mass properties       ← no flow5 knowledge
-  advisor/    guardrails and thresholds               ← no flow5 knowledge
-  flow5/      probe, xmlgen, runner, results, summary ← the ONLY flow5-aware package
-  usecases/   define, edit, analyze, trim, sweep, gui ← the only layer that orchestrates
-  presets/    *.yaml — data, so a new aircraft class needs no code
-  cli.py      a thin adapter; the MCP server will be a second one
-poc/          the verification harness that produced the measured claims in docs/
-examples/     worked designs and a study, used as documentation
-tests/        golden values and real flow5 output; fixtures/ pins the parser traps
+  model/         design.yaml schema, presets
+  geometry/      areas, span, MAC, mass properties       ← no flow5 knowledge
+  advisor/       guardrails and thresholds               ← no flow5 knowledge
+  viz/           chart rendering and the validated palette
+  flow5/         probe, xmlgen, runner, results, summary ← the ONLY flow5-aware package
+  usecases/      define, edit, analyze, trim, sweep, plot, gui  ← the only orchestrators
+  presets/       *.yaml — data, so a new aircraft class needs no code
+  cli.py         a thin adapter over the use cases
+  mcp_server.py  the second thin adapter; no domain logic, no flow5 knowledge
+poc/             the verification harness that produced the measured claims in docs/
+examples/        worked designs and a study, used as documentation
+tests/           golden values and real flow5 output; fixtures/ pins the parser traps
 ```
 
-The dependency rule is one way: `cli → usecases → geometry/advisor/model`, with
-`flow5/` reachable only from `usecases/`. Nothing in `geometry/`, `advisor/` or
+The dependency rule is one way: `cli / mcp_server → usecases → geometry/advisor/model`,
+with `flow5/` reachable only from `usecases/`. Nothing in `geometry/`, `advisor/` or
 `model/` may import `flow5/`, so the aerodynamic model stays testable with flow5
 absent — and CI relies on that.
+
+The two front-ends must stay in step. A capability added to one and not the other is
+an incomplete change ([ADR-0002](docs/adr/0002-one-core-two-frontends.md)).
 
 ## Working on it
 
 ```bash
-uv sync --group dev
-uv run pytest -q                    # everything, including 17 real flow5 runs
+uv sync --group dev --extra plot    # the extra is what chart tests need
+uv run pytest -q                    # everything, including the real flow5 runs
 uv run pytest -q -m "not needs_flow5"   # what CI runs
-uv run ruff check src tests tools
+uv run ruff check src tests tools poc
 python3 tools/check_docs.py
 ```
+
+The MCP server has two test layers, and they check different things:
+`tests/test_mcp_server.py` runs it in process for the adapter's own contract, while
+`tests/test_mcp_stdio.py` launches `flow5ctl mcp` as a subprocess and talks the
+protocol — that is the only place a PNG surviving base64 transport, or a rejected
+request coming back as an error result instead of killing the server, is actually
+verified.
 
 ## Read before you change anything
 

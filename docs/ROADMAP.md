@@ -42,7 +42,7 @@ Establish that this is possible and write down what was learned.
 - [x] Self-validating result parser ([ADR-0010](adr/0010-treat-solver-output-as-hostile.md))
 - [x] Guardrails that refuse rather than warn: stability from a non-T7 polar, T6 control
       polars, panel-count ceilings, fixed-lift sweeps through zero lift
-- [x] 131 tests, of which 8 run against a real flow5
+- [x] A test suite that grew to 276 tests, 19 of which run a real flow5
 
 **Exit criteria — all met:**
 
@@ -98,27 +98,43 @@ Two things came out of building `trim` and `sweep` that changed the design:
 Claude Code, start to finish, without hand-editing XML — and have someone who did not
 build the tool do it too.
 
-## Phase 3 — MCP, and Claude Desktop
+## Phase 3 — MCP, and Claude Desktop ✅ done 2026-09-03
 
-- [ ] MCP server on stdio; tools, resources, prompts per [MCP-TOOLS.md](MCP-TOOLS.md)
-- [ ] Workspace management for clients with no filesystem
-- [ ] `plot` returning PNG image content
-- [ ] `open_in_flow5` handoff
-- [ ] One-line Claude Desktop install; `uvx flow5ctl mcp` with nothing pre-installed
+- [x] MCP server on stdio — 13 tools, 6 resources, 4 prompts
+- [x] Workspace management for clients with no filesystem: designs are addressed by
+      name, and a name containing a separator or a traversal is rejected rather than
+      resolved
+- [x] `plot` returning PNG image content — drag polar, lift curve, pitching moment
+      with the trim point, drag breakdown, spanwise lift against elliptic; light and
+      dark themes separately chosen, palette validated for colour-vision deficiency
+- [x] `open_in_flow5` handoff
+- [x] One-line Claude Desktop install with `uvx --from "flow5ctl[plot]" flow5ctl mcp`
+      — see [MCP.md](MCP.md)
+- [x] Blocking solver work runs off the event loop, so the server stays responsive
+      through a twelve-second first analysis or a multi-minute sweep
+- [x] `flow5://schema/design` generated from the model, so the advertised fields and
+      the accepted fields cannot drift
+- [x] Verified over real stdio, not just in process: handshake, tool calls, a PNG
+      surviving base64 transport, and a rejected request coming back as an error
+      result with the server still alive
 
-**Exit criterion:** a Birdman Rally team member with no terminal experience designs a
-wing in Claude Desktop and opens the result in the flow5 GUI.
+**Exit criterion — not yet met:** a Birdman Rally team member with no terminal
+experience designs a wing in Claude Desktop and opens the result in the flow5 GUI.
+Everything needed for it is built and tested; what remains is putting it in front of
+someone who did not build it.
 
 ## Phase 4 — The rest of the design questions
 
-`trim`, `sweep` and T7 mode reporting were pulled forward into Phases 1-2. What is left:
+`trim`, `sweep`, T7 mode reporting, spanwise loading plots and multi-design comparison
+were all pulled forward into Phases 1-3. What is left:
 
-- [ ] Spanwise loading plots and elliptic comparison (the strip table is already parsed)
-- [ ] `plot` returning PNG — needed for Claude Desktop, where the user cannot open a file
 - [ ] Ground-effect reporting in and out of ground effect in one call, for HPA
-- [ ] Multi-design comparison
 - [ ] A `trim`-aware sweep: solve the trim at each point rather than reporting the
       untrimmed polar
+- [ ] A drag-budget view that names what is missing from the model — interference,
+      surface finish, rigging, the pilot's body — rather than leaving the reader to
+      remember that the total is optimistic
+- [ ] Structural sanity from the strip table's bending-moment column
 
 ## Phase 5 — Community
 

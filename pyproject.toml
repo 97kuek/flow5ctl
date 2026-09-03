@@ -18,6 +18,7 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Physics",
 ]
 dependencies = [
+  "mcp>=2.1.1",
   "pydantic>=2.7",
   "pyyaml>=6.0",
 ]
@@ -33,13 +34,14 @@ Homepage = "https://github.com/97kuek/flow5ctl"
 Issues = "https://github.com/97kuek/flow5ctl/issues"
 
 [dependency-groups]
-dev = ["pytest>=8.0", "ruff>=0.6"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "ruff>=0.6"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/flow5ctl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 markers = ["needs_flow5: requires a working flow5 installation"]
 
 [tool.ruff]

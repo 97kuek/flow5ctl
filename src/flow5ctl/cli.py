@@ -147,6 +147,13 @@ def _pretty(p: dict[str, Any]) -> None:
             used = ", ".join(a["used_by"]) or "unused"
             re_ = "auto" if not a["reynolds"] else ", ".join(f"{r:,.0f}" for r in a["reynolds"])
             print(f"  {a['name']:<16} {a['source']:<34} Re {re_}   [{used}]")
+    if p.get("kind") and p.get("mime_type"):
+        print(f"\n{p['design']} — {p['description']}")
+        line("polars", ", ".join(p["polars"]))
+        line("theme", p["theme"])
+        line("size", f"{p['bytes'] / 1024:.0f} kB")
+        if p.get("path"):
+            line("written to", p["path"])
     if p.get("format"):
         print(f"\nExported {p['format']} from analysis {p['from_analysis']}")
         print(f"  {p['path']}")
@@ -378,6 +385,34 @@ def cmd_open(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_mcp(args: argparse.Namespace) -> int:
+    """Run the MCP server on stdio.
+
+    Nothing may be written to stdout except the protocol itself, so this must be the
+    last thing the process does.
+    """
+    try:
+        from .mcp_server import main as serve
+    except ImportError as exc:  # pragma: no cover - packaging problem
+        raise Flow5ctlError(
+            "the MCP server needs the `mcp` package, which should have been installed "
+            f"with flow5ctl. Try `pip install --upgrade flow5ctl`. ({exc})"
+        ) from exc
+    return serve()
+
+
+def cmd_plot(args: argparse.Namespace) -> int:
+    from .usecases import plot as plot_uc
+    project = Project.resolve(args.design)
+    out = Path(args.out) if args.out else (project.root / "export" /
+                                           f"{args.kind}-{args.theme}.png")
+    payload, _ = plot_uc.plot(project, kind=args.kind,
+                              polars=args.polars.split(",") if args.polars else None,
+                              theme=args.theme, out=out)
+    _emit(payload, args.json)
+    return 0
+
+
 def cmd_presets(args: argparse.Namespace) -> int:
     rows = [presets.load(n) for n in presets.available()]
     if args.json:
@@ -522,12 +557,25 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--timeout", type=float, default=900.0)
     p.set_defaults(func=cmd_sweep)
 
+    p = add("plot", help="draw a chart of a stored analysis as a PNG")
+    p.add_argument("design", nargs="?")
+    p.add_argument("--kind", default="polar",
+                   choices=["polar", "cl_alpha", "cm_alpha", "drag_breakdown",
+                            "spanwise_lift"])
+    p.add_argument("--polars", metavar="LIST", help="comma-separated analysis names")
+    p.add_argument("--theme", default="light", choices=["light", "dark"])
+    p.add_argument("-o", "--out", metavar="PNG")
+    p.set_defaults(func=cmd_plot)
+
     p = add("export", help="copy a build artifact out")
     p.add_argument("design", nargs="?")
     p.add_argument("--format", default="fl5", choices=["fl5", "stl", "csv", "xml"])
     p.add_argument("--polar", help="which analysis to export (default: the most recent)")
     p.add_argument("--out", metavar="DIR")
     p.set_defaults(func=cmd_export)
+
+    p = add("mcp", help="run the MCP server on stdio (for Claude Desktop)")
+    p.set_defaults(func=cmd_mcp)
 
     p = add("open", help="open the design in the flow5 GUI")
     p.add_argument("design", nargs="?")

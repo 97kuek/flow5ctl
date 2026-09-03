@@ -35,7 +35,7 @@ jobs:
         with:
           enable-cache: true
       - name: Install
-        run: uv sync --group dev
+        run: uv sync --group dev --extra plot
 
       - name: Lint
         run: uv run ruff check src tests tools poc

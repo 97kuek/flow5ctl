@@ -13,12 +13,16 @@ flow5 のヘッドレス解析エンジンを操作して、低レイノルズ�
 | **MCPサーバー** | `flow5ctl mcp` | Claude Desktop、その他のMCPクライアント |
 | **CLI** | `flow5ctl <verb>` | Claude Code、Codex、人間、CI |
 
-> **ステータス: CLI は動作します。MCPサーバーはまだありません。**
+MCP では13ツール・6リソース・4プロンプトを公開。CLI と同じ機能で、
+どちらも1つのコアの薄いアダプタなので片方だけ先に進むことがありません。
+
+> **ステータス: CLI と MCPサーバーの両方が動作します。**
 >
-> `analyze` / `trim` / `sweep` は既に実解析を実行します — 幾何計算、flow5のXML生成と
-> 検証、2D翼型ポーラーの自動計算とキャッシュ、flow5が要求する2パス実行、要約と比較表まで。
-> テスト210本（うち17本は実機 flow5 7.57 に対して実行）。
-> [ロードマップ](docs/ROADMAP.md) の Phase 1・2 は Linux 検証を除いて完了、**MCP は Phase 3** です。
+> Claude Desktop から機体設計ができます — 導入は1行、[docs/MCP.md](docs/MCP.md) を参照。
+> 幾何計算、flow5のXML生成と検証、2D翼型ポーラーの自動計算とキャッシュ、
+> flow5が要求する2パス実行、トリム条件の解法、パラメータスタディ、グラフ描画まで。
+> テスト276本（うち19本は実機 flow5 7.57 に対して実行）。
+> [ロードマップ](docs/ROADMAP.md) の Phase 1〜3 は Linux 検証を除いて完了。
 >
 > 検証は **macOS のみ**、**flow5 7.57** に対して — Linux と Windows が最大の残存リスクです。
 > 途中で見つかったこと（再現可能な flow5 のクラッシュと、出力が素朴な読み手を誤らせる
@@ -69,7 +73,30 @@ flow5 / XFLR5 を使っている低レイノルズ数コミュニティ全体を
 
 プリセットがそれぞれに必要なデフォルト値を持ち、下地のモデル自体は汎用です。
 
-## クイックスタート
+## クイックスタート — Claude Desktop
+
+flow5 を [flow5.tech](https://flow5.tech) からインストールし、Claude Desktop の
+設定に1項目追加します：
+
+```json
+{
+  "mcpServers": {
+    "flow5": {
+      "command": "uvx",
+      "args": ["--from", "flow5ctl[plot]", "flow5ctl", "mcp"]
+    }
+  }
+}
+```
+
+再起動して、こう聞くだけです —
+*「最小沈下率を狙った3mのF5Jグライダーを設計して。重心を MAC の30%から40%に
+動かしたときの影響も見せて」*
+
+設計の保存場所や flow5 が特殊な場所にある場合の指定方法は
+[docs/MCP.md](docs/MCP.md) にあります。
+
+## クイックスタート — コマンドライン
 
 先に flow5 を [flow5.tech](https://flow5.tech) からインストールしてください。
 
@@ -189,6 +216,7 @@ YAML がソース、XML はビルド成果物です。
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | レイヤ構成、データフロー、なぜ1コア2フロントエンドなのか |
 | [docs/DOMAIN-MODEL.md](docs/DOMAIN-MODEL.md) | 用語と `design.yaml` スキーマ |
+| [docs/MCP.md](docs/MCP.md) | Claude Desktop の設定と、返ってくる情報の読み方 |
 | [docs/MCP-TOOLS.md](docs/MCP-TOOLS.md) | エージェントに公開するツール群 |
 | [docs/FLOW5-INTERFACE.md](docs/FLOW5-INTERFACE.md) | flow5 バッチ/XML インターフェースの検証済みリファレンス |
 | [docs/DESIGN-GUIDE.md](docs/DESIGN-GUIDE.md) | エージェントが守るべき空力上のガードレール |

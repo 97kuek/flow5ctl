@@ -20,7 +20,7 @@ from ..flow5 import airfoils as foil_io
 from ..flow5 import probe as probe_mod
 from ..flow5 import xmlgen
 from ..flow5.markers import explain_interpolation_failure
-from ..flow5.results import parse_polar
+from ..flow5.results import owning_polar, parse_polar, parse_strips
 from ..flow5.runner import DEFAULT_TIMEOUT, Workspace, run_script
 from ..flow5.summary import summarise
 from ..geometry import derived as geometry
@@ -369,6 +369,7 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
             **payload,
             "columns": polar.columns,
             "rows": polar.rows,
+            "strips": _strip_data(ws, req.name, design.name),
         })
         payload["data"] = str(stored.relative_to(project.root))
         project.update_state(
@@ -399,3 +400,35 @@ def _explain_failure(run, ws: Workspace, req: Request,
         if detail:
             from ..errors import SolverError
             raise SolverError(detail)
+
+
+#: Strip columns worth keeping. `Cl` drives the spanwise loading plot and
+#: `Bending.mom` is what an HPA spar is sized from; the rest of the ~19 columns are
+#: not worth carrying in every result file.
+_STRIP_COLUMNS = ("y(m)", "Re", "Cl", "Cd_i", "Cd_v", "Bending.mom")
+
+
+def _strip_data(ws: Workspace, polar_name: str, plane: str) -> dict[str, Any] | None:
+    """Copy the spanwise strip table into the durable result.
+
+    `build/` is cleared by the next analysis, so anything a chart needs later has to
+    live in `results/`. Only the columns a plot or a spar calculation uses are kept.
+
+    The operating-point file is matched on the polar name written INSIDE it: flow5
+    duplicates these files into every polar's directory and fills them with another
+    polar's contents (FLOW5-INTERFACE.md section 5.1).
+    """
+    root = ws.project_dir(polar_name) / plane / polar_name
+    if not root.is_dir():
+        return None
+    files = [p for p in sorted(root.glob("*.csv")) if owning_polar(p) == polar_name]
+    if not files:
+        return None
+    chosen = files[len(files) // 2]          # representative, not an extreme
+    out: dict[str, Any] = {"source": chosen.name, "surfaces": {}}
+    for wing, table in parse_strips(chosen).items():
+        keep = {c: table.columns.index(c) for c in _STRIP_COLUMNS if c in table.columns}
+        if "y(m)" not in keep or "Cl" not in keep:
+            continue
+        out["surfaces"][wing] = {c: [r[i] for r in table.rows] for c, i in keep.items()}
+    return out if out["surfaces"] else None

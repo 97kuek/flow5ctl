@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -169,6 +170,44 @@ class Project:
             yield
         finally:
             path.unlink(missing_ok=True)
+
+
+_SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$")
+
+
+def safe_name(name: str) -> str:
+    """Validate a design name that came from outside.
+
+    The MCP server addresses designs by name only and must never read or write
+    outside its workspace, so a name containing a path separator, a traversal, or a
+    null byte is rejected here rather than resolved.
+    """
+    if not isinstance(name, str) or not _SAFE_NAME.match(name):
+        raise DesignError(
+            f"{name!r} is not a valid design name. Use letters, digits, spaces, "
+            "dots, hyphens and underscores only — a name is not a path."
+        )
+    if name.strip(". ") != name.strip():
+        raise DesignError(f"{name!r} is not a valid design name")
+    return name
+
+
+def resolve_in_workspace(name: str) -> Project:
+    """Open a design by name, strictly inside the workspace.
+
+    Unlike `Project.resolve`, this never accepts a path and never falls back to the
+    current directory. It is what the MCP server uses.
+    """
+    ws = workspace_root().resolve()
+    root = (ws / safe_name(name)).resolve()
+    if root != ws and ws not in root.parents:
+        raise DesignError(f"{name!r} resolves outside the workspace")
+    if not (root / DESIGN_FILE).exists():
+        raise DesignError(
+            f"no design called {name!r}. Known: "
+            f"{', '.join(n for n, _ in list_designs()) or 'none'}"
+        )
+    return Project(root)
 
 
 def list_designs(root: Path | None = None) -> list[tuple[str, Path]]:

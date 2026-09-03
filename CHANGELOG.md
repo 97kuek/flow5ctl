@@ -9,6 +9,26 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 The core library and CLI work. The MCP server is not built yet — see
 [docs/ROADMAP.md](docs/ROADMAP.md).
 
+### Added — MCP server (Phase 3)
+
+- An MCP server on stdio (`flow5ctl mcp`), so Claude Desktop and any other MCP client
+  can design an aircraft. 13 tools, 6 resources, 4 prompts. One-line install with
+  `uvx --from "flow5ctl[plot]" flow5ctl mcp` — see `docs/MCP.md`.
+- Charts as PNG image content: the drag polar with best L/D marked, the lift curve,
+  the pitching moment with its trim point, the drag breakdown, and the spanwise lift
+  distribution against elliptic. Light and dark themes are separately chosen rather
+  than one inverted, and the palette is validated for colour-vision deficiency in
+  both. `flow5ctl plot` writes the same images from the CLI.
+- The spanwise strip table is now stored with each result, so a chart no longer
+  depends on `build/` surviving the next analysis.
+- Workspace isolation: designs are addressed by name, and a name containing a path
+  separator, a traversal or a null byte is rejected rather than resolved. The server
+  never reads or writes outside its workspace.
+- `flow5://schema/design`, generated from the model, so the fields the server
+  advertises and the fields it accepts cannot drift apart.
+- Blocking solver work runs off the event loop, so the server stays responsive
+  through a twelve-second first analysis or a multi-minute sweep.
+
 ### Added — CLI (Phase 2)
 
 - `trim`: solves for the angle of attack at a target CL or for level flight, the speed
@@ -52,7 +72,7 @@ The core library and CLI work. The MCP server is not built yet — see
 - Guardrails that refuse rather than warn: stability from a non-T7 polar, T6 control
   polars, panel-count ceilings, and fixed-lift sweeps through zero lift.
 - CLI: `doctor`, `init`, `list`, `show`, `presets`, `analyze`, all with `--json`.
-- 210 tests, 17 of which run against a real flow5.
+- 276 tests, 19 of which run against a real flow5.
 
 ### Verified numerically
 

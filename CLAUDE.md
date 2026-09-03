@@ -7,13 +7,16 @@ This file adds only what is specific to running Claude Code here.
 
 ## Status
 
-The CLI works; the MCP server is not built yet. `analyze`, `trim` and `sweep` run
-real analyses — see [docs/ROADMAP.md](docs/ROADMAP.md) for what is done, and
+The CLI and the MCP server both work. `analyze`, `trim`, `sweep` and `plot` run real
+analyses — see [docs/ROADMAP.md](docs/ROADMAP.md) for what is done, and
 [examples/](examples/) for designs to try them on.
 
+`flow5ctl mcp` speaks MCP on stdio, so **nothing may be written to stdout** from any
+code path it can reach. A stray `print` corrupts the protocol stream.
+
 ```bash
-uv sync --group dev
-uv run pytest -q                         # 210 tests, 17 of them run real flow5
+uv sync --group dev --extra plot
+uv run pytest -q                         # includes real flow5 runs
 uv run pytest -q -m "not needs_flow5"    # what CI runs
 uv run ruff check src tests tools
 ```
