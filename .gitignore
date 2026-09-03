@@ -13,6 +13,14 @@ poc/work/
 poc/out/
 poc/*_run.log
 
+# ── Validation against real aircraft ────────────────────────────────
+# Reconstructions of other teams' aircraft, and the logs comparing flow5ctl
+# against their published data, stay out of the public repository. They are
+# someone else's design work; publishing them is not ours to decide.
+# Findings about flow5's own behaviour DO belong in docs/ — anonymised.
+validation/
+examples/*-real-*.yaml
+
 # Upstream flow5 source fetched for reference only.
 # flow5 is GPL-3.0 and must never be committed here — see
 # docs/adr/0006-licensing-and-the-gpl-boundary.md

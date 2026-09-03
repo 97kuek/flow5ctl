@@ -181,3 +181,74 @@ class TestScripts:
             root = ET.fromstring(xml)
             assert root.tag == "xflscript"
             assert re.match(r"^\d+\.\d+$", root.attrib["version"])
+
+
+class TestFinOrientation:
+    """A fin must be rolled upright, or flow5 builds it as a horizontal tail.
+
+    `Type=FIN` does not orient anything: flow5 lays a fin's sections along y like any
+    other wing. The upstream API example rolls it explicitly
+    (`setRxAngle(&fin, -90.0)`, API_examples/PlaneRun1/PlaneRun1.cpp:316).
+
+    Found by reconstructing a real aircraft from its published three-view: the phantom
+    horizontal surface moved the neutral point 35 % MAC aft, and every sideslip result
+    was meaningless because flow5 never saw a vertical surface. Synthetic tests could
+    not catch it — a horizontal "fin" is still symmetric in beta, so a T5 polar looked
+    perfectly reasonable.
+    """
+
+    @pytest.fixture
+    def with_tail(self, rect_design):
+        raw = {**rect_design}
+        raw["tail"] = {
+            "type": "conventional",
+            "elevator": {"position": [1.0, 0.0, 0.05], "airfoil": "NACA0012",
+                         "planform": {"span": 0.5, "root_chord": 0.12},
+                         "panels": {"chordwise": 7, "spanwise": 6}},
+            "fin": {"position": [1.0, 0.0, 0.10], "airfoil": "NACA0012",
+                    "planform": {"span": 0.25, "root_chord": 0.14},
+                    "panels": {"chordwise": 7, "spanwise": 5}},
+        }
+        design = Design.model_validate(raw)
+        return design, geometry.solve(design)
+
+    def _wing(self, xml: str, name: str):
+        for w in ET.fromstring(xml).findall(".//wing"):
+            if w.findtext("Type") == name:
+                return w
+        raise AssertionError(f"no {name} in the plane XML")
+
+    def test_a_fin_is_rolled_upright(self, with_tail):
+        fin = self._wing(xmlgen.plane_xml(*with_tail), "FIN")
+        assert float(fin.findtext("Rx_angle")) == pytest.approx(-90.0)
+
+    def test_the_main_wing_and_elevator_are_not_rolled(self, with_tail):
+        xml = xmlgen.plane_xml(*with_tail)
+        for name in ("MAINWING", "ELEVATOR"):
+            assert float(self._wing(xml, name).findtext("Rx_angle")) == pytest.approx(0.0)
+
+    def test_a_fin_is_not_mirrored(self, with_tail):
+        assert self._wing(xmlgen.plane_xml(*with_tail), "FIN").findtext("symmetric") == "false"
+
+    def test_a_fin_with_no_fuselage_closes_its_own_root(self, with_tail):
+        """Otherwise the root panels leak — the upstream example calls this out."""
+        fin = self._wing(xmlgen.plane_xml(*with_tail), "FIN")
+        assert fin.findtext("Closed_Inner_Side") == "true"
+
+    def test_a_fin_on_a_fuselage_does_not(self, with_tail):
+        design, derived = with_tail
+        design.fuselage.type = "pod"
+        fin = self._wing(xmlgen.plane_xml(design, derived), "FIN")
+        assert fin.findtext("Closed_Inner_Side") is None
+
+    def test_incidence_still_goes_to_ry_not_rx(self, rect_design):
+        """A fin's roll must not swallow an elevator's incidence."""
+        raw = {**rect_design}
+        raw["tail"] = {"type": "conventional",
+                       "elevator": {"position": [1.0, 0.0, 0.05], "incidence": -2.5,
+                                    "airfoil": "NACA0012",
+                                    "planform": {"span": 0.5, "root_chord": 0.12}}}
+        design = Design.model_validate(raw)
+        elev = self._wing(xmlgen.plane_xml(design, geometry.solve(design)), "ELEVATOR")
+        assert float(elev.findtext("Ry_angle")) == pytest.approx(-2.5)
+        assert float(elev.findtext("Rx_angle")) == pytest.approx(0.0)

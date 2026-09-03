@@ -49,6 +49,16 @@ The core library and CLI work. The MCP server is not built yet — see
 
 ### Fixed
 
+- **Fins were built horizontally.** `Type=FIN` does not orient anything — flow5 lays a
+  fin's sections along y like any other wing, and it becomes vertical only when rolled
+  (`Rx_angle = -90`, as the upstream API example does explicitly). Every fin flow5ctl
+  had generated was therefore a second horizontal tail: on a reconstructed 30 m
+  aircraft the phantom surface moved the neutral point 35 % MAC aft, and every
+  sideslip result was meaningless because flow5 never saw a vertical surface.
+  `Closed_Inner_Side` is now set for a fin with no fuselage, as the same example
+  requires. Found by checking against a real aircraft's published data; no synthetic
+  test could catch it, because a horizontal "fin" is still symmetric in sideslip and
+  a T5 polar looked perfectly reasonable.
 - Coincident surfaces — a fin root sitting on the elevator — are caught before the
   solver runs. flow5 answers that configuration with an effective angle of attack of
   −104° and a failed run, under the same heading it uses for an unrelated cause.

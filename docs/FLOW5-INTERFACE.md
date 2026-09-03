@@ -255,6 +255,30 @@ Enumerations **[src]** `xml_globals.cpp`, **[run]** binary strings:
 | panel distribution | `UNIFORM`, `COSINE`, `SINE`, `INV_SINE`, `TANH`, `INV_EXP` |
 | body `Type` | `NURBS`, `FLATPANELS` |
 
+> **Trap — `Type=FIN` does not make a fin vertical.** **[src]** flow5 lays a fin's
+> sections along `y` like any other wing; the type only affects bookkeeping. A fin
+> becomes vertical when it is **rolled**, which the upstream API example does
+> explicitly:
+>
+> ```cpp
+> pPlaneXfl->setRxAngle(&fin, -90.0);
+> fin.setClosedInnerSide(true);   // it is NOT connected to a fuselage
+> ```
+> (`API_examples/PlaneRun1/PlaneRun1.cpp:316`)
+>
+> So a fin written with `Rx_angle = 0` is built as a **second horizontal tail**.
+> **[run]** Measured on a reconstructed 30 m aircraft: the phantom surface moved the
+> neutral point **35 % MAC aft** (wing + elevator 55.1 % MAC; adding the "fin"
+> 90.4 %), and every sideslip result was meaningless because flow5 never saw a
+> vertical surface. With `Rx_angle = -90` the fin contributes nothing to pitch, as it
+> should.
+>
+> Nothing in flow5's output hints at this. A horizontal surface is still symmetric in
+> sideslip, so a T5 polar looks entirely reasonable — CL falls symmetrically with β —
+> on an aircraft that has no vertical tail at all.
+>
+> Also write `Closed_Inner_Side = true` for a fin with no fuselage to close against.
+
 ### 3.1 Airfoil resolution
 
 Airfoils are referenced **by name**, and the name must match a foil the script has
@@ -763,6 +787,7 @@ coarsest mesh. The low-CL end is more sensitive: L/D at α=0° moved 27.7 → 29
 | Reference dimensions (§4.2) | [`geometry/derived.py`](../src/flow5ctl/geometry/derived.py) |
 | Reynolds envelope (§4.3) | [`geometry/derived.py`](../src/flow5ctl/geometry/derived.py) |
 | Explicit inertia (§4.4) | [`geometry/massprops.py`](../src/flow5ctl/geometry/massprops.py) |
+| Fin orientation (§3) | [`flow5/xmlgen.py`](../src/flow5ctl/flow5/xmlgen.py) — `FIN_ROLL_ANGLE` |
 | Output parsing (§5) | [`flow5/results.py`](../src/flow5ctl/flow5/results.py) |
 | Static margin units (§5.3) | [`units.py`](../src/flow5ctl/units.py) |
 | Stability modes (§9) | [`flow5/summary.py`](../src/flow5ctl/flow5/summary.py) |

@@ -86,7 +86,20 @@ def _section_xml(sec: Section, wing_airfoil: str | None, chord_dist: str,
     return f"{pad}<Section>\n" + "\n".join(rows) + f"\n{pad}</Section>"
 
 
-def _wing_xml(surface: Surface, indent: int) -> str:
+#: Roll angle that stands a surface up vertically.
+#:
+#: `Type=FIN` alone does NOT orient a fin — flow5 builds the sections along y like any
+#: other wing, so a fin written with Rx_angle 0 becomes a second HORIZONTAL tail. The
+#: upstream API example is explicit about it: `setRxAngle(&fin, -90.0)`
+#: (API_examples/PlaneRun1/PlaneRun1.cpp:316).
+#:
+#: Found by reconstructing a real aircraft: a phantom horizontal surface moved the
+#: neutral point 35 % MAC aft, and made every sideslip result meaningless because
+#: flow5 never saw a vertical surface at all.
+FIN_ROLL_ANGLE = -90.0
+
+
+def _wing_xml(surface: Surface, indent: int, *, has_fuselage: bool = False) -> str:
     w = surface.wing
     pad = " " * indent
     px, py, pz = surface.position_m
@@ -95,14 +108,22 @@ def _wing_xml(surface: Surface, indent: int) -> str:
                      w.panels.span_distribution, indent + 4)
         for s in surface.sections
     )
+    is_fin = w.role == "fin"
+    rx = FIN_ROLL_ANGLE if is_fin else 0.0
+    rows = [
+        _tag("Name", w.name or w.role.title(), indent + 2),
+        _tag("Type", _WING_TYPE[w.role], indent + 2),
+        _tag("Position", f"{px:.6g}, {py:.6g}, {pz:.6g}", indent + 2),
+        _tag("Rx_angle", f"{rx:.6g}", indent + 2),
+        _tag("Ry_angle", f"{w.incidence:.6g}", indent + 2),
+        _tag("symmetric", "true" if w.symmetric else "false", indent + 2),
+    ]
+    if is_fin and not has_fuselage:
+        # a fin that is not attached to a fuselage has to close its own root, or the
+        # root panels leak — the upstream example calls this out too
+        rows.append(_tag("Closed_Inner_Side", "true", indent + 2))
     return (
-        f"{pad}<wing>\n"
-        + _tag("Name", w.name or w.role.title(), indent + 2) + "\n"
-        + _tag("Type", _WING_TYPE[w.role], indent + 2) + "\n"
-        + _tag("Position", f"{px:.6g}, {py:.6g}, {pz:.6g}", indent + 2) + "\n"
-        + _tag("Rx_angle", "0", indent + 2) + "\n"
-        + _tag("Ry_angle", f"{w.incidence:.6g}", indent + 2) + "\n"
-        + _tag("symmetric", "true" if w.symmetric else "false", indent + 2) + "\n"
+        f"{pad}<wing>\n" + "\n".join(rows) + "\n"
         + f"{pad}  <Sections>\n{sections}\n{pad}  </Sections>\n"
         + f"{pad}</wing>"
     )
@@ -125,7 +146,9 @@ def plane_xml(design: Design, derived: Derived) -> str:
         )
         masses = f"    <Inertia>\n{rows}\n    </Inertia>\n"
 
-    wings = "\n".join(_wing_xml(s, 4) for s in derived.surfaces)
+    has_fuselage = design.fuselage.type != "none"
+    wings = "\n".join(_wing_xml(s, 4, has_fuselage=has_fuselage)
+                      for s in derived.surfaces)
     return (
         f"{_HEAD}\n<!DOCTYPE flow5>\n<xflplane version=\"1.0\">\n"
         + _units_block(2) + "\n"
