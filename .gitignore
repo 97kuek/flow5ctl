@@ -1,0 +1,43 @@
+# ── flow5ctl generated artifacts ────────────────────────────────────
+# design.yaml is the source of truth; everything below is regenerable.
+build/
+results/
+.flow5ctl/
+*.fl5
+*.stl
+
+# ── PoC verification workspace ──────────────────────────────────────
+# poc/lib and poc/case_*.py are the reproducible harness and ARE tracked.
+# Everything they produce is not.
+poc/work/
+poc/out/
+poc/*_run.log
+
+# Upstream flow5 source fetched for reference only.
+# flow5 is GPL-3.0 and must never be committed here — see
+# docs/adr/0006-licensing-and-the-gpl-boundary.md
+poc/ref/
+
+# ── Python ──────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+dist/
+build-py/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ── Editors / OS ────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~
