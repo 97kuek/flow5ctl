@@ -1,5 +1,10 @@
 """Minimal harness for flow5 PoC verification. Not production code."""
-import os, subprocess, math, shutil, time, pathlib, re, sys
+import math
+import os
+import pathlib
+import shutil
+import subprocess
+import time
 
 FLOW5 = "/Applications/flow5.app/Contents/MacOS/flow5"
 

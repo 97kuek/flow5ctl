@@ -1,9 +1,19 @@
 # poc/ — verification harness
 
 Every measured claim in [`docs/`](../docs) was produced here, and can be reproduced.
-This is **not** library code — it is a deliberately small, ugly harness whose only
-job is to establish facts about flow5. The library will be written properly in
-Phase 1; the parser here is the one part intended for promotion.
+
+This is **frozen evidence, not maintained code.** It is a deliberately small, ugly
+harness whose only job was to establish facts about flow5, and it is kept so a reader
+can re-run any number the documentation asserts. Reformatting it would risk changing
+what it measured, so it is excluded from linting.
+
+The library it fed into is [`src/flow5ctl/`](../src/flow5ctl); in particular
+`lib/parse.py` here has been superseded by
+[`flow5/results.py`](../src/flow5ctl/flow5/results.py), which is the maintained
+parser and carries the same traps with tests behind them.
+
+`verify_platform.py` is the exception: it is meant to be run by contributors on
+platforms we cannot test, so it is linted and kept readable.
 
 ## Requirements
 
@@ -61,7 +71,7 @@ Each case writes to `work/<case>/` — gitignored, and safe to delete.
 |---|---|
 | `lib/f5.py` | Run flow5, classify stdout, generate NACA coordinates |
 | `lib/gen.py` | Emit `xflplane` / `xflPlanePolar` / `xflscript` XML — prototype of `xmlgen` |
-| `lib/parse.py` | **Parse flow5 output safely.** Handles all seven traps in [FLOW5-INTERFACE.md §5](../docs/FLOW5-INTERFACE.md) and validates its own row count against the file's declared point count. Intended for promotion into the library — read [ADR-0010](../docs/adr/0010-treat-solver-output-as-hostile.md) before changing it. |
+| `lib/parse.py` | The original safe parser for flow5's output. **Superseded** by [`flow5/results.py`](../src/flow5ctl/flow5/results.py) — change that one, not this one. Kept because it is what produced the findings in [FLOW5-INTERFACE.md §5](../docs/FLOW5-INTERFACE.md). |
 
 ## Not committed
 

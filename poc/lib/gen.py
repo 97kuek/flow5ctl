@@ -1,5 +1,6 @@
 """XML generators for PoC cases. Prototype of flow5ctl's xmlgen."""
-import pathlib, math
+import pathlib
+
 
 def _sec(s):
     d = {"y_position":0.0,"Chord":0.1,"xOffset":0.0,"Dihedral":0.0,"Twist":0.0,

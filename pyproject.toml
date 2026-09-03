@@ -58,3 +58,9 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["RUF043"]  # regex metacharacters in pytest `match=` are intentional
+# poc/ is frozen evidence, not maintained code: these scripts produced the measured
+# claims in docs/ and are kept so a reader can reproduce them. Reformatting them would
+# risk changing what they measured. poc/verify_platform.py is the exception — it is
+# meant to be run by contributors on other platforms, so it is linted.
+"poc/case_*.py" = ["ALL"]
+"poc/lib/*.py" = ["ALL"]

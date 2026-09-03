@@ -38,7 +38,7 @@ jobs:
         run: uv sync --group dev
 
       - name: Lint
-        run: uv run ruff check src tests tools
+        run: uv run ruff check src tests tools poc
 
       # flow5 is not available on CI runners, so the solver-dependent tests are
       # deselected. They run against a real flow5 on a developer machine — see

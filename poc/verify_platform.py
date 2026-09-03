@@ -26,8 +26,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "lib"))
-import f5  # noqa: E402
-import gen  # noqa: E402
+import f5
+import gen
 
 CANDIDATES = (
     "/Applications/flow5.app/Contents/MacOS/flow5",

@@ -13,7 +13,8 @@ Traps handled — every one of these was hit for real:
      `nonfinite()` lists (row, column) so a caller can warn instead of
      presenting a broken number as a result.
 """
-import pathlib, re
+import pathlib
+import re
 
 # flow5 emits non-finite values in numeric columns (verified: `inf` in the
 # "Roll Damping" column of a T7 polar). A strict numeric pattern silently
