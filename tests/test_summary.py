@@ -46,10 +46,14 @@ class TestStabilityPolar:
         s = summarise(polar, mac=0.1935, cg_x=0.05125)
         assert any("Roll Damping" in w for w in s.warnings)
 
-    def test_flow5s_inconsistent_static_margin_is_flagged_and_overridden(self, polar):
+    def test_flow5s_static_margin_disagrees_in_sign_and_that_is_flagged(self, polar):
+        """flow5's header says -26.5 % while its own columns give +29.8 %.
+
+        Opposite signs, so it is reported as ambiguous rather than merely inconsistent.
+        """
         s = summarise(polar, mac=0.1935, cg_x=0.05125)
         assert s.static_margin == pytest.approx(0.2976, rel=1e-2)
-        assert any("inconsistently" in w for w in s.warnings)
+        assert any("AMBIGUOUS" in w for w in s.warnings)
 
     def test_neutral_point_prefers_the_column_over_the_wrong_header(self, polar):
         assert polar.header_float("XNP") == pytest.approx(0.0)
@@ -115,3 +119,36 @@ class TestEmptyPolar:
         assert s.points == 0
         assert s.cl_alpha_per_deg is None
         assert any("no operating points" in w for w in s.warnings)
+
+
+class TestAmbiguousStability:
+    """The two static-margin definitions can disagree in sign near neutral stability.
+
+    Observed on a 34 m HPA whose CG sat at 68 % MAC: dCm/dCL gave +6.0 % while flow5's
+    neutral point gave -8.1 %. One says stable, the other unstable, and reporting
+    either alone would mislead.
+    """
+
+    def _polar(self, tmp_path, fixtures, static_margin: float):
+        text = (fixtures / "polar_t1_rectwing.csv").read_text(encoding="utf-8")
+        text = text.replace("Static margin       = -0.590317",
+                            f"Static margin       = {static_margin}")
+        target = tmp_path / "sm.csv"
+        target.write_text(text, encoding="utf-8")
+        from flow5ctl.flow5.results import parse_polar
+        return parse_polar(target)
+
+    def test_opposite_signs_raise_an_explicit_ambiguity_warning(self, tmp_path, fixtures):
+        # the fixture's own columns give about -0.59 %; claim +8 % instead
+        s = summarise(self._polar(tmp_path, fixtures, 8.0), mac=0.2, cg_x=0.05)
+        assert any("AMBIGUOUS" in w for w in s.warnings)
+        assert any("T7" in w for w in s.warnings)
+
+    def test_same_sign_disagreement_is_a_plain_note(self, tmp_path, fixtures):
+        s = summarise(self._polar(tmp_path, fixtures, -8.0), mac=0.2, cg_x=0.05)
+        assert any("inconsistently" in w for w in s.warnings)
+        assert not any("AMBIGUOUS" in w for w in s.warnings)
+
+    def test_agreement_produces_no_warning(self, tmp_path, fixtures):
+        s = summarise(self._polar(tmp_path, fixtures, -0.590317), mac=0.2, cg_x=0.05)
+        assert s.warnings == []

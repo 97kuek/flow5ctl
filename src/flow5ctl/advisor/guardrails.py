@@ -167,6 +167,8 @@ def check_geometry(derived: Derived, preset: Preset) -> Check:
     if derived.tail_volume_h is None and len(derived.surfaces) == 1:
         c.note("wing only — no tail, so pitch trim and stability cannot be assessed.")
 
+    _check_coincident_surfaces(derived, c)
+
     semi_span = derived.reference_span / 2.0
     if derived.mass.from_components and derived.mass.lateral_inertia_is_degenerate(semi_span):
         kx = derived.mass.roll_radius_of_gyration
@@ -187,3 +189,35 @@ def check_geometry(derived: Derived, preset: Preset) -> Check:
     if derived.cg_percent_mac is not None:
         c.note(f"CG is at {derived.cg_percent_mac * 100:.1f} % MAC.")
     return c
+
+
+def _check_coincident_surfaces(derived: Derived, c: Check) -> None:
+    """Two surfaces in the same place make flow5 produce nonsense, not an error.
+
+    Observed: a fin whose root sat exactly on the elevator gave an effective angle of
+    attack of -104 degrees at the elevator centre and failed the whole analysis. flow5
+    does not check for this, so we do.
+    """
+    tol = 0.02
+    for i, a in enumerate(derived.surfaces):
+        for b in derived.surfaces[i + 1:]:
+            same_x = abs(a.position_m[0] - b.position_m[0]) < tol
+            same_z = abs(a.position_m[2] - b.position_m[2]) < tol
+            if not (same_x and same_z):
+                continue
+            roles = {a.wing.role, b.wing.role}
+            if roles == {"elevator", "fin"}:
+                c.warn(
+                    f"the fin root and the elevator are both at x = "
+                    f"{a.position_m[0]:.3g} m, z = {a.position_m[2]:.3g} m. Coincident "
+                    "surfaces make flow5 compute nonsensical local flow angles and fail "
+                    "the analysis. Offset the fin root a few centimetres above the "
+                    "elevator."
+                )
+            else:
+                c.warn(
+                    f"{a.wing.name or a.wing.role!r} and {b.wing.name or b.wing.role!r} "
+                    f"are at the same position (x = {a.position_m[0]:.3g} m, "
+                    f"z = {a.position_m[2]:.3g} m). Overlapping panels give unreliable "
+                    "results."
+                )

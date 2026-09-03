@@ -141,3 +141,57 @@ class TestInterpolationFailureExplanation:
     def test_no_failures_means_no_explanation(self):
         from flow5ctl.flow5.markers import explain_interpolation_failure
         assert explain_interpolation_failure("all good", 1e5, 1e6) is None
+
+
+class TestCoincidentSurfaces:
+    """flow5 answers with a -104 degree flow angle instead of an error."""
+
+    def design(self, fin_z: float) -> dict:
+        return {
+            "name": "Tail", "preset": "custom",
+            "requirements": {"cruise_speed": 8.0},
+            "mass": {"components": [
+                {"tag": "p", "mass": 60.0, "at": [0.55, 0.0, -0.5]},
+                {"tag": "wl", "mass": 10.0, "at": [0.6, -7.0, 0.15]},
+                {"tag": "wr", "mass": 10.0, "at": [0.6, 7.0, 0.15]},
+            ]},
+            "airfoils": [{"name": "W", "source": "naca:4412"},
+                         {"name": "T", "source": "naca:0010"}],
+            "wing": {"airfoil": "W",
+                     "planform": {"span": 34.0, "root_chord": 1.15, "taper": 0.45},
+                     "panels": {"chordwise": 13, "spanwise": 40}},
+            "tail": {"type": "conventional",
+                     "elevator": {"position": [6.0, 0.0, 0.5], "airfoil": "T",
+                                  "planform": {"span": 3.4, "root_chord": 0.75},
+                                  "panels": {"chordwise": 7, "spanwise": 10}},
+                     "fin": {"position": [6.0, 0.0, fin_z], "airfoil": "T",
+                             "planform": {"span": 1.2, "root_chord": 0.8},
+                             "panels": {"chordwise": 7, "spanwise": 8}}},
+        }
+
+    def test_a_fin_root_on_the_elevator_warns(self):
+        d = geometry.solve(Design.model_validate(self.design(0.5)))
+        c = guardrails.check_geometry(d, presets.load("hpa"))
+        assert any("Coincident surfaces" in w for w in c.warnings)
+
+    def test_an_offset_fin_does_not_warn(self):
+        d = geometry.solve(Design.model_validate(self.design(0.62)))
+        c = guardrails.check_geometry(d, presets.load("hpa"))
+        assert not any("Coincident" in w for w in c.warnings)
+
+
+class TestAoaFailureExplanation:
+    def test_a_nonsensical_flow_angle_points_at_overlapping_surfaces(self):
+        from flow5ctl.flow5.markers import explain_interpolation_failure
+        log = ("...Viscous interpolation failures:\n"
+               "  Span position     -0.02 m,  Re =    398385,  AoA_effective = -103.90\n")
+        msg = explain_interpolation_failure(log, 100_000, 2_000_000)
+        assert "same space" in msg or "degenerate" in msg
+        assert "fin" in msg
+
+    def test_a_merely_large_flow_angle_points_at_the_polar_alpha_range(self):
+        from flow5ctl.flow5.markers import explain_interpolation_failure
+        log = ("...Viscous interpolation failures:\n"
+               "  Span position     -0.72 m,  Re =    344198,  AoA_effective = -18.5\n")
+        msg = explain_interpolation_failure(log, 100_000, 2_000_000)
+        assert "alpha sweep" in msg

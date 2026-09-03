@@ -249,7 +249,23 @@ def summarise(polar: Polar, *, mac: float | None = None, cg_x: float | None = No
     reported = polar.header_float("Static margin")
     if reported is not None and s.static_margin is not None:
         theirs = static_margin_from_flow5(reported)
-        if abs(theirs - s.static_margin) > max(0.01, abs(s.static_margin) * 0.25):
+        disagrees = abs(theirs - s.static_margin) > max(0.01, abs(s.static_margin) * 0.25)
+        opposite_sign = theirs * s.static_margin < 0
+        if disagrees and opposite_sign:
+            # A sign disagreement is not a reporting quirk: the two definitions
+            # genuinely diverge for a configuration near neutral stability, and one of
+            # them says the aircraft is stable while the other says it is not.
+            s.warnings.append(
+                f"STABILITY IS AMBIGUOUS for this configuration. The moment slope "
+                f"dCm/dCL gives a static margin of {s.static_margin:+.1%}, while flow5's "
+                f"neutral-point figure gives {theirs:+.1%} — opposite signs, so one says "
+                "stable and the other says unstable.\n"
+                "This happens near neutral stability. Do not treat either number as the "
+                "answer: run a T7 stability polar and look at whether the short-period "
+                "and phugoid modes are damped, and sweep the CG to find where the sign "
+                "settles. Consider moving the CG forward."
+            )
+        elif disagrees:
             s.warnings.append(
                 f"flow5 reports a static margin of {theirs:+.3f} but the data columns "
                 f"give {s.static_margin:+.3f}. Using the computed value. flow5 7.57 is "

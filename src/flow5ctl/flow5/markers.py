@@ -160,14 +160,24 @@ def discarded_points(stdout: str) -> int:
     return stdout.count("Error generating the operating point")
 
 
-_FAILED_STRIP = re.compile(
+# flow5 prints the failing strip in one of two shapes, depending on which quantity
+# it could not interpolate on.
+_FAILED_CL = re.compile(
     r"Span position\s+([-\d.]+)\s*m,\s*Re\s*=\s*([\d.]+),\s*Cl\s*=\s*([-\d.]+)"
+)
+_FAILED_AOA = re.compile(
+    r"Span position\s+([-\d.]+)\s*m,\s*Re\s*=\s*([\d.]+),\s*AoA_effective\s*=\s*([-\d.]+)"
 )
 
 
 def interpolation_failures(log: str) -> list[tuple[float, float, float]]:
     """(span position, Reynolds, Cl) for each strip where 2D interpolation failed."""
-    return [(float(a), float(b), float(c)) for a, b, c in _FAILED_STRIP.findall(log)]
+    return [(float(a), float(b), float(c)) for a, b, c in _FAILED_CL.findall(log)]
+
+
+def aoa_failures(log: str) -> list[tuple[float, float, float]]:
+    """(span position, Reynolds, effective AoA in degrees) for the other shape."""
+    return [(float(a), float(b), float(c)) for a, b, c in _FAILED_AOA.findall(log)]
 
 
 def explain_interpolation_failure(log: str, mesh_lo: float, mesh_hi: float) -> str | None:
@@ -180,6 +190,25 @@ def explain_interpolation_failure(log: str, mesh_lo: float, mesh_hi: float) -> s
     number hundreds of times too high. Blaming the mesh in that case sends the user
     the wrong way.
     """
+    aoa = aoa_failures(log)
+    if aoa:
+        worst = max(aoa, key=lambda f: abs(f[2]))
+        if abs(worst[2]) > 30.0:
+            return (
+                f"The solver computed an effective angle of attack of {worst[2]:.0f}° at "
+                f"span position {worst[0]:+.2f} m. That is not a physical flow angle — it "
+                "means the panelling is degenerate there, almost always because two "
+                "surfaces occupy the same space.\n"
+                "The usual cause is a fin whose root sits exactly on the elevator, or two "
+                "surfaces at an identical position. Offset one of them by a few "
+                "centimetres in z."
+            )
+        return (
+            f"The effective angle of attack reached {worst[2]:.1f}° at span position "
+            f"{worst[0]:+.2f} m, outside the range the 2D polars cover. Widen the airfoil "
+            "polar alpha sweep, or reduce the incidence of that surface."
+        )
+
     failures = interpolation_failures(log)
     if not failures:
         return None

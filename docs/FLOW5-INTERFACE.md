@@ -594,6 +594,30 @@ Expect non-convergence to drop a few points (**[run]** 35 of 37 at Re 1e5).
 Sanity check that came out right: CDmin fell and (L/D)max rose 40.7 → 72.8 as Re went
 1e5 → 8e5.
 
+### 5.6 Two more ways a run fails without an error — [run]
+
+**Coincident surfaces.** A fin whose root sits exactly on the elevator (both at the
+same `x` and `z`) makes flow5 compute an **effective angle of attack of −104°** at the
+elevator centre, then fail the whole analysis:
+
+```
+...Viscous interpolation failures:
+    Span position     -0.02 m,  Re =    398385,  AoA_effective = -103.90°
+```
+
+Note this is a *different shape* of the same failure block — the earlier one reports
+`Cl = …`, this one reports `AoA_effective = …`. Both appear under the same
+`Viscous interpolation failures` heading, and the same heading also covers a genuinely
+narrow polar mesh, so the heading alone does not identify the cause. Offsetting the fin
+root a few centimetres above the elevator fixes it.
+
+**The two static-margin definitions can disagree in sign.** On a 34 m HPA with the CG
+at 68 % MAC, flow5's neutral-point figure gave **−8.1 %** while the moment slope
+`dCm/dCL` from its own columns gave **+6.0 %** — one says stable, the other unstable.
+This is not a reporting quirk; the definitions genuinely diverge near neutral
+stability. Neither number should be quoted alone: run a T7 polar and check whether the
+modes are damped, and sweep the CG to find where the sign settles.
+
 ---
 
 ## 6. Determining success from stdout
