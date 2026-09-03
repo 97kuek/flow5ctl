@@ -1,0 +1,43 @@
+name: Bug report
+description: flow5ctl crashed, failed, or did something unexpected
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: Commands or MCP calls, plus the smallest `design.yaml` that shows it.
+    validations:
+      required: true
+  - type: input
+    id: flow5-version
+    attributes:
+      label: flow5 version (`flow5 --version`)
+      placeholder: flow5 v7.57
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+    validations:
+      required: true
+  - type: dropdown
+    id: frontend
+    attributes:
+      label: How were you using it?
+      options: ["MCP (Claude Desktop or other)", "CLI", "Both", "Neither / library"]
+    validations:
+      required: true

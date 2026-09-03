@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Repository checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # These run without flow5 installed. Solver-dependent verification lives in
+      # poc/ and is run by hand on a machine that has flow5 — see poc/README.md.
+      - name: Docs, licence and artifact hygiene
+        run: python3 tools/check_docs.py

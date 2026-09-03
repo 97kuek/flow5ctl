@@ -1,0 +1,45 @@
+name: Platform report
+description: Tell us whether flow5ctl works on your OS and flow5 version
+labels: ["platform"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Everything in [docs/FLOW5-INTERFACE.md](../blob/main/docs/FLOW5-INTERFACE.md)
+        was verified on macOS with flow5 7.57. Linux and Windows are untested, and
+        reports are how we find out what we cannot check ourselves.
+
+        The quickest useful report is the output of the verification cases in
+        [`poc/`](../blob/main/poc).
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and version
+    validations:
+      required: true
+  - type: input
+    id: flow5-version
+    attributes:
+      label: flow5 version (`flow5 --version`)
+    validations:
+      required: true
+  - type: input
+    id: install
+    attributes:
+      label: How did you install flow5?
+      placeholder: Homebrew cask / .deb / installer / built from source
+  - type: textarea
+    id: results
+    attributes:
+      label: What worked and what did not
+      description: Paste the output of any `poc/case_*.py` you ran.
+    validations:
+      required: true
+  - type: textarea
+    id: differences
+    attributes:
+      label: Anything that differed from the documented behaviour?
+      description: |
+        Especially: does `flow5 -s` still run headless and exit on its own? Is the
+        exit code still 0 on a rejected script? Does a script with both
+        `foil_analysis` and `Plane_analysis` still crash?

@@ -1,0 +1,47 @@
+name: Physics / wrong result
+description: A number flow5ctl produced is aerodynamically wrong or misleading
+labels: ["physics"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **These are our most serious bugs.** People build aircraft from this, and some
+        of those aircraft carry a pilot. A plausible wrong number is worse than a crash.
+  - type: textarea
+    id: what
+    attributes:
+      label: What was reported, and what should it be?
+      placeholder: |
+        flow5ctl reported a static margin of 29.8 %.
+        Hand calculation from the neutral point gives 8.2 %.
+    validations:
+      required: true
+  - type: textarea
+    id: how-you-know
+    attributes:
+      label: How do you know the correct value?
+      description: Hand calculation, a second solver, wind-tunnel or flight data, published results.
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Design and analysis setup
+      description: Your `design.yaml` (or the smallest version that reproduces it) and the analysis conditions.
+      render: yaml
+    validations:
+      required: true
+  - type: input
+    id: flow5-version
+    attributes:
+      label: flow5 version
+      description: Output of `flow5 --version` — not the version shown by the app bundle.
+      placeholder: flow5 v7.57
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+    validations:
+      required: true

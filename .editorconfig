@@ -1,0 +1,21 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml,json,toml}]
+indent_size = 2
+
+[*.md]
+# trailing whitespace is significant for markdown line breaks
+trim_trailing_whitespace = false
+
+[*.{dat,csv,stl}]
+# solver data files — leave exactly as produced
+trim_trailing_whitespace = false
+insert_final_newline = false

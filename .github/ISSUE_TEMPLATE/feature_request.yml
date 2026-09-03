@@ -1,0 +1,28 @@
+name: Feature request
+description: Something flow5ctl should be able to do
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: What are you trying to do?
+      description: |
+        Describe the design task, not the feature. What is the loop you repeat by
+        hand today? That is what this project is trying to remove.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like flow5ctl to do?
+  - type: dropdown
+    id: aircraft
+    attributes:
+      label: What do you design?
+      options:
+        - Human-powered aircraft (Birdman Rally / HPA)
+        - RC glider (F3B / F3F / F5J / DLG)
+        - Small UAV
+        - Other / several
+    validations:
+      required: true

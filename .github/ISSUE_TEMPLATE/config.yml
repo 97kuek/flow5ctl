@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: flow5 itself (the solver)
+    url: https://github.com/techwinder/flow5/issues
+    about: Bugs in flow5 belong upstream. Please also tell us, so we can record it in the compatibility matrix.
+  - name: Discuss the design
+    url: https://github.com/97kuek/flow5ctl/blob/main/docs/ARCHITECTURE.md
+    about: The project is in its design phase. If a decision looks wrong, open a normal issue and say why.
