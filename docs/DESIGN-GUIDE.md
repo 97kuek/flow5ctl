@@ -28,9 +28,25 @@ returns confident numbers that are wrong. Most of this document is about the edg
 - **Post-stall, spin, deep sideslip.**
 - **Thick or bluff bodies.** Fuselage pressure drag is not modelled; only friction
   drag, and only if you enable it.
-- **Absolute drag counts.** Expect the total drag to be optimistic — interference,
-  surface finish, rigging, control gaps, and the pilot's body on an HPA are not in
-  the model. Treat absolute L/D as an upper bound.
+- **Absolute drag counts.** Not because they are optimistic — because they are
+  uncertain by tens of percent, **in either direction**, and which direction depends
+  on the aircraft.
+
+  Two effects pull opposite ways. The model omits real drag: interference, surface
+  finish, rigging wires, control gaps, and the pilot's body on an HPA. But the profile
+  drag it does compute rests on XFoil's transition prediction and on airfoil
+  coordinates that may not be the ones actually built.
+
+  Measured on two reconstructed human-powered aircraft, against each team's own
+  published design thrust: on one, absolute L/D came out **0.6 % high**; on the other,
+  **17 % low**, even though the model included less drag than the real aircraft had.
+  In the second case profile drag was 75 % of the computed total, and closing the gap
+  would need the mean section drag to be 29 % lower.
+
+  So: **do not quote an absolute L/D as a prediction.** Quote it as one number from
+  one model, say what is missing from the model, and put a comparison beside it. A
+  comparison between two designs run identically — same airfoil, same ncrit, same
+  method — cancels most of this and is what the tool is actually good at.
 - **Induced drag to better than a few percent.** A rectangular wing came back with a
   span efficiency of 1.008–1.012 — physically impossible for a planar wing, where 1.0
   is the elliptic limit. The error is small, but it means induced drag is good to
@@ -100,8 +116,17 @@ Interpolation is the default: on-the-fly failed to converge on the elevator of a
 polar types on the same aircraft in 1.3 s.
 
 `ncrit` encodes freestream turbulence: 9 is standard, 11–12 for very clean air,
-4–6 for turbulent conditions. It changes low-Re drag substantially. Pick one, state
-it, and keep it fixed across comparisons.
+4–6 for turbulent conditions. It should change low-Re drag substantially. Pick one,
+state it, and keep it fixed across comparisons.
+
+> **Verify that `ncrit` is doing anything before you rely on it.** Measured on a
+> 13.6 %-thick, 6.7 %-camber section at Re 4.5×10⁵ in flow5 7.57: raising ncrit from
+> 9 to 11 to 13 left the drag **identical** at every lift coefficient above 1.0, and
+> moved minimum drag the **wrong way** (0.01050 → 0.01150 → 0.01265; delaying
+> transition should reduce drag, not raise it). Some of that may be real — a strong
+> adverse gradient can force transition near the leading edge regardless of ncrit, and
+> a longer laminar bubble can cost drag — but not all of it. Run two ncrit values on
+> your own section and check the answer moves before treating it as a design knob.
 
 Make sure the 2D polar mesh **brackets** the Re the wing actually sees, root to tip
 **and across the whole speed range** — not just at cruise. A 34 m tapered wing at
