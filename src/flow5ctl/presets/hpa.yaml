@@ -1,0 +1,43 @@
+# Human-powered aircraft — Birdman Rally, Daedalus class.
+# Very high aspect ratio, low speed, and flying close enough to the water that
+# ground effect is a design driver rather than a correction.
+name: hpa
+label: Human-powered aircraft
+description: 25-35 m span, AR 30-45, Re 5e5-1e6, flown a few metres above water
+
+defaults:
+  atmosphere:
+    density: 1.225
+    kinematic_viscosity: 1.5e-5
+  requirements:
+    objective: max_range
+    static_margin: [0.05, 0.15]
+    ground_effect_height: 1.5
+  wing_panels:
+    chordwise: 13
+    spanwise: 40
+    chord_distribution: COSINE
+    span_distribution: COSINE
+  tail_panels:
+    chordwise: 7
+    spanwise: 10
+
+analysis:
+  method: VLM2
+  viscous: true
+  on_the_fly: false          # interpolation: robust on multi-surface aircraft
+  ncrit: 9.0
+  ground_effect: true
+  alpha: [-2.0, 10.0, 1.0]
+  cl_max_estimate: 1.4
+
+limits:
+  max_panels: 6000
+  max_alpha: 12.0            # beyond this a potential-flow result is fiction
+
+thresholds:
+  aspect_ratio: [20.0, 45.0]
+  wing_loading: [2.0, 8.0]           # kg/m^2
+  tail_volume_h: [0.35, 0.80]
+  tail_volume_v: [0.020, 0.060]
+  reynolds_at_mac: [3.0e5, 1.5e6]

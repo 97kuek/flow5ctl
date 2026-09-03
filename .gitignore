@@ -19,6 +19,8 @@ poc/*_run.log
 poc/ref/
 
 # ── Python ──────────────────────────────────────────────────────────
+# uv.lock IS committed: it makes CI and a contributor's environment reproducible,
+# and flow5ctl is installed as a tool more often than depended on as a library.
 __pycache__/
 *.py[cod]
 *.egg-info/

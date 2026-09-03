@@ -1,0 +1,28 @@
+Type 2: Fixed lift
+Quads/VLM2
+Wings as thin surfaces
+B.C. = Neumann
+Lift & drag: in the far field plane
+Viscous drag: interpolated from α
+Viscous loop: disabled
+Ref. dimensions = Custom
+   Area  =    0.562 m²
+   Span  =    3.000 m
+   Chord =    0.194 m
+Fluid properties:
+   ρ =     1.225 kg/m³
+   ν =   1.5e-05 m²/s
+Inertia:
+   Using plane inertia
+   Mass =  0.800 kg
+   CoG = (0.051, 0.000, 0.000)m
+Flat panel wake:
+   Nb. of wake panels = 5
+   Length             = 30 x MAC
+   Progression factor =    1.10
+Nbr. of data points = 1
+Glider
+t2_fixedlift
+
+
+ Ctrl        α (°)      β (°)      φ (°)      CL           CD           CD_viscous   CD_induced   CY           Cm           Cm_viscous   Cm_pressure  Cl           Cn           Cn_viscous   Cn_pressure  CL/CD        CL^(3/2)/CD  1/sqrt(CL)   Lift (N)     Drag (N)     Fx_FF_wind (N)  Fy_FF_wind (N)  Fz_FF_wind (N)  Fx_sum_wind (N)  Fy_sum_wind (N)  Fz_sum_wind (N)  Extra drag (N)  Fuse drag (N)  Cf_Fuse      Vx (m/s)     Vz (m/s)     V (m/s)      Gamma        L (N.m)      M (N.m)      N (N.m)      CPx (m)      CPy (m)      CPz (m)      BM (N.m)     m.g.Vz (W)   Drag x V (W)  Efficiency   XCp.Cl       XNP (m)      Phugoid Freq. (Hz)  Phugoid Damping  Short Period Freq. (Hz)  Short Period Damping Ratio  Dutch Roll Freq. (Hz)  Dutch Roll Damping  Roll Damping  Spiral Damping  Mass (kg)    CoG_x (m)    CoG_z (m)              0            0            0            0      0.17778     0.018341     0.017605   0.00073659  -4.4081e-18    -0.033156   0.00083931    -0.033996   1.2798e-17   7.4988e-19   8.9294e-19  -1.4305e-19       9.6928       4.0869       2.3717        7.848      0.80967     0.032516  -1.9459e-16        7.848            0   -1.943e-16       7.8483            0            0            0       11.263       1.1681       11.322       5.8903   1.6949e-15     -0.28322    9.931e-17      0.08825   3.9543e-16    0.0049974       2.6265       9.1675       9.1675      0.85317     0.015689      0.10897            0            0            0            0            0            0            0            0          0.8      0.05125            0  

@@ -13,14 +13,17 @@ flow5 のヘッドレス解析エンジンを操作して、低レイノルズ�
 | **MCPサーバー** | `flow5ctl mcp` | Claude Desktop、その他のMCPクライアント |
 | **CLI** | `flow5ctl <verb>` | Claude Code、Codex、人間、CI |
 
-> **ステータス: 設計フェーズ（検証済み・未実装）。**
-> ライブラリのコードはまだありません。あるのは設計記録と、**この方式が動くことの
-> 再現可能な証明**です。**flow5 7.57**（macOS）に対して11本の検証ケースを実行し、
-> 2Dポーラー生成・粘性解析・5種の極線タイプ・地面効果・胴体・34mスパンHPAメッシュ・
-> 安定性解析までカバーしました。
-> 何が分かったかは [検証ログ](docs/log/2026-09-03-poc-verification.md) にあります
-> — 再現可能な flow5 のクラッシュと、出力が素朴な読み手を誤らせる7つの罠を含みます。
-> [`poc/`](poc) から全て再実行できます。実装は [ロードマップ](docs/ROADMAP.md) に従います。
+> **ステータス: コアは動作します。MCPサーバーはまだありません。**
+>
+> `flow5ctl analyze` は既に実解析を実行します — 幾何計算、flow5のXML生成と検証、
+> 2D翼型ポーラーの自動計算とキャッシュ、flow5が要求する2パス実行、結果の要約まで。
+> テスト131本（うち8本は実機 flow5 7.57 に対して実行）。
+> [ロードマップ](docs/ROADMAP.md) の Phase 1 と Phase 2 の大部分が完了、MCP は Phase 3 です。
+>
+> 検証は **macOS のみ**、**flow5 7.57** に対して。
+> 途中で見つかったこと（再現可能な flow5 のクラッシュと、出力が素朴な読み手を誤らせる
+> 7つの罠）は [検証ログ](docs/log/2026-09-03-poc-verification.md) にあり、
+> [`poc/`](poc) から全て再実行できます。
 
 英語版 README: [README.md](README.md)
 
@@ -66,13 +69,43 @@ flow5 / XFLR5 を使っている低レイノルズ数コミュニティ全体を
 
 プリセットがそれぞれに必要なデフォルト値を持ち、下地のモデル自体は汎用です。
 
-## クイックスタート（予定）
+## クイックスタート
+
+先に flow5 を [flow5.tech](https://flow5.tech) からインストールしてください。
 
 ```bash
-pipx install flow5ctl
-flow5ctl doctor
-flow5ctl init my-glider --preset rc-glider
+git clone https://github.com/97kuek/flow5ctl && cd flow5ctl
+uv sync                          # または: pip install -e .
+uv run flow5ctl doctor           # flow5 のインストールを確認
 ```
+
+機体を記述して解析します：
+
+```yaml
+# glider.yaml
+preset: rc-glider
+requirements: {cruise_speed: 12.0, objective: min_sink}
+mass:
+  components:
+    - {tag: fuselage,   mass: 0.40, at: [ 0.12,  0.00, 0.00]}
+    - {tag: wing_left,  mass: 0.10, at: [ 0.05, -0.75, 0.02]}
+    - {tag: wing_right, mass: 0.10, at: [ 0.05,  0.75, 0.02]}
+airfoils:
+  - {name: AG35, source: 'naca:2409'}
+wing:
+  airfoil: AG35
+  planform: {span: 3.0, root_chord: 0.24, taper: 0.55, dihedral: 3.0, washout: -1.5}
+```
+
+```bash
+flow5ctl init Glider --file glider.yaml
+flow5ctl analyze Glider --type T1 --speed 12 --alpha=-2,8,2
+```
+
+必要な2D翼型ポーラーは初回に自動計算されキャッシュされるので、初回は約12秒、
+以降は1秒未満です。
+
+> `pipx install flow5ctl` と PyPI リリースは 0.1.0 で提供予定です。
 
 Claude Desktop の MCP 設定に追加：
 

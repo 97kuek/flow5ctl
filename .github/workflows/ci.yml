@@ -14,12 +14,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      # These run without flow5 installed. Solver-dependent verification lives in
-      # poc/ and is run by hand on a machine that has flow5 — see poc/README.md.
+      # Runs without flow5 installed.
       - name: Docs, licence and artifact hygiene
         run: python3 tools/check_docs.py
+
+  test:
+    name: Tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install
+        run: uv sync --group dev
+
+      - name: Lint
+        run: uv run ruff check src tests tools
+
+      # flow5 is not available on CI runners, so the solver-dependent tests are
+      # deselected. They run against a real flow5 on a developer machine — see
+      # poc/README.md. The rest of the suite must pass without it, which is what
+      # keeps the domain layer independent of the adapter (ADR-0002).
+      - name: Tests
+        run: uv run pytest -q -m "not needs_flow5"

@@ -11,9 +11,37 @@ Instructions for AI agents working **on** this repository.
 [flow5](https://flow5.tech), a potential-flow solver, in its headless batch mode.
 It ships as an MCP server and a CLI over one shared core.
 
-**The project is in the design phase. There is no source code yet.** The repository
-currently holds the design record. Do not start implementing unless the task asks
-you to.
+The core and the CLI work. The MCP server does not exist yet — that is Phase 3 of
+[the roadmap](docs/ROADMAP.md).
+
+## Layout
+
+```
+src/flow5ctl/
+  model/      design.yaml schema, presets
+  geometry/   areas, span, MAC, mass properties      ← no flow5 knowledge
+  advisor/    guardrails and thresholds              ← no flow5 knowledge
+  flow5/      probe, xmlgen, runner, results, summary ← the ONLY flow5-aware package
+  usecases/   define, analyze                        ← the only layer that orchestrates
+  cli.py      a thin adapter; the MCP server will be a second one
+poc/          the verification harness that produced the measured claims in docs/
+tests/        golden values and real flow5 output; fixtures/ pins the parser traps
+```
+
+The dependency rule is one way: `cli → usecases → geometry/advisor/model`, with
+`flow5/` reachable only from `usecases/`. Nothing in `geometry/`, `advisor/` or
+`model/` may import `flow5/`, so the aerodynamic model stays testable with flow5
+absent — and CI relies on that.
+
+## Working on it
+
+```bash
+uv sync --group dev
+uv run pytest -q                    # everything, including 8 real flow5 runs
+uv run pytest -q -m "not needs_flow5"   # what CI runs
+uv run ruff check src tests tools
+python3 tools/check_docs.py
+```
 
 ## Read before you change anything
 

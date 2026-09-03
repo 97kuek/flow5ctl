@@ -1,0 +1,42 @@
+# RC gliders — F3B, F3F, F5J, DLG.
+# Low Reynolds number is the dominant effect: airfoil choice and 2D polar coverage
+# matter more than anything else in the model.
+name: rc-glider
+label: RC glider
+description: 1.5-4 m span, Re 5e4-3e5, wide speed range, ballast
+
+defaults:
+  atmosphere:
+    density: 1.225
+    kinematic_viscosity: 1.5e-5
+  requirements:
+    objective: min_sink
+    static_margin: [0.05, 0.12]
+  wing_panels:
+    chordwise: 13
+    spanwise: 20
+    chord_distribution: COSINE
+    span_distribution: COSINE
+  tail_panels:
+    chordwise: 7
+    spanwise: 8
+
+analysis:
+  method: VLM2
+  viscous: true
+  on_the_fly: false
+  ncrit: 9.0
+  ground_effect: false
+  alpha: [-2.0, 10.0, 1.0]
+  cl_max_estimate: 1.2
+
+limits:
+  max_panels: 4000
+  max_alpha: 12.0
+
+thresholds:
+  aspect_ratio: [8.0, 25.0]
+  wing_loading: [1.0, 8.0]
+  tail_volume_h: [0.35, 0.80]
+  tail_volume_v: [0.015, 0.050]
+  reynolds_at_mac: [4.0e4, 4.0e5]

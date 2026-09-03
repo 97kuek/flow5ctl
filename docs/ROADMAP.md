@@ -28,47 +28,48 @@ Establish that this is possible and write down what was learned.
 
 ---
 
-## Phase 1 — Core, and proof the numbers are right
+## Phase 1 — Core, and proof the numbers are right ✅ done 2026-09-03
 
-The numerical risk that dominated this phase has been retired early: the
-[verification round](log/2026-09-03-poc-verification.md) established the physics and
-geometry agreement, so Phase 1 is now engineering rather than discovery. What remains
-is turning the verified harness in [`poc/`](../poc) into a maintained library.
+- [x] `design.yaml` model and validation (Pydantic) — [`model/design.py`](../src/flow5ctl/model/design.py)
+- [x] `geometry/` — area, projected area, span, MAC, AR, CG, inertia, wing loading, Re, tail volumes
+- [x] Planform shorthand → sections expansion, with proportional panel allocation
+- [x] XML generation: plane, analysis, script — structurally unable to emit both script sections
+- [x] Runner: subprocess, timeout, stdout state machine, crash detection, failure classification
+- [x] Results: output → typed records; summary computation; stability modes from the eigenvalue block
+- [x] `probe` — locate flow5, read the version from the program, compatibility matrix
+- [x] Presets as data: `hpa`, `rc-glider`, `uav`, `custom`
+- [x] Two-pass runner with 2D polar caching ([ADR-0009](adr/0009-two-pass-solver-invocation.md))
+- [x] Self-validating result parser ([ADR-0010](adr/0010-treat-solver-output-as-hostile.md))
+- [x] Guardrails that refuse rather than warn: stability from a non-T7 polar, T6 control
+      polars, panel-count ceilings, fixed-lift sweeps through zero lift
+- [x] 131 tests, of which 8 run against a real flow5
 
-- [ ] `design.yaml` model and validation (Pydantic)
-- [ ] `geometry/` — area, projected area, span, MAC, AR, CG, wing loading, Re, tail volumes
-- [ ] Planform shorthand → sections expansion
-- [ ] XML generation: plane, analysis, script
-- [ ] Runner: subprocess, timeout, stdout state machine, failure classification
-- [ ] Results: CSV → typed records; summary computation
-- [ ] `probe/` — locate flow5, detect version, compatibility matrix
-- [ ] Presets: `hpa`, `rc-glider`
+**Exit criteria — all met:**
 
-- [ ] Two-pass runner with polar caching ([ADR-0009](adr/0009-two-pass-solver-invocation.md))
-- [ ] Self-validating result parser ([ADR-0010](adr/0010-treat-solver-output-as-hostile.md)),
-      promoted from [`poc/lib/parse.py`](../poc/lib/parse.py)
+1. ✅ The spike reproduces through the library: `flow5ctl analyze` on the rectangular
+   wing gives CL_α 0.08525 /deg, static margin −0.59 % MAC and 520 panels, matching
+   the PoC exactly. Pinned in [`tests/test_end_to_end.py`](../tests/test_end_to_end.py).
+2. ✅ Geometry confirmed against flow5's own output three ways: `panel_count` matches
+   flow5's `Counted 520 elements`, `reynolds_at_mac` matches every strip's `Re`
+   column, and the strip `y` column matches the panel distribution.
+   **Still to do:** a direct comparison against a GUI-exported polar.
+3. ✅ CL_α within 10 % of theory — measured **−5.2 %** against Helmbold.
+4. ✅ Viscous analysis with a computed 2D polar mesh works end to end, on a single
+   wing and a 3-surface aircraft, with the mesh cached between runs.
+5. ✅ Parser row count matches flow5's declared `Nbr. of data points` for every
+   fixture, including single-point polars and polars containing `inf`.
 
-**Exit criteria:**
-
-1. ✅ *(met in Phase 0)* Golden-file test from the spike reproduces to within tolerance.
-2. ✅ *(met in Phase 0, indirectly)* Geometry confirmed against flow5's own strip
-   table — local chord recovered from the `Re` column, span and panel distribution
-   from the `y` column. **Still to do:** a direct comparison against a
-   GUI-exported polar, and the same check for multi-break planforms with dihedral.
-3. ✅ *(met in Phase 0)* CL_α within 10 % of `2πAR/(2+AR)` — measured **−5.2 %**
-   against Helmbold, −6.7 % against the classic form.
-4. ✅ *(met in Phase 0)* Viscous analysis with a computed 2D polar mesh works end to
-   end, on both a single wing and a 3-surface aircraft.
-5. Parser row count matches flow5's declared `Nbr. of data points` across every
-   polar type in the fixture set, including single-point polars and polars
-   containing `inf`.
+Beyond the criteria, the derived Reynolds envelope turned the PoC's worst failure —
+a T2 polar returning 1 of 6 points — into 4 of 4 without the user specifying anything.
 
 ## Phase 2 — CLI, and the first real user
 
-- [ ] `flow5ctl` CLI covering `doctor`, `init`, `show`, `set`, `airfoil`, `analyze`, `open`
-- [ ] `--json` output identical to the MCP payloads
-- [ ] Automatic 2D polar computation when a viscous run needs one
-- [ ] Failure messages that distinguish our bugs from design problems
+- [x] `flow5ctl doctor`, `init`, `list`, `show`, `presets`, `analyze`
+- [x] `--json` output, shaped as the MCP payloads will be
+- [x] Automatic 2D polar computation when a viscous run needs one, with caching
+- [x] Failure messages that distinguish our bugs from design problems
+- [ ] `set` (field-level edit), `airfoil add`, `expand`, `export`, `open`
+- [ ] `trim` and `sweep` (moved forward from Phase 4 — they are what users ask for)
 - [ ] Linux verification; Windows verification if a machine is available
 
 **Exit criterion:** design a complete RC glider and a complete HPA wing through

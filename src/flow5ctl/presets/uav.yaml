@@ -1,0 +1,40 @@
+# Small fixed-wing UAVs and model aircraft in the same Reynolds regime.
+name: uav
+label: Small UAV
+description: 1-3 m span, Re 1e5-5e5
+
+defaults:
+  atmosphere:
+    density: 1.225
+    kinematic_viscosity: 1.5e-5
+  requirements:
+    objective: max_range
+    static_margin: [0.10, 0.20]
+  wing_panels:
+    chordwise: 13
+    spanwise: 20
+    chord_distribution: COSINE
+    span_distribution: COSINE
+  tail_panels:
+    chordwise: 7
+    spanwise: 8
+
+analysis:
+  method: VLM2
+  viscous: true
+  on_the_fly: false
+  ncrit: 9.0
+  ground_effect: false
+  alpha: [-2.0, 12.0, 1.0]
+  cl_max_estimate: 1.2
+
+limits:
+  max_panels: 4000
+  max_alpha: 14.0
+
+thresholds:
+  aspect_ratio: [6.0, 20.0]
+  wing_loading: [2.0, 30.0]
+  tail_volume_h: [0.40, 0.90]
+  tail_volume_v: [0.020, 0.060]
+  reynolds_at_mac: [8.0e4, 8.0e5]

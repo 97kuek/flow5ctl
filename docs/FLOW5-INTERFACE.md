@@ -440,6 +440,13 @@ Reference dimensions: `PLANFORM`, `PROJECTED`, `CUSTOM`, `AUTO` (sails).
 - The two methods differ by 10–25 % in viscous drag. **Never mix them in a
   comparison**, and always record which was used.
 
+> **Trap — a fixed-lift polar diverges where the aircraft makes no lift.** **[run]**
+> Asked for α = 0° on a symmetric section, a T2 polar has no finite solution: flow5
+> solves an enormous speed instead of refusing, and the run then fails with
+> `Viscous interpolation failures` at `Re = 59,043,819, Cl = 0.00`. The message points
+> at the polar mesh, but the mesh is not the problem. A T2 or T3 sweep must start
+> above the zero-lift angle.
+
 **The 2D polar mesh must bracket the local Re over the whole flight envelope, not
 just cruise.** **[run]** A mesh covering Re 50 k–250 k gave a T2 polar with **1 of 6
 points** and a T7 polar with **0 points**; widening it to 20 k–400 k gave **5 of 5**
@@ -718,3 +725,25 @@ coarsest mesh. The low-CL end is more sensitive: L/D at α=0° moved 27.7 → 29
 - [ ] Boats/sails — out of scope for flow5ctl.
 - [ ] Whether the §7 segfault and the §5.1 op-point duplication persist in newer
       flow5 releases.
+
+---
+
+## 12. Where this is implemented
+
+| Behaviour | Code |
+|---|---|
+| Version detection (§0) | [`flow5/probe.py`](../src/flow5ctl/flow5/probe.py) |
+| Exit code + stdout markers (§1, §6) | [`flow5/markers.py`](../src/flow5ctl/flow5/markers.py) |
+| Two-pass invocation (§7) | [`flow5/runner.py`](../src/flow5ctl/flow5/runner.py), [`usecases/analyze.py`](../src/flow5ctl/usecases/analyze.py) |
+| XML generation (§2-4) | [`flow5/xmlgen.py`](../src/flow5ctl/flow5/xmlgen.py) |
+| Reference dimensions (§4.2) | [`geometry/derived.py`](../src/flow5ctl/geometry/derived.py) |
+| Reynolds envelope (§4.3) | [`geometry/derived.py`](../src/flow5ctl/geometry/derived.py) |
+| Explicit inertia (§4.4) | [`geometry/massprops.py`](../src/flow5ctl/geometry/massprops.py) |
+| Output parsing (§5) | [`flow5/results.py`](../src/flow5ctl/flow5/results.py) |
+| Static margin units (§5.3) | [`units.py`](../src/flow5ctl/units.py) |
+| Stability modes (§9) | [`flow5/summary.py`](../src/flow5ctl/flow5/summary.py) |
+
+Each trap is pinned by a test in
+[`tests/test_results_parser.py`](../tests/test_results_parser.py) and
+[`tests/test_xmlgen.py`](../tests/test_xmlgen.py) against the real output in
+[`tests/fixtures/`](../tests/fixtures).

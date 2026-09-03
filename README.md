@@ -12,15 +12,18 @@ It ships as one Python package with two front-ends:
 | **MCP server** | `flow5ctl mcp` | Claude Desktop, and any MCP-capable client |
 | **CLI** | `flow5ctl <verb>` | Claude Code, Codex, humans, CI |
 
-> **Status: design phase — verified, not yet implemented.**
-> There is no library code yet. What exists is a design record and a **reproducible
-> proof that the approach works**: eleven verification cases run against
-> **flow5 7.57** on macOS, covering 2D polar generation, viscous analysis, five
-> polar types, ground effect, fuselages, 34 m HPA meshes and stability polars.
-> Read [the verification log](docs/log/2026-09-03-poc-verification.md) for what was
-> found — including a reproducible flow5 crash and seven ways its output misleads a
-> naive reader. Re-run any of it from [`poc/`](poc). Implementation follows the
-> [roadmap](docs/ROADMAP.md).
+> **Status: the core works. The MCP server does not exist yet.**
+>
+> `flow5ctl analyze` runs real analyses today: it computes the geometry, generates and
+> validates flow5's XML, computes 2D airfoil polars and caches them, drives the solver
+> through the two passes it requires, and returns a summary. 131 tests, 8 of them
+> against a real flow5 7.57. Phase 1 and most of Phase 2 of the
+> [roadmap](docs/ROADMAP.md) are done; MCP is Phase 3.
+>
+> Verified on **macOS only**, against **flow5 7.57**. The
+> [verification log](docs/log/2026-09-03-poc-verification.md) records what was found on
+> the way, including a reproducible flow5 crash and seven ways its output misleads a
+> naive reader; re-run any of it from [`poc/`](poc).
 
 日本語版 README: [README.ja.md](README.ja.md)
 
@@ -66,13 +69,51 @@ documented, and handled.
 
 Presets encode the defaults each of these needs; the underlying model is general.
 
-## Quickstart (planned)
+## Quickstart
+
+Install flow5 first, from [flow5.tech](https://flow5.tech). Then:
 
 ```bash
-pipx install flow5ctl
-flow5ctl doctor                 # verify the flow5 installation
-flow5ctl init my-glider --preset rc-glider
+git clone https://github.com/97kuek/flow5ctl && cd flow5ctl
+uv sync                          # or: pip install -e .
+uv run flow5ctl doctor           # check the flow5 installation
 ```
+
+```
+flow5ctl      0.1.0.dev0
+flow5         7.57  /Applications/flow5.app/Contents/MacOS/flow5
+              verified
+workspace     ~/flow5ctl  (writable)
+presets       custom, hpa, rc-glider, uav
+```
+
+Describe an aircraft, then analyse it:
+
+```yaml
+# glider.yaml
+preset: rc-glider
+requirements: {cruise_speed: 12.0, objective: min_sink}
+mass:
+  components:
+    - {tag: fuselage,   mass: 0.40, at: [ 0.12,  0.00, 0.00]}
+    - {tag: wing_left,  mass: 0.10, at: [ 0.05, -0.75, 0.02]}
+    - {tag: wing_right, mass: 0.10, at: [ 0.05,  0.75, 0.02]}
+airfoils:
+  - {name: AG35, source: 'naca:2409'}
+wing:
+  airfoil: AG35
+  planform: {span: 3.0, root_chord: 0.24, taper: 0.55, dihedral: 3.0, washout: -1.5}
+```
+
+```bash
+flow5ctl init Glider --file glider.yaml
+flow5ctl analyze Glider --type T1 --speed 12 --alpha=-2,8,2
+```
+
+The 2D airfoil polars it needs are computed automatically the first time and cached
+afterwards, so the first run takes about twelve seconds and later ones under a second.
+
+> `pipx install flow5ctl` and a PyPI release land with 0.1.0.
 
 Claude Desktop — add to your MCP config:
 
@@ -124,6 +165,11 @@ The YAML is the source; the XML is a build artifact. See
 | [docs/adr/](docs/adr/) | Architecture decision records |
 | [docs/log/](docs/log/) | Investigation and verification log |
 | [poc/](poc/) | The verification harness — reproduce every measured claim |
+
+Source layout: `src/flow5ctl/{model,geometry,advisor}` is the domain and never imports
+`src/flow5ctl/flow5`, which is the only code that knows flow5 exists. `usecases/`
+orchestrates; `cli.py` is a thin adapter over it, and the MCP server will be a second
+one.
 
 Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) · Working with AI agents in this repo: [AGENTS.md](AGENTS.md)
 

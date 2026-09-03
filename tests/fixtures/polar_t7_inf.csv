@@ -1,0 +1,37 @@
+Type 7: Stability analysis
+Quads/VLM2
+Wings as thin surfaces
+B.C. = Neumann
+Lift & drag: in the far field plane
+Viscous drag: interpolated from α
+Viscous loop: disabled
+Ref. dimensions = Custom
+   Area  =    0.562 m²
+   Span  =    3.000 m
+   Chord =    0.194 m
+Fluid properties:
+   ρ =     1.225 kg/m³
+   ν =   1.5e-05 m²/s
+Inertia:
+   Using plane inertia
+   Mass =  0.800 kg
+   CoG = (0.051, 0.000, 0.000)m
+   Ixx =       0 kg.m²
+   Iyy = 0.008319 kg.m²
+   Izz = 0.008319 kg.m²
+   Ixz =       0 kg.m²
+Flat panel wake:
+   Nb. of wake panels = 5
+   Length             = 30 x MAC
+   Progression factor =    1.10
+
+XNP = d(XCp.Cl)/dCl =     0.00 m
+Static margin       = -26.4858
+Nbr. of data points = 3
+Glider
+t7_stab
+
+
+ Ctrl        α (°)      β (°)      φ (°)      CL           CD           CD_viscous   CD_induced   CY           Cm           Cm_viscous   Cm_pressure  Cl           Cn           Cn_viscous   Cn_pressure  CL/CD        CL^(3/2)/CD  1/sqrt(CL)   Lift (N)     Drag (N)     Fx_FF_wind (N)  Fy_FF_wind (N)  Fz_FF_wind (N)  Fx_sum_wind (N)  Fy_sum_wind (N)  Fz_sum_wind (N)  Extra drag (N)  Fuse drag (N)  Cf_Fuse      Vx (m/s)     Vz (m/s)     V (m/s)      Gamma        L (N.m)      M (N.m)      N (N.m)      CPx (m)      CPy (m)      CPz (m)      BM (N.m)     m.g.Vz (W)   Drag x V (W)  Efficiency   XCp.Cl       XNP (m)      Phugoid Freq. (Hz)  Phugoid Damping  Short Period Freq. (Hz)  Short Period Damping Ratio  Dutch Roll Freq. (Hz)  Dutch Roll Damping  Roll Damping  Spiral Damping  Mass (kg)    CoG_x (m)    CoG_z (m)             -2      -1.0516            0            0     0.063862     0.015443     0.015124    0.0003193  -3.0529e-18   0.00093911   0.00093909   1.5283e-08   1.2936e-17   -2.763e-20   1.2575e-19  -1.5338e-19       4.1354        1.045       3.9571         7.85       1.8983     0.039249  -3.7526e-16         7.85   -3.584e-16  -3.3805e-16       7.8498            0            0            0       18.364       4.5682       18.894       13.594   4.7687e-15     0.022337  -9.7808e-17     0.051302   1.0109e-15    0.0028396       2.9079       35.851       35.865      0.25397    0.0032763      0.10883     0.067084     0.011107            0            0       56.015    -0.042718          inf   5.1004e-24          0.8      0.05125            0  
+          0      -1.0516            0            0     0.063862     0.015443     0.015124    0.0003193  -3.0529e-18   0.00093911   0.00093909   1.5283e-08   1.2936e-17   -2.763e-20   1.2575e-19  -1.5338e-19       4.1354        1.045       3.9571         7.85       1.8983     0.039249  -3.7526e-16         7.85   -3.584e-16  -3.3805e-16       7.8498            0            0            0       18.364       4.5682       18.894       13.594   4.7687e-15     0.022337  -9.7808e-17     0.051302   1.0109e-15    0.0028396       2.9079       35.851       35.865      0.25397    0.0032763      0.10883     0.067084     0.011107            0            0       56.015    -0.042718          inf   5.1004e-24          0.8      0.05125            0  
+          2      -1.0516            0            0     0.063862     0.015443     0.015124    0.0003193  -3.0529e-18   0.00093911   0.00093909   1.5283e-08   1.2936e-17   -2.763e-20   1.2575e-19  -1.5338e-19       4.1354        1.045       3.9571         7.85       1.8983     0.039249  -3.7526e-16         7.85   -3.584e-16  -3.3805e-16       7.8498            0            0            0       18.364       4.5682       18.894       13.594   4.7687e-15     0.022337  -9.7808e-17     0.051302   1.0109e-15    0.0028396       2.9079       35.851       35.865      0.25397    0.0032763      0.10883     0.067084     0.011107            0            0       56.015    -0.042718          inf   5.1004e-24          0.8      0.05125            0  

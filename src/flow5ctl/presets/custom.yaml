@@ -1,0 +1,34 @@
+# No assumptions. Nothing is defaulted beyond what flow5 itself requires, and no
+# threshold warnings are raised.
+name: custom
+label: Custom
+description: no preset defaults or sanity thresholds
+
+defaults:
+  atmosphere:
+    density: 1.225
+    kinematic_viscosity: 1.5e-5
+  requirements: {}
+  wing_panels:
+    chordwise: 13
+    spanwise: 20
+    chord_distribution: COSINE
+    span_distribution: COSINE
+  tail_panels:
+    chordwise: 7
+    spanwise: 8
+
+analysis:
+  method: VLM2
+  viscous: true
+  on_the_fly: false
+  ncrit: 9.0
+  ground_effect: false
+  alpha: [-2.0, 10.0, 1.0]
+  cl_max_estimate: 1.2
+
+limits:
+  max_panels: 6000
+  max_alpha: 14.0
+
+thresholds: {}

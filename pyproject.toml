@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "flow5ctl"
+version = "0.1.0.dev0"
+description = "AI-driven aircraft design with flow5 — MCP server and CLI for low-Reynolds-number aircraft"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+keywords = ["aerodynamics", "aircraft-design", "flow5", "xflr5", "mcp", "uav", "glider"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+  "pydantic>=2.7",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.8"]
+
+[project.scripts]
+flow5ctl = "flow5ctl.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/97kuek/flow5ctl"
+Issues = "https://github.com/97kuek/flow5ctl/issues"
+
+[dependency-groups]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/flow5ctl"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["needs_flow5: requires a working flow5 installation"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+  "E501",
+  # Greek letters and the degree sign are flow5's actual column names and the
+  # standard notation for these quantities. Renaming alpha to `a` would make the
+  # code harder to check against the solver's output, not easier.
+  "RUF001", "RUF002", "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["RUF043"]  # regex metacharacters in pytest `match=` are intentional

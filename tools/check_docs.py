@@ -9,7 +9,11 @@
 Run: python3 tools/check_docs.py
 """
 from __future__ import annotations
-import pathlib, re, subprocess, sys
+
+import pathlib
+import re
+import subprocess
+import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 FAIL: list[str] = []
