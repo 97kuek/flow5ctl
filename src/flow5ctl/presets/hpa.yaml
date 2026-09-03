@@ -39,5 +39,9 @@ thresholds:
   aspect_ratio: [20.0, 45.0]
   wing_loading: [2.0, 8.0]           # kg/m^2
   tail_volume_h: [0.35, 0.80]
-  tail_volume_v: [0.020, 0.060]
+  # V_v = S_v.l_v / (S_w.b), and b is 30-something metres here, so the coefficient
+  # comes out an order of magnitude below a conventional aircraft's. Daedalus-class
+  # numbers land around 0.008-0.012; a band taken from general aviation would flag
+  # every correctly-sized HPA fin as too small.
+  tail_volume_v: [0.005, 0.020]
   reynolds_at_mac: [3.0e5, 1.5e6]

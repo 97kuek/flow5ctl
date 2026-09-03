@@ -9,6 +9,35 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 The core library and CLI work. The MCP server is not built yet — see
 [docs/ROADMAP.md](docs/ROADMAP.md).
 
+### Added — CLI (Phase 2)
+
+- `trim`: solves for the angle of attack at a target CL or for level flight, the speed
+  at a given angle, the **CG that achieves a target static margin**, and the elevator
+  incidence that gives Cm = 0. The static-margin solve is closed-form in two runs
+  because the neutral point does not move with the CG — verified across three CG
+  positions, with the margin varying linearly at exactly 1/MAC.
+- `sweep`: varies one design or analysis parameter and returns a comparison table,
+  with study files so a question is re-runnable after a design change. Design
+  parameters are varied in memory, so `design.yaml` is never left half-edited.
+- `ld_at_trim` and `cl_at_trim` metrics, plus warnings when a requested metric is
+  blind to the parameter being varied (best L/D does not respond to CG) and when a
+  sweep's apparent optimum ignores a cost a potential-flow solver cannot see (a
+  washout sweep will always favour zero washout).
+- `set`, `expand`, `airfoil add`/`list`, `export` (fl5/stl/csv/xml) and `open`, which
+  hands the `.fl5` to the flow5 GUI so a human can check the aircraft themselves.
+- Worked examples in `examples/` for an RC glider, an HPA and a study.
+
+### Fixed
+
+- Coincident surfaces — a fin root sitting on the elevator — are caught before the
+  solver runs. flow5 answers that configuration with an effective angle of attack of
+  −104° and a failed run, under the same heading it uses for an unrelated cause.
+- A static margin that disagrees in sign between flow5's neutral point and its own
+  moment slope is reported as ambiguous rather than resolved in favour of one.
+- The `hpa` preset's vertical tail volume band was wrong: with a 34 m span in the
+  denominator the coefficient is an order of magnitude below a conventional
+  aircraft's, so the general-aviation band flagged every correctly sized HPA fin.
+
 ### Added — core (Phase 1)
 
 - `design.yaml` schema and validation; presets shipped as data (`hpa`, `rc-glider`,
@@ -23,7 +52,7 @@ The core library and CLI work. The MCP server is not built yet — see
 - Guardrails that refuse rather than warn: stability from a non-T7 polar, T6 control
   polars, panel-count ceilings, and fixed-lift sweeps through zero lift.
 - CLI: `doctor`, `init`, `list`, `show`, `presets`, `analyze`, all with `--json`.
-- 131 tests, 8 of which run against a real flow5.
+- 210 tests, 17 of which run against a real flow5.
 
 ### Verified numerically
 

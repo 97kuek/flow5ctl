@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -25,12 +26,42 @@ EXPECTED_OK = {"7.5", "7.6", "7.7"}
 KNOWN_BAD: dict[str, str] = {}
 """version -> reason. Empty so far."""
 
-_CANDIDATES = (
-    "/Applications/flow5.app/Contents/MacOS/flow5",
-    str(Path.home() / "Applications/flow5.app/Contents/MacOS/flow5"),
-    "/usr/local/bin/flow5",
-    "/opt/flow5/flow5",
-)
+def _candidates() -> tuple[str, ...]:
+    """Where flow5 usually lands, per platform.
+
+    PATH is checked first, so this list only matters for a GUI install that never
+    added itself to PATH — which is the normal case on macOS and Windows. Only the
+    macOS entries are verified; the others are best guesses and a wrong guess here
+    just means the user has to set FLOW5CTL_FLOW5. Reports welcome:
+    https://github.com/97kuek/flow5ctl/issues
+    """
+    home = Path.home()
+    if sys.platform == "darwin":
+        return (
+            "/Applications/flow5.app/Contents/MacOS/flow5",
+            str(home / "Applications/flow5.app/Contents/MacOS/flow5"),
+            "/usr/local/bin/flow5",
+            "/opt/homebrew/bin/flow5",
+        )
+    if sys.platform == "win32":
+        program_files = os.environ.get("PROGRAMFILES", r"C:\Program Files")
+        program_files_x86 = os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)")
+        local = os.environ.get("LOCALAPPDATA", str(home / "AppData/Local"))
+        return tuple(
+            str(Path(base) / sub / "flow5.exe")
+            for base in (program_files, program_files_x86, local)
+            for sub in ("flow5", "flow5/bin")
+        )
+    # Linux and other Unix
+    return (
+        "/usr/local/bin/flow5",
+        "/usr/bin/flow5",
+        "/opt/flow5/flow5",
+        "/opt/flow5/bin/flow5",
+        str(home / ".local/bin/flow5"),
+        str(home / "flow5/flow5"),
+        str(home / "Applications/flow5/flow5"),
+    )
 
 _VERSION_RE = re.compile(r"v?(\d+)\.(\d+)")
 
@@ -58,15 +89,16 @@ def find_executable(explicit: str | os.PathLike[str] | None = None) -> Path:
     if which:
         return Path(which)
 
-    for cand in _CANDIDATES:
+    candidates = _candidates()
+    for cand in candidates:
         p = Path(cand)
-        if p.is_file() and os.access(p, os.X_OK):
+        if p.is_file() and (sys.platform == "win32" or os.access(p, os.X_OK)):
             return p
 
     raise SolverNotFound(
         "flow5 was not found. Install it from https://flow5.tech, or set "
         "FLOW5CTL_FLOW5 to the executable. Looked on PATH and at:\n  "
-        + "\n  ".join(_CANDIDATES)
+        + "\n  ".join(candidates)
     )
 
 

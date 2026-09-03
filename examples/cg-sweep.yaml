@@ -1,0 +1,27 @@
+# A study: a named, re-runnable question. Run it with
+#   flow5ctl sweep <design> --study examples/cg-sweep.yaml
+#
+# The metrics matter here: `best_LD` does not respond to CG at all — the drag polar is
+# unchanged, only the trim point moves — so a CG study reported on best L/D looks like
+# it makes no difference when it makes a great deal. Compare on `ld_at_trim`.
+schema: flow5ctl/study/1
+name: cg-sweep
+question: How does static margin trade against trimmed lift-to-drag?
+
+vary:
+  parameter: cg_x        # an analysis override; a design path like
+  from: 0.040            # wing.planform.taper works the same way
+  to: 0.090
+  steps: 6
+
+analysis:
+  type: T1
+  speed: 12.0
+  # Start negative: at a forward CG the trimmed angle of attack is small or negative,
+  # and flow5ctl will not extrapolate outside the sweep, so trim_alpha would come back
+  # empty for those rows.
+  alpha: [-4.0, 8.0, 2.0]
+  viscous: true
+
+report:
+  metrics: [static_margin, trim_alpha, cl_at_trim, ld_at_trim]

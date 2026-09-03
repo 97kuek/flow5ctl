@@ -151,21 +151,49 @@ Guardrails enforced here:
 ### `trim`
 Solve rather than sweep. `design`, plus a target:
 
-- `target: "level_flight"` with `speed` → finds α and required elevator incidence
-- `target: "static_margin"`, `value: 0.10` → finds the CG that achieves it
-- `target: "cl"`, `value: 0.9` → finds α
+| `target` | Solves for | Runs |
+|---|---|---|
+| `level` | α that holds level flight at a speed | 2 |
+| `cl` | α that reaches a given CL | 2 |
+| `speed` | the speed that holds level flight at a given α | 1 |
+| `static_margin` | the CG x that achieves a target margin | 2 |
+| `pitch` | the elevator incidence giving Cm = 0 | 3–5 |
 
-Returns the solved quantity, the operating point at that condition, and the
-iterations used. This is the question designers actually ask, and doing it inside
-the tool avoids an agent burning ten tool calls on a bisection.
+Returns the solved quantity, the operating point at that condition, and — for the
+iterative target — the history, so the convergence is inspectable rather than
+asserted.
+
+`level` and `cl` take two runs, not one: the first locates α on the sweep grid, and a
+second run centred on that angle returns the drag and moment **at the condition
+itself** rather than interpolated between grid points. Lift is linear enough to
+interpolate; L/D is not.
+
+`static_margin` is a closed-form solve because the neutral point does not move with
+the CG — verified across three CG positions, with the static margin varying linearly
+at exactly 1/MAC. The second run only confirms it, and warns if the moment slope
+turned out to be non-linear enough to matter.
 
 ### `sweep`
-Runs a [study](DOMAIN-MODEL.md#studies): `design`, `parameter` (dotted path into
-`design.yaml`), `values`, `analysis`, `metrics`.
+Runs a [study](DOMAIN-MODEL.md#studies): `design`, `parameter`, `values`, `analysis`,
+`metrics`. The parameter is either a dotted path into `design.yaml`
+(`wing.planform.taper`) or one of the analysis overrides `cg_x`, `speed`, `mass`,
+`ground_height`.
 
-Returns a comparison table — one row per value, one column per metric — plus the
-best row by the design's `objective`, plus the path to full results. A CG sweep, a
-taper study, and a washout study are all this one tool.
+A design parameter is varied **in memory** — `design.yaml` is never written to, so an
+interrupted sweep cannot leave the design in an intermediate state.
+
+Returns a comparison table, the best row by the design's `objective`, and the path to
+full results. Three things it does that a hand-rolled loop would not:
+
+- **Names the metrics that are blind to the parameter.** Best L/D does not respond to
+  CG at all; a CG study reported on it looks like it makes no difference when it makes
+  a great deal. Compare on `ld_at_trim`.
+- **Explains an empty cell.** A missing `trim_alpha` means the trimmed condition fell
+  outside the α sweep, and it says so with the values affected.
+- **Names the cost a potential-flow sweep cannot see.** A washout sweep will always
+  "discover" that washout should be zero, because what washout buys — tip-stall
+  margin, roll damping, an unloaded tip — is invisible to a solver with no separation
+  model. The tool says so rather than letting the table speak for itself.
 
 ### `plot`
 `design`, `polar` (one or more), `kind` (`polar` | `cl_alpha` | `cm_alpha` |
@@ -216,21 +244,32 @@ shipping a new server.
 
 ## CLI mapping
 
+Implemented today:
+
 ```
 flow5ctl doctor
-flow5ctl init <name> --preset hpa
+flow5ctl presets
+flow5ctl init <name> --file design.yaml [--preset hpa]
 flow5ctl list
 flow5ctl show [<name>]
-flow5ctl set wing.planform.washout=-2.5      # → update_design
-flow5ctl airfoil add DAE-31 --file dae31.dat
-flow5ctl analyze --type T1 --speed 8 --alpha -2,10,0.5 --name cruise
-flow5ctl trim --target static-margin --value 0.10
-flow5ctl sweep studies/cg-sweep.yaml
-flow5ctl plot cruise --kind polar -o cruise.png
-flow5ctl export --format stl
-flow5ctl open
-flow5ctl mcp                                  # run the MCP server on stdio
+flow5ctl set wing.planform.washout=-2.5 requirements.cruise_speed=11
+flow5ctl expand                               # planform shorthand → explicit sections
+flow5ctl airfoil add DAE-31 --file dae31.dat [--reynolds 3e5,5e5 --ncrit 11]
+flow5ctl airfoil list
+flow5ctl analyze --type T1 --speed 8 --alpha=-2,10,2 --name cruise
+flow5ctl trim --target level|cl|speed|static-margin|pitch [--value V]
+flow5ctl sweep --parameter cg_x --values 0.04:0.09:6 --metrics ld_at_trim,static_margin
+flow5ctl sweep --study examples/cg-sweep.yaml
+flow5ctl export --format fl5|stl|csv|xml
+flow5ctl open                                 # hands the .fl5 to the flow5 GUI
 ```
 
-Every CLI command takes `--json` for machine-readable output identical to the MCP
-response, so an agent with a shell gets exactly what an MCP client gets.
+Still to come: `plot` (Phase 4) and `flow5ctl mcp` (Phase 3).
+
+Every command takes `--json`, before or after the verb, for machine-readable output
+shaped as the MCP response will be — so an agent with a shell gets what an MCP client
+will get.
+
+An option value that starts with a minus works either way: `--alpha=-2,10,2` and
+`--alpha -2,10,2` are both accepted, because an alpha sweep almost always starts
+negative and argparse would otherwise read it as an option.

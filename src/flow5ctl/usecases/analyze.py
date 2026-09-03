@@ -202,11 +202,17 @@ def _ranges_for(polar_type: str, alpha: tuple[float, float, float]) -> xmlgen.Pl
     return xmlgen.PlaneRanges(extra={f"{pt}_Range": alpha})
 
 
-def analyze(project: Project, req: Request, *,
-            flow5: str | None = None) -> dict[str, Any]:
-    """Run one analysis and return a summary, never the table (ADR-0004)."""
+def analyze(project: Project, req: Request, *, flow5: str | None = None,
+            design: Design | None = None, store: bool = True) -> dict[str, Any]:
+    """Run one analysis and return a summary, never the table (ADR-0004).
+
+    `design` overrides what is on disk without writing to it, which is how `sweep`
+    varies a geometric parameter without mutating the user's design.yaml.
+    `store=False` skips writing a result file, for the throwaway runs a solver
+    iteration makes.
+    """
     install = probe_mod.probe(flow5)
-    design = project.load()
+    design = design if design is not None else project.load()
     preset = presets.load(design.preset)
     derived = geometry.solve(design)
 
@@ -358,17 +364,20 @@ def analyze(project: Project, req: Request, *,
         "data": None,
         "flow5_output": str(polar_csv),
     }
-    stored = project.write_result(req.name, {
-        **payload,
-        "columns": polar.columns,
-        "rows": polar.rows,
-    })
-    payload["data"] = str(stored.relative_to(project.root))
-    project.update_state(
-        flow5_version=install.version,
-        last_analysis=req.name,
-        last_polar_type=req.polar_type.upper(),
-    )
+    if store:
+        stored = project.write_result(req.name, {
+            **payload,
+            "columns": polar.columns,
+            "rows": polar.rows,
+        })
+        payload["data"] = str(stored.relative_to(project.root))
+        project.update_state(
+            flow5_version=install.version,
+            last_analysis=req.name,
+            last_polar_type=req.polar_type.upper(),
+        )
+    payload["_polar_columns"] = polar.columns
+    payload["_polar_rows"] = polar.rows
     return payload
 
 

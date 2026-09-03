@@ -12,18 +12,18 @@ It ships as one Python package with two front-ends:
 | **MCP server** | `flow5ctl mcp` | Claude Desktop, and any MCP-capable client |
 | **CLI** | `flow5ctl <verb>` | Claude Code, Codex, humans, CI |
 
-> **Status: the core works. The MCP server does not exist yet.**
+> **Status: the CLI works. The MCP server does not exist yet.**
 >
-> `flow5ctl analyze` runs real analyses today: it computes the geometry, generates and
-> validates flow5's XML, computes 2D airfoil polars and caches them, drives the solver
-> through the two passes it requires, and returns a summary. 131 tests, 8 of them
-> against a real flow5 7.57. Phase 1 and most of Phase 2 of the
-> [roadmap](docs/ROADMAP.md) are done; MCP is Phase 3.
+> `analyze`, `trim` and `sweep` run real analyses today. flow5ctl computes the
+> geometry, generates and validates flow5's XML, computes 2D airfoil polars and caches
+> them, drives the solver through the two passes it requires, and returns summaries and
+> comparison tables. 210 tests, 17 of them against a real flow5 7.57. Phases 1 and 2 of
+> the [roadmap](docs/ROADMAP.md) are done bar Linux verification; **MCP is Phase 3**.
 >
-> Verified on **macOS only**, against **flow5 7.57**. The
-> [verification log](docs/log/2026-09-03-poc-verification.md) records what was found on
-> the way, including a reproducible flow5 crash and seven ways its output misleads a
-> naive reader; re-run any of it from [`poc/`](poc).
+> Verified on **macOS only**, against **flow5 7.57** — Linux and Windows are the
+> largest remaining risk. The [verification log](docs/log/2026-09-03-poc-verification.md)
+> records what was found on the way, including a reproducible flow5 crash and seven
+> ways its output misleads a naive reader; re-run any of it from [`poc/`](poc).
 
 日本語版 README: [README.ja.md](README.ja.md)
 
@@ -106,12 +106,60 @@ wing:
 ```
 
 ```bash
-flow5ctl init Glider --file glider.yaml
+flow5ctl init Glider --file examples/rc-glider.yaml
 flow5ctl analyze Glider --type T1 --speed 12 --alpha=-2,8,2
 ```
 
 The 2D airfoil polars it needs are computed automatically the first time and cached
 afterwards, so the first run takes about twelve seconds and later ones under a second.
+
+### Solve, don't sweep
+
+```bash
+flow5ctl trim Glider --target level --speed 11          # α for level flight
+flow5ctl trim Glider --target static-margin --value 0.10  # CG for a 10 % margin
+flow5ctl trim Glider --target pitch --speed 11          # elevator incidence for Cm = 0
+```
+
+```
+Solved
+  cg_x                    0.07571
+  static_margin           0.1006
+  neutral_point_x         0.09476
+  shift_from_current      0.02821
+
+  A static margin of +10.0% needs the CG at x = 0.0757 m (39.7 % MAC), which is
+  28 mm aft of the current CG. The neutral point is at x = 0.0948 m.
+```
+
+That one takes two solver runs rather than a bisection, because the neutral point does
+not move with the CG — verified, so the second run only confirms the answer.
+
+### Compare
+
+```bash
+flow5ctl sweep Glider --parameter cg_x --values 0.04:0.09:6 \
+    --metrics static_margin,trim_alpha,ld_at_trim
+```
+
+```
+         cg_x  static_margin   trim_alpha   ld_at_trim
+  -----------  -------------  -----------  -----------
+         0.04         0.3448       -0.368        4.466
+         0.06           0.24       -0.001        6.485
+         0.08         0.1351        0.924        11.14
+         0.09         0.0827        2.286       17.297
+```
+
+`ld_at_trim`, not best L/D: moving the CG does not change the drag polar at all, only
+where the aircraft trims. Ask for `best_LD` in a CG sweep and flow5ctl will tell you
+the column is blind to the parameter you varied.
+
+Studies are files, so a question survives a design change:
+
+```bash
+flow5ctl sweep Glider --study examples/cg-sweep.yaml
+```
 
 > `pipx install flow5ctl` and a PyPI release land with 0.1.0.
 
@@ -165,6 +213,7 @@ The YAML is the source; the XML is a build artifact. See
 | [docs/adr/](docs/adr/) | Architecture decision records |
 | [docs/log/](docs/log/) | Investigation and verification log |
 | [poc/](poc/) | The verification harness — reproduce every measured claim |
+| [examples/](examples/) | Worked designs: an RC glider, an HPA, and a study |
 
 Source layout: `src/flow5ctl/{model,geometry,advisor}` is the domain and never imports
 `src/flow5ctl/flow5`, which is the only code that knows flow5 exists. `usecases/`

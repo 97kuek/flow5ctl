@@ -170,3 +170,4 @@ def test_a_design_referencing_a_missing_airfoil_never_reaches_flow5(install, rec
     raw["wing"] = {**raw["wing"], "airfoil": "Missing"}
     with pytest.raises(DesignError, match="not.*declared"):
         define.create("Bad", raw)
+

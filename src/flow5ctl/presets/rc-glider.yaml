@@ -38,5 +38,5 @@ thresholds:
   aspect_ratio: [8.0, 25.0]
   wing_loading: [1.0, 8.0]
   tail_volume_h: [0.35, 0.80]
-  tail_volume_v: [0.015, 0.050]
+  tail_volume_v: [0.012, 0.045]
   reynolds_at_mac: [4.0e4, 4.0e5]

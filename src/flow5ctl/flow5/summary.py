@@ -35,6 +35,19 @@ def _fit(xs: list[float], ys: list[float]) -> tuple[float, float] | None:
     return slope, my - slope * mx
 
 
+def _at(xs: list[float], ys: list[float], x: float) -> float | None:
+    """y at a given x by linear interpolation, without extrapolating."""
+    pairs = sorted(
+        ((a, b) for a, b in zip(xs, ys, strict=True)
+         if math.isfinite(a) and math.isfinite(b)),
+        key=lambda p: p[0],
+    )
+    for (x0, y0), (x1, y1) in pairwise(pairs):
+        if x0 <= x <= x1:
+            return y0 if x1 == x0 else y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+    return None
+
+
 def _zero_crossing(xs: list[float], ys: list[float]) -> float | None:
     """First linear interpolation of y = 0, for trim angle."""
     for (x0, y0), (x1, y1) in pairwise(list(zip(xs, ys, strict=True))):
@@ -126,6 +139,13 @@ class Summary:
     neutral_point_x: float | None = None
     static_margin: float | None = None
     trim_alpha: float | None = None
+    cl_at_trim: float | None = None
+    ld_at_trim: float | None = None
+    """Lift-to-drag at the trimmed condition.
+
+    This is the number to compare when moving the CG. Best L/D does not change with
+    CG at all — the drag polar is the same, only the trim point moves — so a CG study
+    reported on best L/D looks like it makes no difference when it does."""
     longitudinal_modes: list[Mode] = field(default_factory=list)
     lateral_modes: list[Mode] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -143,6 +163,8 @@ class Summary:
             "neutral_point_x": r(self.neutral_point_x),
             "static_margin": r(self.static_margin, 4),
             "trim_alpha": r(self.trim_alpha, 3),
+            "cl_at_trim": r(self.cl_at_trim, 5),
+            "ld_at_trim": r(self.ld_at_trim, 3),
         }
         if self.best_ld:
             d["best_LD"] = self.best_ld.as_dict()
@@ -210,6 +232,10 @@ def summarise(polar: Polar, *, mac: float | None = None, cg_x: float | None = No
             # already the static margin as a fraction of that chord.
             s.static_margin = -fit[0]
         s.trim_alpha = _zero_crossing(alpha, cm)
+        if s.trim_alpha is not None:
+            s.cl_at_trim = _at(alpha, cl, s.trim_alpha)
+            if polar.has("CL/CD"):
+                s.ld_at_trim = _at(alpha, polar.column("CL/CD"), s.trim_alpha)
 
     if polar.has("CL/CD"):
         ld = polar.column("CL/CD")

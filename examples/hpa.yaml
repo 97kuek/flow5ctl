@@ -1,0 +1,55 @@
+# A human-powered aircraft for the Birdman Rally distance category.
+#   flow5ctl init Albatross --file examples/hpa.yaml
+#   flow5ctl analyze Albatross --type T1 --speed 8 --alpha=0,8,2
+#
+# The `hpa` preset turns ground effect on by default, because an aircraft flown a few
+# metres above water gains 15-20 % in lift-to-drag from it. That is a design driver,
+# not a correction. Always report the out-of-ground-effect case as well.
+description: HPA for the Birdman Rally distance category
+preset: hpa
+
+requirements:
+  cruise_speed: 8.0
+  ground_effect_height: 2.0
+  static_margin: [0.05, 0.15]
+  objective: max_range
+
+mass:
+  components:
+    - {tag: pilot,      mass: 68.0, at: [0.55,  0.00, -0.55]}
+    - {tag: fuselage,   mass:  8.0, at: [1.20,  0.00, -0.30]}
+    - {tag: drive,      mass:  6.0, at: [0.20,  0.00, -0.70]}
+    # spanwise structure mass, so the roll inertia is real
+    - {tag: wing_left,  mass: 11.0, at: [0.60, -7.00,  0.15]}
+    - {tag: wing_right, mass: 11.0, at: [0.60,  7.00,  0.15]}
+
+airfoils:
+  - name: DAE31ish
+    source: 'naca:4412'
+  - name: TailFoil
+    source: 'naca:0010'
+
+wing:
+  airfoil: DAE31ish
+  planform:
+    span: 34.0
+    root_chord: 1.15
+    taper: 0.45
+    dihedral: 2.0
+    washout: -2.0
+    breaks: [0.40, 0.72]
+  panels: {chordwise: 13, spanwise: 40}
+
+tail:
+  type: conventional
+  elevator:
+    position: [6.0, 0.0, 0.50]
+    incidence: -2.0
+    airfoil: TailFoil
+    planform: {span: 3.4, root_chord: 0.75, taper: 0.67}
+    panels: {chordwise: 7, spanwise: 10}
+  fin:
+    position: [6.0, 0.0, 0.62]     # clear of the elevator — see rc-glider.yaml
+    airfoil: TailFoil
+    planform: {span: 1.6, root_chord: 1.05, taper: 0.6}
+    panels: {chordwise: 7, spanwise: 8}

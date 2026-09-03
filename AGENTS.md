@@ -19,12 +19,14 @@ The core and the CLI work. The MCP server does not exist yet — that is Phase 3
 ```
 src/flow5ctl/
   model/      design.yaml schema, presets
-  geometry/   areas, span, MAC, mass properties      ← no flow5 knowledge
-  advisor/    guardrails and thresholds              ← no flow5 knowledge
+  geometry/   areas, span, MAC, mass properties       ← no flow5 knowledge
+  advisor/    guardrails and thresholds               ← no flow5 knowledge
   flow5/      probe, xmlgen, runner, results, summary ← the ONLY flow5-aware package
-  usecases/   define, analyze                        ← the only layer that orchestrates
+  usecases/   define, edit, analyze, trim, sweep, gui ← the only layer that orchestrates
+  presets/    *.yaml — data, so a new aircraft class needs no code
   cli.py      a thin adapter; the MCP server will be a second one
 poc/          the verification harness that produced the measured claims in docs/
+examples/     worked designs and a study, used as documentation
 tests/        golden values and real flow5 output; fixtures/ pins the parser traps
 ```
 
@@ -37,7 +39,7 @@ absent — and CI relies on that.
 
 ```bash
 uv sync --group dev
-uv run pytest -q                    # everything, including 8 real flow5 runs
+uv run pytest -q                    # everything, including 17 real flow5 runs
 uv run pytest -q -m "not needs_flow5"   # what CI runs
 uv run ruff check src tests tools
 python3 tools/check_docs.py

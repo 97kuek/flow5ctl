@@ -7,12 +7,13 @@ This file adds only what is specific to running Claude Code here.
 
 ## Status
 
-The core library and CLI work; the MCP server is not built yet. `uv run flow5ctl
-analyze` runs real analyses. See [docs/ROADMAP.md](docs/ROADMAP.md) for what is done.
+The CLI works; the MCP server is not built yet. `analyze`, `trim` and `sweep` run
+real analyses — see [docs/ROADMAP.md](docs/ROADMAP.md) for what is done, and
+[examples/](examples/) for designs to try them on.
 
 ```bash
 uv sync --group dev
-uv run pytest -q                         # 131 tests, 8 of them run real flow5
+uv run pytest -q                         # 210 tests, 17 of them run real flow5
 uv run pytest -q -m "not needs_flow5"    # what CI runs
 uv run ruff check src tests tools
 ```

@@ -152,6 +152,14 @@ are needed for fuselages.
   wrong somewhere else.
 - Changing CG changes trim, which changes trimmed L/D. Report performance **at trim**,
   not at a fixed α, when comparing CG positions. Use `trim`.
+- **Best L/D does not respond to the CG at all.** The drag polar is unchanged; only
+  the point at which the aircraft trims moves. Measured on a 3 m glider, moving the CG
+  from 40 to 90 mm left best L/D at 22.8 throughout while trimmed L/D went from 4.5 to
+  17.3 and the static margin fell from 34 % to 8 %. Compare CG positions on
+  `ld_at_trim`; comparing on best L/D will tell you the CG does not matter.
+- **The neutral point does not move with the CG**, so a target static margin is a
+  solve, not a search: X_cg = X_np − SM·MAC. `flow5ctl trim --target static-margin`
+  does it in two runs.
 
 ## 6. Ground effect — read this for HPA
 

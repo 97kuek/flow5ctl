@@ -62,15 +62,33 @@ Establish that this is possible and write down what was learned.
 Beyond the criteria, the derived Reynolds envelope turned the PoC's worst failure —
 a T2 polar returning 1 of 6 points — into 4 of 4 without the user specifying anything.
 
-## Phase 2 — CLI, and the first real user
+## Phase 2 — CLI, and the first real user ✅ done 2026-09-03 (except Linux)
 
-- [x] `flow5ctl doctor`, `init`, `list`, `show`, `presets`, `analyze`
-- [x] `--json` output, shaped as the MCP payloads will be
+- [x] `doctor`, `init`, `list`, `show`, `presets`, `analyze`
+- [x] `set` (field-level edit, refusing to create fields), `airfoil add`/`list`,
+      `expand`, `export` (fl5/stl/csv/xml), `open` (hands the `.fl5` to the GUI)
+- [x] `trim` — solves for α at a CL or for level flight, for the speed at an α, for
+      the **CG that achieves a target static margin**, and for the elevator incidence
+      that gives Cm = 0
+- [x] `sweep` — varies one design or analysis parameter and returns a comparison table,
+      with study files so a question is re-runnable after a design change
+- [x] `--json` on every command, accepted before or after the verb
 - [x] Automatic 2D polar computation when a viscous run needs one, with caching
 - [x] Failure messages that distinguish our bugs from design problems
-- [ ] `set` (field-level edit), `airfoil add`, `expand`, `export`, `open`
-- [ ] `trim` and `sweep` (moved forward from Phase 4 — they are what users ask for)
-- [ ] Linux verification; Windows verification if a machine is available
+- [x] Worked examples in [`examples/`](../examples) for an RC glider, an HPA, and a study
+- [ ] **Linux verification; Windows verification if a machine is available** — the
+      only outstanding item, and the largest remaining risk in the project
+
+Two things came out of building `trim` and `sweep` that changed the design:
+
+- The neutral point does not move with the CG. Verified across three CG positions:
+  X_np came out at 0.0941 m every time, with the static margin varying linearly at
+  exactly 1/MAC. So a target static margin is a **closed-form solve** — two solver
+  runs, one to measure and one to confirm — not a bisection.
+- Best L/D does not respond to CG at all; only the trim point moves. A CG study
+  reported on best L/D looks like it makes no difference when it makes a great deal,
+  so `ld_at_trim` was added and `sweep` now warns when a requested metric is blind to
+  the parameter being varied.
 
 **Exit criterion:** design a complete RC glider and a complete HPA wing through
 Claude Code, start to finish, without hand-editing XML — and have someone who did not
@@ -87,16 +105,16 @@ build the tool do it too.
 **Exit criterion:** a Birdman Rally team member with no terminal experience designs a
 wing in Claude Desktop and opens the result in the flow5 GUI.
 
-## Phase 4 — The questions designers actually ask
+## Phase 4 — The rest of the design questions
 
-- [ ] `trim` — solve for α, CG, or elevator incidence
-- [ ] `sweep` / studies with comparison tables
-- [ ] T7 stability polars: parse the eigenvalue block, report longitudinal modes,
-      suppress Dutch roll and short-period until flow5 reports them reliably
-      ([FLOW5-INTERFACE.md §9](FLOW5-INTERFACE.md))
-- [ ] Spanwise loading plots and elliptic comparison
-- [ ] Ground-effect reporting in and out, for HPA
+`trim`, `sweep` and T7 mode reporting were pulled forward into Phases 1-2. What is left:
+
+- [ ] Spanwise loading plots and elliptic comparison (the strip table is already parsed)
+- [ ] `plot` returning PNG — needed for Claude Desktop, where the user cannot open a file
+- [ ] Ground-effect reporting in and out of ground effect in one call, for HPA
 - [ ] Multi-design comparison
+- [ ] A `trim`-aware sweep: solve the trim at each point rather than reporting the
+      untrimmed polar
 
 ## Phase 5 — Community
 

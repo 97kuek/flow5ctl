@@ -13,14 +13,14 @@ flow5 のヘッドレス解析エンジンを操作して、低レイノルズ�
 | **MCPサーバー** | `flow5ctl mcp` | Claude Desktop、その他のMCPクライアント |
 | **CLI** | `flow5ctl <verb>` | Claude Code、Codex、人間、CI |
 
-> **ステータス: コアは動作します。MCPサーバーはまだありません。**
+> **ステータス: CLI は動作します。MCPサーバーはまだありません。**
 >
-> `flow5ctl analyze` は既に実解析を実行します — 幾何計算、flow5のXML生成と検証、
-> 2D翼型ポーラーの自動計算とキャッシュ、flow5が要求する2パス実行、結果の要約まで。
-> テスト131本（うち8本は実機 flow5 7.57 に対して実行）。
-> [ロードマップ](docs/ROADMAP.md) の Phase 1 と Phase 2 の大部分が完了、MCP は Phase 3 です。
+> `analyze` / `trim` / `sweep` は既に実解析を実行します — 幾何計算、flow5のXML生成と
+> 検証、2D翼型ポーラーの自動計算とキャッシュ、flow5が要求する2パス実行、要約と比較表まで。
+> テスト210本（うち17本は実機 flow5 7.57 に対して実行）。
+> [ロードマップ](docs/ROADMAP.md) の Phase 1・2 は Linux 検証を除いて完了、**MCP は Phase 3** です。
 >
-> 検証は **macOS のみ**、**flow5 7.57** に対して。
+> 検証は **macOS のみ**、**flow5 7.57** に対して — Linux と Windows が最大の残存リスクです。
 > 途中で見つかったこと（再現可能な flow5 のクラッシュと、出力が素朴な読み手を誤らせる
 > 7つの罠）は [検証ログ](docs/log/2026-09-03-poc-verification.md) にあり、
 > [`poc/`](poc) から全て再実行できます。
@@ -98,12 +98,50 @@ wing:
 ```
 
 ```bash
-flow5ctl init Glider --file glider.yaml
+flow5ctl init Glider --file examples/rc-glider.yaml
 flow5ctl analyze Glider --type T1 --speed 12 --alpha=-2,8,2
 ```
 
 必要な2D翼型ポーラーは初回に自動計算されキャッシュされるので、初回は約12秒、
 以降は1秒未満です。
+
+### 探索ではなく「解く」
+
+```bash
+flow5ctl trim Glider --target level --speed 11             # 水平飛行の迎角
+flow5ctl trim Glider --target static-margin --value 0.10   # 静安定余裕10%になる重心
+flow5ctl trim Glider --target pitch --speed 11             # Cm=0 になる尾翼取付角
+```
+
+静安定余裕の解は**2回の解析で閉形式**です。中立点は重心位置に依存しないことを
+実測で確認したので、2回目は答えの確認だけです。
+
+### 比較する
+
+```bash
+flow5ctl sweep Glider --parameter cg_x --values 0.04:0.09:6 \
+    --metrics static_margin,trim_alpha,ld_at_trim
+```
+
+```
+         cg_x  static_margin   trim_alpha   ld_at_trim
+  -----------  -------------  -----------  -----------
+         0.04         0.3448       -0.368        4.466
+         0.06           0.24       -0.001        6.485
+         0.08         0.1351        0.924        11.14
+         0.09         0.0827        2.286       17.297
+```
+
+指標が `best_LD` ではなく `ld_at_trim` なのは重要です。重心を動かしても抗力極線は
+変わらず、トリム点だけが移動するので、重心スイープを best L/D で比較すると
+「差がない」ように見えてしまいます。`best_LD` を指定すると flow5ctl が
+「その列は変えたパラメータに反応しない」と警告します。
+
+スタディはファイルなので、設計変更後も同じ問いを再実行できます：
+
+```bash
+flow5ctl sweep Glider --study examples/cg-sweep.yaml
+```
 
 > `pipx install flow5ctl` と PyPI リリースは 0.1.0 で提供予定です。
 
@@ -158,6 +196,7 @@ YAML がソース、XML はビルド成果物です。
 | [docs/adr/](docs/adr/) | アーキテクチャ決定記録 |
 | [docs/log/](docs/log/) | 調査・検証ログ |
 | [poc/](poc/) | 検証ハーネス — 記載の全数値を再現できます |
+| [examples/](examples/) | 実例設計：RCグライダー、人力機、スタディ |
 
 コントリビュート: [CONTRIBUTING.md](CONTRIBUTING.md) ·
 このリポジトリでのAIエージェント運用: [AGENTS.md](AGENTS.md)
