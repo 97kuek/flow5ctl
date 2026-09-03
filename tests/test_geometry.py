@@ -14,9 +14,11 @@ import math
 
 import pytest
 
+from flow5ctl.flow5 import airfoils
 from flow5ctl.geometry import derived as geometry
 from flow5ctl.geometry.planform import allocate_spanwise_panels
 from flow5ctl.model.design import Design
+from flow5ctl.errors import DesignError
 
 
 def solve(raw: dict) -> geometry.Derived:
@@ -252,3 +254,61 @@ class TestReferenceHeight:
         d = solve(raw)
         assert d.cg_height_offset_mac < -0.8
         assert d.reference_height > 0.5
+
+
+# --- airfoil coordinate files ------------------------------------------------
+#
+# Two formats are in the wild and flow5ctl has to read both. Naive parsing of a
+# Lednicer file produced a shape that jumped from the upper trailing edge back to
+# the leading edge; flow5 rejected it with "the trailing edge is open by 57.3
+# chord" (the point-count line was also read as a coordinate at x = 42). Every
+# airfoil on the UIUC database is served in that format.
+
+_SELIG = """DAE-31 AIRFOIL
+  1.000000  0.000000
+  0.500000  0.060000
+  0.000000  0.000000
+  0.500000 -0.020000
+  1.000000  0.000000
+"""
+
+_LEDNICER = """DAE-11 AIRFOIL
+       3.0       3.0
+
+ 0.0000000 0.0000000
+ 0.5000000 0.0600000
+ 1.0000000 0.0000000
+
+ 0.0000000 0.0000000
+ 0.5000000 -.0200000
+ 1.0000000 0.0000000
+"""
+
+
+def test_selig_coordinates_are_read_as_one_contour():
+    pts = airfoils._parse_dat(_SELIG, "dae31")
+    assert pts[0] == (1.0, 0.0)
+    assert pts[2] == (0.0, 0.0)  # leading edge in the middle
+    assert pts[-1] == (1.0, 0.0)
+
+
+def test_lednicer_surfaces_are_reassembled_into_a_closed_contour():
+    """Both surfaces run LE->TE, so the upper one has to be reversed."""
+    pts = airfoils._parse_dat(_LEDNICER, "dae11")
+    assert pts[0] == (1.0, 0.0)  # starts at the trailing edge, not at x = 3
+    assert pts[2] == (0.0, 0.0)  # leading edge in the middle
+    assert pts[-1] == (1.0, 0.0)  # and closes there
+    assert len(pts) == 5  # the shared leading edge is not duplicated
+    assert max(x for x, _ in pts) == 1.0  # the point-count line is gone
+
+
+def test_lednicer_falls_back_to_the_blank_line_when_the_counts_are_wrong():
+    text = _LEDNICER.replace("       3.0       3.0", "      99.0      99.0")
+    pts = airfoils._parse_dat(text, "dae11")
+    assert pts[0] == (1.0, 0.0)
+    assert len(pts) == 5
+
+
+def test_a_file_that_is_not_coordinates_is_refused():
+    with pytest.raises(DesignError, match="declares|normalised coordinates|no coordinates"):
+        airfoils._parse_dat("1200 340\n1300 350\n1400 360\n", "junk")

@@ -61,22 +61,87 @@ def _validate(points: list[tuple[float, float]], name: str) -> None:
         )
 
 
-def _parse_dat(text: str, name: str) -> list[tuple[float, float]]:
-    points: list[tuple[float, float]] = []
+#: A normalised airfoil coordinate lives in this box. Anything outside it is a point
+#: count, a scale factor, or a comment that happened to parse as two numbers.
+_X_RANGE = (-0.10, 1.10)
+_Y_RANGE = (-0.60, 0.60)
+
+
+def _numeric_blocks(text: str) -> list[list[tuple[float, float]]]:
+    """Coordinate pairs, split into blocks at blank or non-numeric lines."""
+    blocks: list[list[tuple[float, float]]] = [[]]
     for line in text.splitlines():
         parts = line.replace(",", " ").split()
         if len(parts) < 2:
+            if blocks[-1]:
+                blocks.append([])
             continue
         try:
-            x, y = float(parts[0]), float(parts[1])
+            pair = (float(parts[0]), float(parts[1]))
         except ValueError:
-            continue  # a header or comment line
-        if abs(x) > 1e3 or abs(y) > 1e3:
-            continue  # Lednicer-style point counts, not coordinates
-        points.append((x, y))
-    if not points:
+            if blocks[-1]:
+                blocks.append([])
+            continue
+        blocks[-1].append(pair)
+    return [b for b in blocks if b]
+
+
+def _parse_dat(text: str, name: str) -> list[tuple[float, float]]:
+    """Read an airfoil coordinate file in either of the two formats in the wild.
+
+    **Selig** — one contour, trailing edge → upper → leading edge → lower → trailing
+    edge. This is what flow5 wants and what airfoiltools serves.
+
+    **Lednicer** — a line of two point counts, then the upper surface leading edge →
+    trailing edge, then the lower surface the same way. This is what the UIUC database
+    serves, and it is not a contour: read naively it produces a shape that jumps from
+    the upper trailing edge back to the leading edge, which flow5 rejects as an open
+    trailing edge (measured: "open by 57.3 chord", because the point-count line was
+    also being read as a coordinate at x = 42).
+
+    Lednicer is detected by its count line and reassembled into Selig order.
+    """
+    blocks = _numeric_blocks(text)
+    if not blocks:
         raise DesignError(f"airfoil {name!r}: no coordinates found in the source")
-    return points
+
+    first = blocks[0][0]
+    is_lednicer = first[0] > 1.5 and first[1] > 1.5
+
+    if is_lednicer:
+        counts = (round(first[0]), round(first[1]))
+        rest = blocks[0][1:] + [p for b in blocks[1:] for p in b]
+        n_up, n_lo = counts
+        if len(rest) >= n_up + n_lo:
+            upper, lower = rest[:n_up], rest[n_up:n_up + n_lo]
+        elif len(blocks) >= 3:
+            # the counts did not fit; trust the blank-line split instead
+            upper, lower = blocks[1], blocks[2]
+        else:
+            raise DesignError(
+                f"airfoil {name!r}: the file declares {n_up}+{n_lo} points but only "
+                f"{len(rest)} were found, and the surfaces are not separated by a "
+                "blank line. Re-download it, or convert it to Selig format."
+            )
+        # both surfaces run leading edge → trailing edge; a contour runs
+        # trailing edge → upper → leading edge → lower → trailing edge
+        points = list(reversed(upper)) + lower[1:]
+    else:
+        points = [p for b in blocks for p in b]
+
+    good = [
+        (x, y) for x, y in points
+        if _X_RANGE[0] <= x <= _X_RANGE[1] and _Y_RANGE[0] <= y <= _Y_RANGE[1]
+    ]
+    if len(good) < len(points) and len(good) < 20:
+        raise DesignError(
+            f"airfoil {name!r}: only {len(good)} of {len(points)} values look like "
+            "normalised coordinates. The file may be in a format flow5ctl does not "
+            "read, or the coordinates may not be scaled to a unit chord."
+        )
+    if not good:
+        raise DesignError(f"airfoil {name!r}: no coordinates found in the source")
+    return good
 
 
 def resolve(name: str, source: str, project_root: Path) -> list[tuple[float, float]]:
