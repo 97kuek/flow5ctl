@@ -579,11 +579,30 @@ reading −0.59 as a fraction would call a marginally-unstable aircraft wildly u
 
 - The header `XNP = d(XCp.Cl)/dCl` is correct for **T1** (0.05 m, matching the
   implied neutral point 0.04883 m) but the per-row `XNP` column is **all zeros** for T1.
-- For **T7** it is the other way round: header `XNP = 0.00 m` while the column reads
-  `0.10883`, and the header `Static margin = -26.4858` contradicts the +29.8 %
-  implied by the column and CoG — and contradicts the T1 run on the same aircraft
-  (`+29.8478`). **Do not trust the T7 header static margin.** Compute it from the
-  `XNP` column and the CoG actually used.
+  For **T7** it is the other way round: header `XNP = 0.00 m` while the column reads
+  a real value. Take whichever is non-zero.
+
+> **flow5's `Static margin` is the classical one. Ours was not.** **[run]** When the
+> CG is offset vertically from the wing, `−dCm/dCL` about that CG is **not** the
+> classical static margin: as α rises the force vector tilts and its line of action
+> moves relative to the CG, adding a term proportional to `(dCX/dCL)·Δz/MAC`.
+>
+> Measured on a reconstructed human-powered aircraft whose pilot hangs 1.15 MAC below
+> the wing's mean height: `−dCm/dCL` gave **+47 %** where the classical margin is
+> **+18 %**, and flow5's own header said **+19.9 %**. On a second aircraft, +21 %
+> against a classical +9.6 %, with flow5's header at +9.6 %.
+>
+> flow5 was right both times. flow5ctl reported the sum as "static margin", found it
+> disagreeing with flow5's figure, and **documented flow5 as inconsistent** — which
+> was wrong, and is corrected here. Verified directly: holding the CG's x fixed and
+> sweeping its height from 0 to −0.6 m moved `−dCm/dCL` by 18 percentage points while
+> the aerodynamics did not change at all.
+>
+> flow5ctl now reports both, from two 3D passes (the second with the moment referenced
+> to the wing's own mean height): `static_margin` is the classical figure that
+> tail-sizing rules and published CG bands mean, and `pitch_stiffness_margin` is what
+> the aircraft actually resists a disturbance with. Never compare the second against a
+> textbook band.
 
 ### 5.4 Spanwise strip table — the useful part of an operating-point file
 

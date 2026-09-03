@@ -49,6 +49,7 @@ class Request:
     ground_height: float | None = None
     mass: float | None = None
     cg_x: float | None = None
+    cg_z: float | None = None
     stability: bool = False
     export_stl: bool = False
     export_cp: bool = False
@@ -276,35 +277,65 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
 
         # ---- pass 2 ----
         (ws.planes / "plane.xml").write_text(xmlgen.plane_xml(design, derived), encoding="utf-8")
-        spec = xmlgen.AnalysisSpec(
-            name=req.name, polar_type=req.polar_type, method=method, speed=speed,
-            alpha_deg=req.fixed_alpha, viscous=viscous, on_the_fly=on_the_fly,
-            ncrit=ncrit, ground_height=ground, mass=req.mass,
-            cg=None if req.cg_x is None else (req.cg_x, derived.mass.cg[1], derived.mass.cg[2]),
+        cg_actual = (
+            req.cg_x if req.cg_x is not None else derived.mass.cg[0],
+            derived.mass.cg[1],
+            req.cg_z if req.cg_z is not None else derived.mass.cg[2],
         )
-        (ws.analyses / f"{req.name}.xml").write_text(
-            xmlgen.polar_xml(spec, design.name, derived), encoding="utf-8"
-        )
-        script = ws.root / "plane_script.xml"
-        script.write_text(
-            xmlgen.plane_script(
-                project=req.name,
-                dirs=xmlgen.Dirs(
-                    output=ws.out, foils=ws.foils, planes=ws.planes, analyses=ws.analyses,
-                    xfoil_polars=ws.xfoil_polars if (viscous and not on_the_fly) else None,
+
+        def one_pass(polar_name: str, cg: tuple[float, float, float]) -> Any:
+            spec = xmlgen.AnalysisSpec(
+                name=polar_name, polar_type=req.polar_type, method=method, speed=speed,
+                alpha_deg=req.fixed_alpha, viscous=viscous, on_the_fly=on_the_fly,
+                ncrit=ncrit, ground_height=ground, mass=req.mass, cg=cg,
+            )
+            (ws.analyses / f"{polar_name}.xml").write_text(
+                xmlgen.polar_xml(spec, design.name, derived), encoding="utf-8"
+            )
+            script = ws.root / f"plane_script_{polar_name}.xml"
+            script.write_text(
+                xmlgen.plane_script(
+                    project=polar_name,
+                    dirs=xmlgen.Dirs(
+                        output=ws.out, foils=ws.foils, planes=ws.planes,
+                        analyses=ws.analyses,
+                        xfoil_polars=ws.xfoil_polars if (viscous and not on_the_fly) else None,
+                    ),
+                    foil_files=foil_files,
+                    ranges=_ranges_for(req.polar_type, alpha),
+                    outputs=xmlgen.PlaneOutputs(
+                        cp=req.export_cp, stl=req.export_stl, derivatives=req.stability
+                    ),
                 ),
-                foil_files=foil_files,
-                ranges=_ranges_for(req.polar_type, alpha),
-                outputs=xmlgen.PlaneOutputs(
-                    cp=req.export_cp, stl=req.export_stl, derivatives=req.stability
-                ),
-            ),
-            encoding="utf-8",
-        )
-        run = run_script(install.path, script, timeout=req.timeout)
-        if not run.ok:
-            _explain_failure(run, ws, req, polars_report)
-            run.raise_for_status()
+                encoding="utf-8",
+            )
+            r = run_script(install.path, script, timeout=req.timeout)
+            if not r.ok:
+                _explain_failure(r, ws, req, polars_report)
+                r.raise_for_status()
+            return r
+
+        # Only the requested analysis is kept; the reference-height pass below exists
+        # solely to separate the classical static margin from the pitch stiffness.
+        for stale in ws.analyses.glob("*.xml"):
+            if stale.stem != req.name:
+                stale.unlink()
+        run = one_pass(req.name, cg_actual)
+
+        reference_run = None
+        z_offset = (cg_actual[2] - derived.reference_height) / derived.reference_chord
+        if abs(z_offset) > 0.05:
+            # dCm/dCL about a vertically offset CG is not the classical static margin:
+            # as alpha rises the force vector tilts, and its line of action moves
+            # relative to the CG. Re-running with the moment referenced to the wing's
+            # own mean height separates the two exactly, and costs one 3D pass because
+            # the expensive 2D polars are already cached.
+            ref_name = f"{req.name}__zref"
+            for stale in ws.analyses.glob("*.xml"):
+                stale.unlink()
+            reference_run = one_pass(
+                ref_name, (cg_actual[0], cg_actual[1], derived.reference_height)
+            )
 
     # ---- read the results ----
     polar_csv = ws.project_dir(req.name) / design.name / f"{req.name}.csv"
@@ -321,9 +352,42 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
         log += "\n" + log_file.read_text(encoding="utf-8", errors="replace")
 
     summary = summarise(
-        polar, mac=derived.reference_chord, cg_x=(req.cg_x or derived.mass.cg[0]), log=log
+        polar, mac=derived.reference_chord, cg_x=cg_actual[0], log=log,
+        cg_height_offset_mac=z_offset,
     )
     warnings.extend(summary.warnings)
+
+    # Separate the classical static margin from the pitch stiffness about the real CG.
+    summary.pitch_stiffness_margin = summary.static_margin
+    if reference_run is not None:
+        ref_csv = (ws.project_dir(f"{req.name}__zref") / design.name
+                   / f"{req.name}__zref.csv")
+        if ref_csv.is_file():
+            ref = summarise(parse_polar(ref_csv), mac=derived.reference_chord,
+                            cg_x=cg_actual[0], cg_height_offset_mac=0.0)
+            warnings.extend(w for w in ref.warnings if w not in warnings)
+            summary.static_margin = ref.static_margin
+            summary.neutral_point_x = ref.neutral_point_x or summary.neutral_point_x
+            if (summary.static_margin is not None
+                    and summary.pitch_stiffness_margin is not None):
+                gap = summary.pitch_stiffness_margin - summary.static_margin
+                if abs(gap) > 0.02:
+                    warnings.append(
+                        f"the CG sits {abs(z_offset):.2f} MAC "
+                        f"{'below' if z_offset < 0 else 'above'} the wing's mean height, "
+                        f"which adds {gap:+.1%} to the pitch stiffness that is NOT part "
+                        "of the classical static margin. Reported: static margin "
+                        f"{summary.static_margin:+.1%} (the number tail-sizing rules and "
+                        "published CG bands refer to), pitch stiffness "
+                        f"{summary.pitch_stiffness_margin:+.1%} (what the aircraft "
+                        "actually resists a disturbance with). Do not compare the "
+                        "second against a textbook band."
+                    )
+        else:
+            warnings.append(
+                "the reference-height pass produced no polar, so the reported static "
+                "margin still includes the CG-height term. Treat it as pitch stiffness."
+            )
 
     if run.discarded:
         warnings.append(

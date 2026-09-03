@@ -77,6 +77,29 @@ class Derived:
             return None
         return (self.mass.cg[0] - self.main.geom.mac_le_x) / mac
 
+    @property
+    def reference_height(self) -> float:
+        """The height the pitching moment should be referenced to.
+
+        Area-weighted mean height of the main wing, which dihedral raises well above
+        the root. Taking the moment about a CG offset from this in z adds a term to
+        dCm/dCL that is not part of the classical static margin.
+        """
+        return self.main.geom.mac_z
+
+    @property
+    def cg_height_offset_mac(self) -> float:
+        """(CG height − reference height) in MAC, negative for a CG below the wing.
+
+        On a human-powered aircraft the pilot hangs half a metre below the root and
+        dihedral lifts the wing's mean height further still, so this routinely reaches
+        −1 MAC — enough to move the reported pitch stiffness by 25 percentage points.
+        """
+        mac = self.reference_chord
+        if not mac:
+            return 0.0
+        return (self.mass.cg[2] - self.reference_height) / mac
+
     # ---- Reynolds ----
     def reynolds(self, chord: float, speed: float) -> float:
         return chord * speed / self.kinematic_viscosity
@@ -162,6 +185,8 @@ class Derived:
             "total_mass": r(self.mass.total, 3),
             "cg": [r(v) for v in self.mass.cg],
             "cg_percent_mac": r(self.cg_percent_mac, 4),
+            "reference_height": r(self.reference_height),
+            "cg_height_offset_mac": r(self.cg_height_offset_mac, 3),
             "inertia": {
                 "ixx": r(self.mass.ixx, 6), "iyy": r(self.mass.iyy, 6),
                 "izz": r(self.mass.izz, 6), "ixz": r(self.mass.ixz, 6),

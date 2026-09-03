@@ -78,6 +78,11 @@ def _pretty(p: dict[str, Any]) -> None:
         line("neutral point x", s.get("neutral_point_x"))
         if s.get("static_margin") is not None:
             line("static margin", f"{s['static_margin'] * 100:.2f} % MAC")
+        if (s.get("pitch_stiffness_margin") is not None
+                and s.get("static_margin") is not None
+                and abs(s["pitch_stiffness_margin"] - s["static_margin"]) > 0.005):
+            line("pitch stiffness", f"{s['pitch_stiffness_margin'] * 100:.2f} % MAC"
+                                    " (incl. CG height)")
         line("trim alpha", s.get("trim_alpha"))
         for key, label in (("longitudinal_modes", "Longitudinal"), ("lateral_modes", "Lateral")):
             if s.get(key):

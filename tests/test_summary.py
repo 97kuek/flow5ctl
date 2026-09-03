@@ -46,14 +46,20 @@ class TestStabilityPolar:
         s = summarise(polar, mac=0.1935, cg_x=0.05125)
         assert any("Roll Damping" in w for w in s.warnings)
 
-    def test_flow5s_static_margin_disagrees_in_sign_and_that_is_flagged(self, polar):
-        """flow5's header says -26.5 % while its own columns give +29.8 %.
+    def test_a_vertically_offset_cg_suppresses_the_cross_check(self, polar):
+        """flow5's header and −dCm/dCL are different quantities when the CG is low.
 
-        Opposite signs, so it is reported as ambiguous rather than merely inconsistent.
+        flow5 reports the classical static margin. −dCm/dCL about a CG below the wing
+        additionally carries the force-tilt term, so cross-checking one against the
+        other produces a false alarm — which is exactly what flow5ctl used to do, and
+        it wrongly documented flow5 as inconsistent for it.
         """
-        s = summarise(polar, mac=0.1935, cg_x=0.05125)
-        assert s.static_margin == pytest.approx(0.2976, rel=1e-2)
-        assert any("AMBIGUOUS" in w for w in s.warnings)
+        s = summarise(polar, mac=0.1935, cg_x=0.05125, cg_height_offset_mac=-1.0)
+        assert not any("flow5 reports a static margin" in w for w in s.warnings)
+
+    def test_with_the_cg_at_wing_height_the_cross_check_runs(self, polar):
+        s = summarise(polar, mac=0.1935, cg_x=0.05125, cg_height_offset_mac=0.0)
+        assert any("flow5 reports a static margin" in w for w in s.warnings)
 
     def test_neutral_point_prefers_the_column_over_the_wrong_header(self, polar):
         assert polar.header_float("XNP") == pytest.approx(0.0)
@@ -121,12 +127,13 @@ class TestEmptyPolar:
         assert any("no operating points" in w for w in s.warnings)
 
 
-class TestAmbiguousStability:
-    """The two static-margin definitions can disagree in sign near neutral stability.
+class TestStaticMarginCrossCheck:
+    """flow5's own figure and −dCm/dCL agree when the CG is at the wing's height.
 
-    Observed on a 34 m HPA whose CG sat at 68 % MAC: dCm/dCL gave +6.0 % while flow5's
-    neutral point gave -8.1 %. One says stable, the other unstable, and reporting
-    either alone would mislead.
+    They diverge when it is not, by as much as 29 percentage points on a
+    human-powered aircraft, and the divergence is physics rather than a flow5 defect.
+    flow5ctl reported the divergence as a flow5 inconsistency until a real aircraft
+    showed otherwise; these tests keep that mistake from coming back.
     """
 
     def _polar(self, tmp_path, fixtures, static_margin: float):
@@ -138,17 +145,22 @@ class TestAmbiguousStability:
         from flow5ctl.flow5.results import parse_polar
         return parse_polar(target)
 
-    def test_opposite_signs_raise_an_explicit_ambiguity_warning(self, tmp_path, fixtures):
-        # the fixture's own columns give about -0.59 %; claim +8 % instead
-        s = summarise(self._polar(tmp_path, fixtures, 8.0), mac=0.2, cg_x=0.05)
-        assert any("AMBIGUOUS" in w for w in s.warnings)
-        assert any("T7" in w for w in s.warnings)
-
-    def test_same_sign_disagreement_is_a_plain_note(self, tmp_path, fixtures):
-        s = summarise(self._polar(tmp_path, fixtures, -8.0), mac=0.2, cg_x=0.05)
-        assert any("inconsistently" in w for w in s.warnings)
-        assert not any("AMBIGUOUS" in w for w in s.warnings)
-
     def test_agreement_produces_no_warning(self, tmp_path, fixtures):
-        s = summarise(self._polar(tmp_path, fixtures, -0.590317), mac=0.2, cg_x=0.05)
+        s = summarise(self._polar(tmp_path, fixtures, -0.590317), mac=0.2, cg_x=0.05,
+                      cg_height_offset_mac=0.0)
         assert s.warnings == []
+
+    def test_disagreement_at_wing_height_points_at_the_geometry(self, tmp_path,
+                                                                fixtures):
+        s = summarise(self._polar(tmp_path, fixtures, 8.0), mac=0.2, cg_x=0.05,
+                      cg_height_offset_mac=0.0)
+        assert any("check the geometry" in w for w in s.warnings)
+        # and it no longer blames flow5
+        assert not any("inconsistently" in w for w in s.warnings)
+
+    def test_the_two_margins_are_separate_fields(self, fixtures):
+        from flow5ctl.flow5.results import parse_polar
+        s = summarise(parse_polar(fixtures / "polar_t1_rectwing.csv"), mac=0.2,
+                      cg_x=0.05)
+        assert "static_margin" in s.as_dict()
+        assert "pitch_stiffness_margin" in s.as_dict()

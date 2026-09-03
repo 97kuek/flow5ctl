@@ -82,6 +82,20 @@ saying "rigid, no interference drag, attached flow only" is misleading its user.
 > `Roll Damping` is `inf` whenever Ixx is zero. Read the `___Longitudinal modes___`
 > eigenvalue block from the log instead of the summary columns.
 
+> **A CG below the wing inflates pitch stiffness, and it is not static margin.**
+> As α rises the force vector tilts, and about a CG hung below the wing its line of
+> action moves — adding a term to −dCm/dCL that the classical static margin does not
+> contain. On a human-powered aircraft, where the pilot sits half a metre under a wing
+> whose dihedral lifts its mean height further, the offset reaches a full MAC and the
+> term reaches **29 percentage points**.
+>
+> flow5ctl reports both. `static_margin` is the classical figure — the one the 5-15 %
+> band below refers to, the one tail-sizing rules produce, and the one a published
+> 「重心位置 % MAC」 is paired with. `pitch_stiffness_margin` is the whole −dCm/dCL
+> about the real CG. **Compare only the first against any band or published value.**
+> Measured on two reconstructed aircraft, confusing them put conventional designs 12
+> and 29 points outside their own class's range.
+
 > **Lateral stability needs real inertia.** With `Use_plane_inertia=true` flow5
 > ignores any explicit inertia you supply and derives it from the plane's masses. If
 > those all sit on the centreline, `Ixx = 0` and every lateral result is meaningless.

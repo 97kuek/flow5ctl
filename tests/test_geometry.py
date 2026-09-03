@@ -194,3 +194,61 @@ class TestValidation:
         }
         with pytest.raises(Exception, match="exactly one"):
             solve(raw)
+
+
+class TestReferenceHeight:
+    """The height the pitching moment must be referenced to.
+
+    Taking dCm/dCL about a CG offset from it in z adds a force-tilt term that is not
+    part of the classical static margin. Measured on a real human-powered aircraft:
+    29 percentage points. Getting this wrong made flow5ctl report a 47 % static margin
+    where the classical figure was 18 %, and made it wrongly document flow5 as
+    inconsistent.
+    """
+
+    def test_a_flat_wing_sits_at_its_own_position(self, rect_design):
+        d = solve(rect_design)
+        assert d.reference_height == pytest.approx(0.0)
+
+    def test_dihedral_raises_the_mean_height(self, rect_design):
+        raw = {**rect_design}
+        raw["wing"] = {**raw["wing"],
+                       "planform": {"span": 2.0, "root_chord": 0.2, "dihedral": 30.0}}
+        d = solve(raw)
+        # a constant-chord wing's mean height is half the tip rise
+        expected = 0.5 * 1.0 * math.tan(math.radians(30.0))
+        assert d.reference_height == pytest.approx(expected, rel=1e-6)
+
+    def test_taper_weights_the_mean_height_inboard(self, rect_design):
+        """Area weighting pulls the mean height down when the tip chord is smaller."""
+        raw = {**rect_design}
+        raw["wing"] = {**raw["wing"], "planform": {
+            "span": 2.0, "root_chord": 0.2, "taper": 0.4, "dihedral": 30.0}}
+        tapered = solve(raw).reference_height
+        raw["wing"] = {**raw["wing"], "planform": {
+            "span": 2.0, "root_chord": 0.2, "taper": 1.0, "dihedral": 30.0}}
+        rectangular = solve(raw).reference_height
+        assert tapered < rectangular
+
+    def test_the_wings_own_z_position_shifts_it(self, rect_design):
+        raw = {**rect_design}
+        raw["wing"] = {**raw["wing"], "position": [0.0, 0.0, 0.5]}
+        assert solve(raw).reference_height == pytest.approx(0.5)
+
+    def test_the_offset_is_reported_in_mac(self, rect_design):
+        raw = {**rect_design, "mass": {"components": [
+            {"tag": "pilot", "mass": 1.0, "at": [0.05, 0.0, -0.4]}]}}
+        d = solve(raw)
+        assert d.cg_height_offset_mac == pytest.approx(-0.4 / 0.2)
+
+    def test_a_human_powered_layout_reaches_a_full_mac(self, rect_design):
+        """The case that matters: pilot slung low under a wing with dihedral."""
+        raw = {**rect_design, "mass": {"components": [
+            {"tag": "pilot", "mass": 68.0, "at": [0.4, 0.0, -0.55]},
+            {"tag": "wl", "mass": 11.0, "at": [0.4, -7.0, 0.1]},
+            {"tag": "wr", "mass": 11.0, "at": [0.4, 7.0, 0.1]}]}}
+        raw["wing"] = {"airfoil": "NACA0012", "planform": {
+            "span": 30.0, "root_chord": 1.15, "taper": 0.45, "dihedral": 6.0}}
+        d = solve(raw)
+        assert d.cg_height_offset_mac < -0.8
+        assert d.reference_height > 0.5

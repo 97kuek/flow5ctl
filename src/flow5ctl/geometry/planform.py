@@ -59,6 +59,11 @@ class Panel:
         dc, dxx = self.c1 - self.c0, self.x1 - self.x0
         return self.dy * (self.c0 * self.x0 + (self.c0 * dxx + self.x0 * dc) / 2.0 + dc * dxx / 3.0)
 
+    def integral_cz(self, z0: float, z1: float) -> float:
+        """∫ c·z dy — locates the surface's mean height, which dihedral raises."""
+        dc, dzz = self.c1 - self.c0, z1 - z0
+        return self.dy * (self.c0 * z0 + (self.c0 * dzz + z0 * dc) / 2.0 + dc * dzz / 3.0)
+
 
 @dataclass(frozen=True, slots=True)
 class SurfaceGeometry:
@@ -71,6 +76,13 @@ class SurfaceGeometry:
     mac: float
     mac_y: float
     mac_le_x: float
+    mac_z: float
+    """Area-weighted mean height of the surface, raised by dihedral.
+
+    This is the height the aerodynamic force acts at, and it is the reference the
+    pitching moment should be taken about. A CG offset from it in z changes dCm/dCL
+    by a term that is not part of the classical static margin — see
+    docs/FLOW5-INTERFACE.md section 5.3."""
     root_chord: float
     tip_chord: float
     aspect_ratio: float
@@ -196,6 +208,7 @@ def panels_of(sections: list[Section], position_x_m: float) -> list[Panel]:
 
 def surface_geometry(wing: Wing, sections: list[Section], length_to_m: float) -> SurfaceGeometry:
     """Areas, span and MAC for one surface. `sections` must already be SI."""
+    position_z_m = wing.position[2] * length_to_m
     panels = panels_of(sections, wing.position[0] * length_to_m)
     if not panels:
         raise DesignError(f"wing {wing.name or wing.role!r} has no panels")
@@ -212,6 +225,15 @@ def surface_geometry(wing: Wing, sections: list[Section], length_to_m: float) ->
     mac_y = sum(p.integral_cy() for p in panels) / int_c
     mac_le_x = sum(p.integral_cx() for p in panels) / int_c
 
+    # height of each section, accumulated through the dihedral of the panel inboard
+    z = position_z_m
+    heights = [z]
+    for p in panels:
+        z += p.dy * math.tan(math.radians(p.dihedral_deg))
+        heights.append(z)
+    mac_z = sum(p.integral_cz(heights[i], heights[i + 1])
+                for i, p in enumerate(panels)) / int_c
+
     area = semi_area * mirror
     span = semi_span * mirror
     return SurfaceGeometry(
@@ -222,6 +244,7 @@ def surface_geometry(wing: Wing, sections: list[Section], length_to_m: float) ->
         mac=mac,
         mac_y=mac_y,
         mac_le_x=mac_le_x,
+        mac_z=mac_z,
         root_chord=sections[0].chord,
         tip_chord=sections[-1].chord,
         aspect_ratio=span * span / area if area else 0.0,

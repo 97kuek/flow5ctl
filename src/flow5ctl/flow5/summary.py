@@ -138,6 +138,18 @@ class Summary:
     dcm_dcl: float | None = None
     neutral_point_x: float | None = None
     static_margin: float | None = None
+    """Classical stick-fixed static margin, (X_np − X_cg)/MAC.
+
+    This is what tail-sizing rules and published CG bands mean by the term. When the
+    CG is offset vertically it is NOT what dCm/dCL about that CG gives — see
+    `pitch_stiffness_margin`."""
+    pitch_stiffness_margin: float | None = None
+    """−dCm/dCL about the actual CG, including the term a vertical CG offset adds.
+
+    Physically this is the stiffness the aircraft resists a pitch disturbance with,
+    and on a human-powered aircraft it can exceed the classical static margin by 10-25
+    percentage points because the pilot hangs a metre below the wing's mean height.
+    Never compare it against a textbook static-margin band."""
     trim_alpha: float | None = None
     cl_at_trim: float | None = None
     ld_at_trim: float | None = None
@@ -162,6 +174,7 @@ class Summary:
             "dcm_dcl": r(self.dcm_dcl),
             "neutral_point_x": r(self.neutral_point_x),
             "static_margin": r(self.static_margin, 4),
+            "pitch_stiffness_margin": r(self.pitch_stiffness_margin, 4),
             "trim_alpha": r(self.trim_alpha, 3),
             "cl_at_trim": r(self.cl_at_trim, 5),
             "ld_at_trim": r(self.ld_at_trim, 3),
@@ -204,7 +217,14 @@ def parse_modes(log: str) -> tuple[list[Mode], list[Mode]]:
 
 
 def summarise(polar: Polar, *, mac: float | None = None, cg_x: float | None = None,
-              log: str = "") -> Summary:
+              log: str = "", cg_height_offset_mac: float | None = None) -> Summary:
+    """Reduce a polar to the numbers a designer asked for.
+
+    `cg_height_offset_mac` matters for one reason: −dCm/dCL about a vertically offset
+    CG is not the classical static margin, so flow5's own reported figure and this
+    one legitimately differ and must not be cross-checked against each other. Pass it
+    and the check is skipped; leave it None and the check runs as before.
+    """
     if not polar.rows:
         return Summary(points=0, warnings=[
             "flow5 produced no operating points for this analysis. "
@@ -271,31 +291,20 @@ def summarise(polar: Polar, *, mac: float | None = None, cg_x: float | None = No
         s.static_margin = (s.neutral_point_x - cg_x) / mac
 
     # Cross-check against flow5's own figure, which is a PERCENTAGE of the reference
-    # chord. Ours wins on disagreement; see the module docstring.
+    # chord. Skipped when the CG is offset vertically, because the two quantities are
+    # then different things — flow5 reports the classical margin, −dCm/dCL about a
+    # low CG additionally carries the force-tilt term.
     reported = polar.header_float("Static margin")
-    if reported is not None and s.static_margin is not None:
+    offset_matters = (cg_height_offset_mac is not None
+                      and abs(cg_height_offset_mac) > 0.05)
+    if reported is not None and s.static_margin is not None and not offset_matters:
         theirs = static_margin_from_flow5(reported)
-        disagrees = abs(theirs - s.static_margin) > max(0.01, abs(s.static_margin) * 0.25)
-        opposite_sign = theirs * s.static_margin < 0
-        if disagrees and opposite_sign:
-            # A sign disagreement is not a reporting quirk: the two definitions
-            # genuinely diverge for a configuration near neutral stability, and one of
-            # them says the aircraft is stable while the other says it is not.
+        if abs(theirs - s.static_margin) > max(0.01, abs(s.static_margin) * 0.25):
             s.warnings.append(
-                f"STABILITY IS AMBIGUOUS for this configuration. The moment slope "
-                f"dCm/dCL gives a static margin of {s.static_margin:+.1%}, while flow5's "
-                f"neutral-point figure gives {theirs:+.1%} — opposite signs, so one says "
-                "stable and the other says unstable.\n"
-                "This happens near neutral stability. Do not treat either number as the "
-                "answer: run a T7 stability polar and look at whether the short-period "
-                "and phugoid modes are damped, and sweep the CG to find where the sign "
-                "settles. Consider moving the CG forward."
-            )
-        elif disagrees:
-            s.warnings.append(
-                f"flow5 reports a static margin of {theirs:+.3f} but the data columns "
-                f"give {s.static_margin:+.3f}. Using the computed value. flow5 7.57 is "
-                "known to report this inconsistently, especially for stability polars."
+                f"flow5 reports a static margin of {theirs:+.3f} while its own lift and "
+                f"moment columns give {s.static_margin:+.3f}. Using the computed value. "
+                "With the CG at the wing's own height these should agree, so treat this "
+                "as a reason to check the geometry rather than as a result."
             )
 
     s.longitudinal_modes, s.lateral_modes = parse_modes(log)
