@@ -9,8 +9,15 @@ body:
         was verified on macOS with flow5 7.57. Linux and Windows are untested, and
         reports are how we find out what we cannot check ourselves.
 
-        The quickest useful report is the output of the verification cases in
-        [`poc/`](../blob/main/poc).
+        The quickest useful report is one command:
+
+        ```
+        python3 poc/verify_platform.py
+        ```
+
+        It runs flow5 a few times, checks each documented behaviour, and prints a
+        report to paste below. It needs only the standard library and an installed
+        flow5, and writes nothing outside a temporary directory.
   - type: input
     id: os
     attributes:
@@ -31,15 +38,17 @@ body:
   - type: textarea
     id: results
     attributes:
-      label: What worked and what did not
-      description: Paste the output of any `poc/case_*.py` you ran.
+      label: Output of `python3 poc/verify_platform.py`
+      description: Paste it whole, including the header lines.
+      render: text
     validations:
       required: true
   - type: textarea
     id: differences
     attributes:
-      label: Anything that differed from the documented behaviour?
+      label: Anything else worth knowing?
       description: |
-        Especially: does `flow5 -s` still run headless and exit on its own? Is the
-        exit code still 0 on a rejected script? Does a script with both
-        `foil_analysis` and `Plane_analysis` still crash?
+        Where flow5 installed itself, whether it needed a display, and anything the
+        script did not cover. A `[ info ]` line saying this platform does NOT crash on
+        a combined script is especially interesting — it would mean flow5ctl's two-pass
+        design is unnecessary there.

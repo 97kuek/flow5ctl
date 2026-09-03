@@ -11,6 +11,20 @@ Phase 1; the parser here is the one part intended for promotion.
   `/Applications/flow5.app/Contents/MacOS/flow5` (edit `lib/f5.py` otherwise).
 - Python 3.11+. No third-party packages.
 
+## Verify a platform
+
+If you are on Linux or Windows, this is the most useful thing you can run:
+
+```bash
+python3 poc/verify_platform.py
+```
+
+It checks each behaviour `docs/FLOW5-INTERFACE.md` claims — headless execution, where
+the polar lands, the whitespace-not-CSV output, the row welded onto the header line,
+the declared point count, and the combined-script crash — and prints a report to paste
+into a [platform report](https://github.com/97kuek/flow5ctl/issues/new?template=platform_report.yml).
+Standard library only, and it writes nothing outside a temporary directory.
+
 ## Run a case
 
 ```bash
@@ -37,6 +51,7 @@ Each case writes to `work/<case>/` — gitignored, and safe to delete.
 | `case_h_hpa.py` | 34 m HPA: mesh convergence, ground effect, timing |
 | `case_i_inertia_body_multi.py` | `Use_plane_inertia` semantics, NURBS fuselage, multi-plane runs |
 | `case_j_project.py` | `load_project_file` loads but cannot be extended |
+| `verify_platform.py` | Whether all of the above still holds on *your* platform |
 
 `case_e` is kept because the failure is the finding.
 

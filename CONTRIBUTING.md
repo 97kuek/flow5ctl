@@ -19,7 +19,15 @@ There is no source code yet. Right now the most useful contributions are:
   and wanted.
 - **Verify flow5 on your platform.** Everything in
   [docs/FLOW5-INTERFACE.md](docs/FLOW5-INTERFACE.md) was verified on macOS with
-  flow5 7.70. Linux and Windows are unverified. §8 lists what nobody has checked yet.
+  flow5 7.57. Linux and Windows are unverified, and this is the single most useful
+  thing a contributor can do:
+
+  ```bash
+  python3 poc/verify_platform.py
+  ```
+
+  One command, standard library only, prints a report to paste into a
+  [platform report](https://github.com/97kuek/flow5ctl/issues/new?template=platform_report.yml).
 
 ## Ground rules
 

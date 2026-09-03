@@ -76,8 +76,12 @@ a T2 polar returning 1 of 6 points — into 4 of 4 without the user specifying a
 - [x] Automatic 2D polar computation when a viscous run needs one, with caching
 - [x] Failure messages that distinguish our bugs from design problems
 - [x] Worked examples in [`examples/`](../examples) for an RC glider, an HPA, and a study
-- [ ] **Linux verification; Windows verification if a machine is available** — the
-      only outstanding item, and the largest remaining risk in the project
+- [x] `poc/verify_platform.py` — one command that checks every documented flow5
+      behaviour and prints a pasteable report, so verifying a platform costs a
+      contributor a minute rather than an afternoon
+- [ ] **Linux verification; Windows verification** — the only outstanding item, and
+      the largest remaining risk in the project. We do not own those machines; the
+      script above and the platform-report template are how it gets closed.
 
 Two things came out of building `trim` and `sweep` that changed the design:
 
