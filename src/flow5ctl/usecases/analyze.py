@@ -17,8 +17,8 @@ from typing import Any
 from ..advisor import guardrails
 from ..errors import InternalError, SolverError
 from ..flow5 import airfoils as foil_io
+from ..flow5 import foilpolar, xmlgen
 from ..flow5 import probe as probe_mod
-from ..flow5 import xmlgen
 from ..flow5.markers import explain_interpolation_failure
 from ..flow5.results import owning_polar, parse_polar, parse_strips
 from ..flow5.runner import DEFAULT_TIMEOUT, Workspace, run_script
@@ -118,6 +118,8 @@ def _ensure_foil_polars(ws: Workspace, install: probe_mod.Flow5Install, design: 
             "count": ws.cached_polar_count(),
             "reynolds": reynolds,
             "ncrit": ncrit,
+            "gaps": cached.get("gaps", []),
+            "gap_warning": cached.get("gap_warning"),
         }
 
     shutil.rmtree(ws.xfoil_polars, ignore_errors=True)
@@ -150,9 +152,16 @@ def _ensure_foil_polars(ws: Workspace, install: probe_mod.Flow5Install, design: 
             "viscous analysis would fail.\n"
             f"flow5 said:\n{result.stdout[-1200:]}"
         )
+    # `staged > 0` only says polars exist, not that they cover the range asked for.
+    # XFoil drops the points it cannot converge and flow5 reports no error, so a
+    # polar with a hole in the middle of the operating range looks like a success.
+    gaps = foilpolar.find_gaps(ws.xfoil_polars, alpha_spec[2])
+    gap_warning = foilpolar.describe(gaps) if gaps else None
+
     manifest.write_text(json.dumps({
         "key": key, "reynolds": reynolds, "ncrit": ncrit,
         "alpha": list(alpha_spec), "count": staged,
+        "gaps": [g.as_dict() for g in gaps], "gap_warning": gap_warning,
         "flow5_version": install.version,
     }, indent=2), encoding="utf-8")
     return {
@@ -161,6 +170,8 @@ def _ensure_foil_polars(ws: Workspace, install: probe_mod.Flow5Install, design: 
         "count": staged,
         "reynolds": reynolds,
         "ncrit": ncrit,
+        "gaps": [g.as_dict() for g in gaps],
+        "gap_warning": gap_warning,
         "seconds": round(result.elapsed, 1),
     }
 
@@ -274,6 +285,8 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
                 )
             else:
                 notes.append(f"reused {polars_report['count']} cached 2D polars.")
+            if polars_report.get("gap_warning"):
+                warnings.append(polars_report["gap_warning"])
 
         # ---- pass 2 ----
         (ws.planes / "plane.xml").write_text(xmlgen.plane_xml(design, derived), encoding="utf-8")

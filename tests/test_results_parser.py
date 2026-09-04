@@ -7,10 +7,12 @@ the parser is nearly always a regression — see ADR-0010.
 from __future__ import annotations
 
 import math
+from pathlib import Path
 
 import pytest
 
 from flow5ctl.errors import ParseError
+from flow5ctl.flow5 import foilpolar
 from flow5ctl.flow5.results import (
     owning_polar,
     parse_foil_polar,
@@ -162,3 +164,62 @@ class TestFoilPolars:
         target.write_text(" Calculated polar for: X\n\nalpha,CL,CD,CDp,Cm\n", encoding="utf-8")
         with pytest.raises(ParseError, match="OpPoint_Range"):
             parse_foil_polar(target)
+
+
+class TestFoilPolarCoverage:
+    """XFoil drops the points it cannot converge, and flow5 reports no error.
+
+    Measured on DAE-31 at Re 450,000, asking for alpha -4..12 in half-degree steps:
+    29 of 33 points came back, with alpha +0.5 to +3.0 missing. That gap is where
+    upper-surface transition jumps to the leading edge and drag steps up 44%, so
+    interpolating the 3D viscous drag across it is interpolating across a
+    discontinuity. flow5ctl checked only that some polars existed.
+    """
+
+    def _polar(self, tmp_path, alphas: list[float]) -> Path:
+        rows = "\n".join(
+            f"  {a:6.3f}   0.5000   0.01000   0.00300  -0.1000  0.7000  0.0000"
+            for a in alphas
+        )
+        p = tmp_path / "T1-Re0.450-N9.0.txt"
+        p.write_text(
+            "flow5 v7.57\n\n Calculated polar for: DAE31\n\n"
+            " 1 1 Reynolds number fixed          Mach number fixed\n\n"
+            "  alpha     CL        CD       CDp       Cm    Top Xtr Bot Xtr\n"
+            " ------- -------- --------- --------- -------- ------- -------\n"
+            + rows + "\n"
+        )
+        return p
+
+    def test_the_header_line_starting_with_a_number_is_not_a_data_row(self, tmp_path):
+        """`1 1 Reynolds number fixed` parses as alpha 1.0 if rows are found naively."""
+        p = self._polar(tmp_path, [-1.0, -0.5, 0.0, 0.5])
+        assert foilpolar.read_alphas(p) == [-1.0, -0.5, 0.0, 0.5]
+
+    def test_a_converged_sweep_reports_no_gap(self, tmp_path):
+        self._polar(tmp_path, [-1.0, -0.5, 0.0, 0.5, 1.0])
+        assert foilpolar.find_gaps(tmp_path, 0.5) == []
+
+    def test_a_single_dropped_point_is_tolerated(self, tmp_path):
+        """One missing point is noise; the interpolation across it is harmless."""
+        self._polar(tmp_path, [0.0, 0.5, 1.5, 2.0])
+        assert foilpolar.find_gaps(tmp_path, 0.5) == []
+
+    def test_the_measured_hole_is_reported(self, tmp_path):
+        """The real DAE-31 gap: nothing between +0.5 and +3.0."""
+        self._polar(tmp_path, [-1.0, -0.5, 0.0, 0.5, 3.0, 3.5, 4.0])
+        gaps = foilpolar.find_gaps(tmp_path, 0.5)
+        assert len(gaps) == 1
+        assert (gaps[0].lo, gaps[0].hi) == (0.5, 3.0)
+        assert gaps[0].width == pytest.approx(2.5)
+
+    def test_the_warning_names_the_gap_and_says_what_it_costs(self, tmp_path):
+        self._polar(tmp_path, [0.0, 0.5, 3.0, 3.5])
+        text = foilpolar.describe(foilpolar.find_gaps(tmp_path, 0.5))
+        assert "+0.5" in text and "+3.0" in text
+        assert "interpolated" in text
+
+    def test_a_polar_with_one_point_is_not_a_gap(self, tmp_path):
+        """No polar at all is a different failure, caught by the caller."""
+        self._polar(tmp_path, [0.0])
+        assert foilpolar.find_gaps(tmp_path, 0.5) == []

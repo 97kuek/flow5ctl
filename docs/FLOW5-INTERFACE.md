@@ -689,6 +689,37 @@ flow5's local chord, and the `y` column recovers the span and panel distribution
 (**[run]** strips at ±0.975, ±0.925, … 0.05 apart confirmed 20 uniform panels over a
 1.0 m semi-span).
 
+### 5.4a XFoil silently drops the points it cannot converge — [run]
+
+A `foil_analysis` returns a polar with fewer points than were asked for when XFoil
+does not converge, and **flow5 reports no error for it**. The polar file simply has
+gaps in its alpha column.
+
+**[run]** DAE-31 at Re 450,000, asking for alpha −4…12 in half-degree steps:
+
+```
+α: ... -1.0  -0.5   0.0   0.5   3.0   3.5 ...
+                                ^^^ 1.0, 1.5, 2.0 and 2.5 are absent
+```
+
+29 of 33 points, with a **2.5° hole**. It is not in a harmless place: that is exactly
+where upper-surface transition jumps from x/c 0.72 to the leading edge and drag steps
+from 0.01050 to 0.01513, **up 44 %**. The 3D run interpolates its viscous drag
+straight across it.
+
+**[run]** On a reconstructed 32 m aircraft the scale is worse: **22 gaps across 20
+polars**, the widest 4.0° (DAE-11 at Re 100,000). The whole viscous drag of that run
+came from a mesh full of holes.
+
+> flow5ctl used to check only that *some* polars had been produced. It now reads the
+> alpha column of each one after staging and warns, naming the widest gap. A single
+> dropped point is tolerated; anything wider than 2.5 steps is reported.
+> ([`flow5/foilpolar.py`](../src/flow5ctl/flow5/foilpolar.py))
+
+Note when parsing these files that the header carries a line reading
+`1 1 Reynolds number fixed          Mach number fixed`, which is taken for a data row
+at alpha 1.0 by anything that recognises rows by "starts with a number".
+
 ### 5.5 2D foil polars
 
 **[run]** With the default (non-`csv`) format, foil polars are written in genuine
