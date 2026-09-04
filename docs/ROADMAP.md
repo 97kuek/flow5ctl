@@ -136,10 +136,10 @@ Two things stood between the built software and that test, and both are now done
   the reader already knows what a static margin is and reads English; the exit
   criterion's reader is neither.
 
-## Phase 4 — The rest of the design questions
+## Phase 4 — The rest of the design questions ✅ done 2026-09-04
 
 `trim`, `sweep`, T7 mode reporting, spanwise loading plots and multi-design comparison
-were all pulled forward into Phases 1-3. What is left:
+were all pulled forward into Phases 1-3. What remained, and is now done:
 
 - [x] Ground-effect reporting in and out of ground effect in one call, for HPA —
       `analyze --compare-ground`. Running it by hand twice and changing one flag is
