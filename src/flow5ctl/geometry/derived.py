@@ -82,9 +82,27 @@ class Derived:
     def reference_height(self) -> float:
         """The height the pitching moment should be referenced to.
 
-        Area-weighted mean height of the main wing, which dihedral raises well above
+        Chord-weighted mean height of the main wing, which dihedral raises well above
         the root. Taking the moment about a CG offset from this in z adds a term to
         dCm/dCL that is not part of the classical static margin.
+
+        **This is an approximation, and it is worth knowing its size.** The term
+        vanishes exactly at the height where the resultant aerodynamic force acts,
+        which is the *load*-weighted mean height over every lifting surface, not the
+        chord-weighted mean height of the wing alone. The two differ because lift is
+        not proportional to chord and because the tail carries load at its own height.
+
+        Measured on a 32 m human-powered aircraft, from the spanwise strip table of
+        the run itself: chord-weighted 0.5536 m, load-weighted over wing and tail
+        0.5218 m, a difference of 0.037 MAC. At the measured sensitivity of 22.0
+        points of margin per MAC of height offset, that leaves **0.8 points** of
+        residual on a +23.4 %MAC static margin - 3.5 % of it, and one twenty-eighth
+        of the 22.8-point error this reference removed.
+
+        Using the load-weighted height instead is possible - the strips are already
+        parsed from the first pass - but it would make the static margin depend on
+        strip parsing succeeding, and the loading changes with alpha so there is no
+        single height anyway. Documented rather than chased.
         """
         return self.main.geom.mac_z
 

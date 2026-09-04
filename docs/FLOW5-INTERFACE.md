@@ -622,6 +622,16 @@ reading −0.59 as a fraction would call a marginally-unstable aircraft wildly u
 > tail-sizing rules and published CG bands mean, and `pitch_stiffness_margin` is what
 > the aircraft actually resists a disturbance with. Never compare the second against a
 > textbook band.
+>
+> **That reference height is an approximation.** The force-tilt term vanishes exactly
+> at the height where the resultant aerodynamic force acts — the *load*-weighted mean
+> over every lifting surface — not at the chord-weighted mean height of the wing
+> alone. **[run]** Measured on the 32 m aircraft above, from the strip table of the
+> run itself: chord-weighted 0.5536 m against load-weighted 0.5218 m, a difference of
+> 0.037 MAC. At the measured sensitivity of 22.0 points per MAC, that leaves **0.8
+> points** of residual on a +23.4 %MAC margin — 3.5 % of it, and one twenty-eighth of
+> the error the reference removed. So `static_margin` is the classical figure to
+> within about a point on an aircraft with a deeply slung CG, not exactly.
 
 ### 5.3a Lateral moment coefficients have the opposite sign to the textbook
 
