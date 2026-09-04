@@ -411,40 +411,84 @@ def cmd_set(args: argparse.Namespace) -> int:
 
 
 def _read_airfoil_positionals(args: argparse.Namespace) -> None:
-    """Work out whether the first positional is the design or the airfoil.
+    """Work out which positional is the design, the airfoil and the source.
 
     `airfoil list` takes the design positionally and so does every other verb, so
-    people write the design first here too. What the positionals mean depends on
-    whether the source was given as a flag, and that is enough to decide without
-    guessing:
+    people write the design first here too. What the positionals mean follows from
+    how many there are and whether the source came as a flag, which is enough to
+    decide without guessing:
 
     | written | means |
     |---|---|
     | `add NAME SOURCE` | the airfoil and where it comes from |
-    | `add DESIGN NAME SOURCE` | three positionals can only be this |
+    | `add DESIGN NAME SOURCE` | three can only be this |
     | `add NAME --naca 2412` | the airfoil; the design comes from `--design` or the cwd |
     | `add DESIGN NAME --naca 2412` | a source flag means a positional source would clash, so the pair is (design, name) |
 
-    Before this, the last line was read as (name, source) and failed with "no
-    design.yaml in the current directory" — an error about the wrong thing, and the
-    natural way to type the command.
+    A source given twice — positionally and by flag — is refused rather than resolved
+    in favour of one of them. It used to let the flag win silently, so
+    `add Glider foo.dat --naca 2409` created an airfoil named `foo.dat` from a NACA
+    section, which is neither of the two things it could have meant.
     """
-    if args.third is not None:                       # design name source
+    positional = list(args.args)
+    args.args = None
+    flagged = bool(args.naca or args.file or args.url)
+
+    if len(positional) > 3:
+        raise Flow5ctlError(
+            f"too many arguments: {', '.join(repr(p) for p in positional)}. "
+            "`airfoil add` takes the airfoil's name, optionally preceded by the "
+            "design and followed by a source."
+        )
+
+    def claim_design(name: str) -> None:
         if args.design:
             raise Flow5ctlError(
                 "the design was given twice: once as the first argument and once as "
                 "--design. Use one or the other."
             )
-        args.design, args.name, args.source = args.name, args.source, args.third
+        args.design = name
+
+    if len(positional) == 3:
+        if flagged:
+            raise Flow5ctlError(
+                f"the source was given twice: {positional[2]!r} and a --naca/--file/"
+                "--url flag. Use one or the other."
+            )
+        claim_design(positional[0])
+        args.name, args.source = positional[1], positional[2]
         return
-    if args.source is not None and (args.naca or args.file or args.url):
-        # a source flag is present, so the second positional cannot be a source
-        if args.design:
-            raise Flow5ctlError(
-                "the design was given twice: once as the first argument and once as "
-                "--design. Use one or the other."
-            )
-        args.design, args.name, args.source = args.name, args.source, None
+
+    if len(positional) == 2:
+        if flagged:
+            # a source flag is present, so the second positional cannot be a source
+            claim_design(positional[0])
+            args.name, args.source = positional[1], None
+        else:
+            args.name, args.source = positional[0], positional[1]
+        return
+
+    args.name, args.source = positional[0], None
+
+
+def _check_airfoil_name(name: str) -> None:
+    """A name that looks like a filename is almost certainly a misplaced source.
+
+    A source has to be `naca:…`, `file:…` or `url:…`, so a bare `foo.dat` cannot be
+    one — which means `airfoil add Glider foo.dat --naca 2409` has exactly one
+    reading that works, (design, name), and it silently created an airfoil called
+    `foo.dat` out of a NACA section. The reading is right; what was missing was
+    noticing that nobody means it.
+    """
+    import os
+
+    if name.lower().endswith((".dat", ".txt", ".csv")) or os.sep in name:
+        raise Flow5ctlError(
+            f"{name!r} looks like a file rather than a name for the section. If you "
+            f"meant to read coordinates from it, that is `--file {name}` or "
+            f"`file:{name}` as the source, and the name is what the design's "
+            "sections will refer to — `AG35`, say."
+        )
 
 
 def cmd_expand(args: argparse.Namespace) -> int:
@@ -456,6 +500,7 @@ def cmd_expand(args: argparse.Namespace) -> int:
 def cmd_airfoil(args: argparse.Namespace) -> int:
     if args.airfoil_command == "add":
         _read_airfoil_positionals(args)
+        _check_airfoil_name(args.name)
     project = Project.resolve(args.design)
     if args.airfoil_command == "list":
         _emit(edit_uc.list_airfoils(project), args.json)
@@ -654,15 +699,20 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = add("airfoil", help="add or list airfoils")
     apsub = p.add_subparsers(dest="airfoil_command", required=True)
-    ap_add = apsub.add_parser("add", help="add an airfoil to the design")
+    ap_add = apsub.add_parser(
+        "add", help="add an airfoil to the design",
+        usage="flow5ctl airfoil add [DESIGN] NAME [SOURCE] [options]")
     # `airfoil list` takes the design positionally and every other verb does too, so
     # people write `airfoil add MyGlider AG35 naca:2409`. With two positionals that
     # is ambiguous with (name, source), so three are accepted and mean
     # (design, name, source); two keep the old meaning. See cmd_airfoil.
-    ap_add.add_argument("name")
-    ap_add.add_argument("source", nargs="?", help="naca:2412 / file:foo.dat / url:...")
-    ap_add.add_argument("third", nargs="?", metavar="SOURCE",
-                        help=argparse.SUPPRESS)
+    # One list, so the synopsis tells the truth. A hidden third positional advertised
+    # two and accepted three, and a fourth fell through to the top-level parser and
+    # printed the wrong usage.
+    ap_add.add_argument("args", nargs="+", metavar="ARG",
+                        help="the airfoil's name, optionally preceded by the design "
+                             "and followed by a source such as naca:2412, "
+                             "file:foo.dat or url:...")
     ap_add.add_argument("--naca", metavar="NNNN")
     ap_add.add_argument("--file", metavar="PATH")
     ap_add.add_argument("--url", metavar="URL")

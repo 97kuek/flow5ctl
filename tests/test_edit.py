@@ -315,10 +315,11 @@ class TestAirfoilAddTakesTheDesignPositionally:
     (design, name, source).
     """
 
-    def _args(self, name, source=None, third=None, design=None):
+    def _args(self, *positional, design=None, naca=None):
         import argparse
-        return argparse.Namespace(airfoil_command="add", name=name, source=source,
-                                  third=third, design=design, naca=None, file=None,
+        return argparse.Namespace(airfoil_command="add", args=list(positional),
+                                  name=None, source=None,
+                                  design=design, naca=naca, file=None,
                                   url=None, reynolds=None, ncrit=None,
                                   polar_alpha=None, replace=False, json=True)
 
@@ -337,6 +338,30 @@ class TestAirfoilAddTakesTheDesignPositionally:
         from flow5ctl.errors import Flow5ctlError
         with pytest.raises(Flow5ctlError, match="given twice"):
             cmd_airfoil(self._args("Rect", "AG35", "naca:2409", design="Rect"))
+
+    def test_a_source_given_twice_is_refused(self, project):
+        """It used to let the flag win, so `add G foo.dat --naca 2409` created an
+        airfoil called `foo.dat` out of a NACA section - neither of the two things
+        the line could have meant."""
+        from flow5ctl.cli import cmd_airfoil
+        from flow5ctl.errors import Flow5ctlError
+        with pytest.raises(Flow5ctlError, match="source was given twice"):
+            cmd_airfoil(self._args("Rect", "AG35", "naca:2409", naca="2412"))
+
+    def test_a_filename_used_as_a_name_is_caught(self, project):
+        """A bare `foo.dat` cannot be a source - sources need naca:/file:/url: - so
+        (design, name) is the only reading that works. It is the right reading; what
+        was missing was noticing that nobody means it."""
+        from flow5ctl.cli import cmd_airfoil
+        from flow5ctl.errors import Flow5ctlError
+        with pytest.raises(Flow5ctlError, match="looks like a file rather than a name"):
+            cmd_airfoil(self._args("Rect", "foo.dat", naca="2409"))
+
+    def test_too_many_positionals_says_so_in_the_right_words(self, project):
+        from flow5ctl.cli import cmd_airfoil
+        from flow5ctl.errors import Flow5ctlError
+        with pytest.raises(Flow5ctlError, match="too many arguments"):
+            cmd_airfoil(self._args("A", "B", "naca:2409", "D"))
 
     def test_a_design_name_containing_an_equals_says_to_use_the_flag(self, project):
         """`flow5ctl init "a=b"` is legal, and then `set` cannot take it positionally.
@@ -380,23 +405,20 @@ class TestAirfoilAddTakesTheDesignPositionally:
         else entirely.
         """
         from flow5ctl.cli import cmd_airfoil
-        a = self._args("Rect", "AG35")
-        a.naca = "2409"
+        a = self._args("Rect", "AG35", naca="2409")
         assert cmd_airfoil(a) == 0
         assert "AG35" in {x.name for x in project.load().airfoils}
 
     def test_one_positional_with_a_source_flag_is_just_the_name(self, project):
         from flow5ctl.cli import cmd_airfoil
-        a = self._args("AG35", design="Rect")
-        a.naca = "2409"
+        a = self._args("AG35", design="Rect", naca="2409")
         assert cmd_airfoil(a) == 0
         assert "AG35" in {x.name for x in project.load().airfoils}
 
     def test_the_design_twice_is_refused_with_a_source_flag_too(self, project):
         from flow5ctl.cli import cmd_airfoil
         from flow5ctl.errors import Flow5ctlError
-        a = self._args("Rect", "AG35", design="Rect")
-        a.naca = "2409"
+        a = self._args("Rect", "AG35", design="Rect", naca="2409")
         with pytest.raises(Flow5ctlError, match="given twice"):
             cmd_airfoil(a)
 

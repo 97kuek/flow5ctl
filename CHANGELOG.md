@@ -8,6 +8,13 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ### Fixed
 
+- **`airfoil add` let a source given twice pass silently**, and its help advertised
+  two positionals while accepting three. A reviewer found both. `add G foo.dat
+  --naca 2409` created an airfoil *called* `foo.dat` out of a NACA section — the only
+  reading that could work, since a bare filename is not a valid source, but not one
+  anybody means. A doubled source is refused now, a name that looks like a filename
+  says so and points at `--file`, a fourth positional gets `airfoil add`'s own error
+  rather than the top-level synopsis, and the usage line matches what is accepted.
 - **A design whose name contains `=` could not be given positionally to `set`,** and
   the error was about the current directory rather than about that. `init "a=b"` is
   legal, so the error now says to use `--design` and why a leading argument with an
