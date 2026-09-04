@@ -20,7 +20,7 @@ pending publisher*:
 | PyPI project name | `flow5ctl` |
 | Owner | `97kuek` |
 | Repository name | `flow5ctl` |
-| Workflow name | `release.yml` |
+| Workflow name | `release.yaml` |
 | Environment name | `pypi` |
 
 "Pending publisher" is the right form before the first upload: the project does not
@@ -107,11 +107,13 @@ the registration exactly:
 | claim | what it will say | what to register |
 |---|---|---|
 | `repository` | `<owner>/<repo>` | Owner and Repository name, separately |
-| `workflow_ref` | `…/.github/workflows/release.yml@refs/tags/v0.1.0` | **`release.yml`** — the *filename*, not `Release`, which is the name shown in the Actions tab |
+| `workflow_ref` | `…/.github/workflows/release.yaml@refs/tags/v0.1.0` | **`release.yaml`** — the *filename*, and it must match character for character. `release.yml` and `release.yaml` are different publishers to PyPI; this is what failed on the first attempt at 0.1.0 |
 | `environment` | `pypi` | `pypi` |
 
-The workflow-name field is the one that catches people: the tab in GitHub says
-"Release" and the field wants `release.yml`.
+The workflow-name field is the one that catches people twice over: the tab in
+GitHub says "Release" and the field wants the filename, and `.yml` against `.yaml`
+is a mismatch like any other. The workflow here is deliberately named
+`release.yaml` — with the `a` — because that is what the registration says.
 
 Check the *Pending publishers* list on
 [pypi.org/manage/account/publishing](https://pypi.org/manage/account/publishing/) —
