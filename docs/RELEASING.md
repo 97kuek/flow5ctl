@@ -42,12 +42,16 @@ $EDITOR CHANGELOG.md
 #    refuses the release otherwise, because PyPI will not let a filename be reused.
 $EDITOR pyproject.toml
 
-# 3. Everything green locally, including the tests CI cannot run.
+# 3. uv.lock records the project's own version, so it lags a release unless it is
+#    refreshed here. Left out, it becomes a follow-up commit every time.
+uv lock
+
+# 4. Everything green locally, including the tests CI cannot run.
 uv run ruff check src tests tools poc
 uv run pytest -q                    # includes the real flow5 runs
 python3 tools/check_docs.py
 
-# 4. Commit, tag, push.
+# 5. Commit, tag, push.
 git commit -am "chore: release 0.1.0"
 git tag -a v0.1.0 -m "0.1.0"
 git push && git push origin v0.1.0    # the one tag, not every local v*
