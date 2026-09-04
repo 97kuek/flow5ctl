@@ -39,6 +39,33 @@ class TestPolarTypeRefusals:
         guardrails.check_polar_type("T1")
 
 
+class TestUnsupportedPolarTypes:
+    """flow5 offers T4 and T8 and neither of them works through this interface.
+
+    They were listed as "known" polar types in the error message a user sees when
+    they mistype one, and both were marked untested in FLOW5-INTERFACE.md. Running
+    them settled it.
+    """
+
+    def test_t8_returns_nonsense_so_it_is_refused(self):
+        """Measured: alpha 2 to 8 step 2 gave ONE point, at 2.0 m/s that nothing
+        asked for, reporting L/D 68.6 for a 3 m glider."""
+        with pytest.raises(UnsupportedByFlow5, match="returns nonsense"):
+            guardrails.check_polar_type("T8")
+
+    def test_t4_needs_a_speed_sweep_we_cannot_express(self):
+        with pytest.raises(UnsupportedByFlow5, match="sweeps the speed"):
+            guardrails.check_polar_type("T4")
+
+    def test_t4_points_at_the_way_that_does_work(self):
+        with pytest.raises(UnsupportedByFlow5, match="`sweep` on the `speed`"):
+            guardrails.check_polar_type("T4")
+
+    def test_the_types_that_do_work_are_not_refused(self):
+        for pt in ("T1", "T2", "T3", "T5", "T7"):
+            guardrails.check_polar_type(pt)
+
+
 class TestAnalysisChecks:
     def check(self, rect, **kw):
         opts = {"polar_type": "T1", "alpha": (-2.0, 8.0, 1.0), "viscous": True,

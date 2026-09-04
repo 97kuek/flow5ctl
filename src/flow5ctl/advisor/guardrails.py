@@ -38,6 +38,27 @@ def check_polar_type(polar_type: str, *, wants_stability: bool = False,
     """Refuse combinations flow5 answers wrongly."""
     pt = polar_type.upper()
 
+    if pt == "T8":
+        raise UnsupportedByFlow5(
+            "flow5 accepts a T8 polar and returns nonsense from it rather than "
+            "refusing. Measured on a 3 m glider asked for alpha 2 to 8 in steps of "
+            "2: one point came back, at a speed of 2.0 m/s that nothing in the "
+            "request mentioned, reporting a lift-to-drag ratio of 68.6. Whatever "
+            "T8POLAR is for, it is not an alpha sweep, and flow5's own "
+            "documentation does not say. Use T1, T2, T3, T5 or T7."
+        )
+
+    if pt == "T4":
+        raise UnsupportedByFlow5(
+            "a T4 polar holds the angle of attack and sweeps the speed, and this "
+            "tool has no way to express a speed range — `alpha` is the only sweep "
+            "there is. flow5 rejects the analysis we generate for it outright "
+            "(\"matched no plane with any analysis\"), which used to be reported as "
+            "a bug in flow5ctl. To vary speed at a fixed attitude, use `sweep` on "
+            "the `speed` parameter with a T1 polar, which is the same question "
+            "asked in a way that works."
+        )
+
     if pt in {"T6"}:
         raise UnsupportedByFlow5(
             "T6 control polars need flap or control-surface definitions, and flow5's "

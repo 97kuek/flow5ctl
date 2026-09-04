@@ -173,6 +173,14 @@ not correct.
   `build/out` and are usually the most recent thing there, so `export` handed back a
   different aircraft than the one asked about, under a name close enough to be
   missed. They are skipped by default, still usable by name, and labelled when used.
+- **T4 and T8 polars are refused instead of offered.** Both were listed as known
+  types and both were marked untested; running them settled it. T8 returns
+  *nonsense* rather than an error — asked for α 2→8 in steps of 2 it gave one point,
+  at a speed of 2.0 m/s that nothing in the request mentioned, reporting L/D 68.6
+  for a 3 m glider. T4 holds α and sweeps the speed, which this interface has no way
+  to express, and flow5 rejects the analysis outright — which was being reported to
+  the user as "a bug in flow5ctl, please report it". The refusal for T4 points at
+  `sweep` on `speed` with a T1 polar, which asks the same question and works.
 - **`airfoil add` now takes the design name positionally too.** `airfoil list`
   does, and so does every other verb, so `flow5ctl airfoil add MyGlider AG35
   naca:2409` read the design name as the airfoil name. Two positionals cannot be

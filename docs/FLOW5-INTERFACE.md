@@ -431,7 +431,7 @@ Both are unusable in practice — see §3.3.
 | `BETAPOLAR` | T5 | ✅ symmetric in β, as expected |
 | `CONTROLPOLAR` | T6 | unreachable, §3.3 |
 | `STABILITYPOLAR` | T7 | ✅ modes and eigenvalues; caveats in §9 |
-| `T8POLAR` | T8 | not tested |
+| `T8POLAR` | T8 | **[run] tested 2026-09-04 — returns nonsense.** Asked for α 2→8 step 2 on a 3 m glider it returned **one** point, at a speed of 2.0 m/s that nothing in the request mentioned, reporting L/D 68.6. Whatever it is for, it is not an alpha sweep. flow5ctl refuses it |
 
 ### 4.2 Methods and reference dimensions
 
@@ -887,7 +887,7 @@ coarsest mesh. The low-CL end is more sensitive: L/D at α=0° moved 27.7 → 29
       exit semantics are all unconfirmed off macOS.
 - [ ] `.plr` binary foil polars — `make_polars_bin_file` produced none (§2.4). The
       `.txt` route works, so this is not blocking.
-- [ ] T4 (`FIXEDAOAPOLAR`) and T8 (`T8POLAR`) polar types.
+- [x] T4 (`FIXEDAOAPOLAR`) and T8 (`T8POLAR`) polar types — **both tested 2026-09-04 and both refused.** T4 holds α and sweeps speed, which this interface cannot express, and flow5 rejects the analysis we generate for it; `sweep` on `speed` with a T1 polar asks the same question and works. T8 returns a single point at an unrequested speed.
 - [ ] `FLATPANELS` bodies, and fuselage import from STL/STEP.
 - [ ] `Viscous_Loop` (the non-linear lift iteration).
 - [ ] Boats/sails — out of scope for flow5ctl.
