@@ -1,0 +1,90 @@
+name: Release
+
+# Publishing is deliberately tag-triggered rather than automatic on main: a release
+# is a decision, not a side effect of merging. See docs/RELEASING.md.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # The tag and the packaged version must agree. Getting this wrong publishes
+      # something no tag points at, and PyPI will not let the filename be reused.
+      - name: Tag matches the packaged version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(uv run --no-project --with hatchling python -c \
+            'import tomllib,pathlib;print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
+          echo "tag=$tag  pyproject=$version"
+          [ "$tag" = "$version" ] || { echo "::error::tag $tag does not match version $version"; exit 1; }
+
+      - name: Install
+        run: uv sync --group dev --extra plot
+
+      - name: Lint
+        run: uv run ruff check src tests tools poc
+
+      # flow5 is not on CI runners, so the solver tests are deselected here exactly
+      # as in ci.yml. A release must not be cut on a red tree.
+      - name: Tests
+        run: uv run pytest -q -m "not needs_flow5"
+
+      - name: Repository checks
+        run: python3 tools/check_docs.py
+
+      - name: Build
+        run: uv build
+
+      # Catches a malformed README before PyPI rejects the upload.
+      - name: Check metadata
+        run: uvx twine check dist/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # PyPI trusted publishing; no API token is stored anywhere
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github_release:
+    name: GitHub release
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "$GITHUB_REF_NAME" \
+            --notes "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md)."

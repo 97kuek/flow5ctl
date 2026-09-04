@@ -109,6 +109,13 @@ write a change, you are still the author and the one vouching for it — which m
 here, because these numbers end up in aircraft. Human co-authors do belong in
 `Co-Authored-By`.
 
+## Releasing
+
+Publishing is tag-triggered and nothing goes out on a merge to `main`. The steps,
+the one-time PyPI trusted-publisher setup, and the check that the package actually
+works when installed rather than when imported are in
+[docs/RELEASING.md](docs/RELEASING.md).
+
 ## Changing a decision
 
 The [ADRs](docs/adr/) record why things are the way they are. If one is wrong, that
