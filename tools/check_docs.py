@@ -20,9 +20,19 @@ FAIL: list[str] = []
 
 
 def tracked() -> list[pathlib.Path]:
-    out = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT,
-                         capture_output=True, text=True, check=True).stdout
-    return [ROOT / p for p in out.split("\0") if p]
+    """Everything git would ship, plus anything staged for it that is not yet.
+
+    `git ls-files` alone lists only what is already tracked, so a brand-new document
+    was never link-checked until after it had been committed — which is exactly how
+    a broken link reached CI: it passed here while the file was untracked, and
+    failed on the next push. `--others` with the standard exclusions adds files git
+    can see and would add, and keeps ignored ones (scratch output, gitignored
+    aircraft material) out.
+    """
+    out = subprocess.run(
+        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        cwd=ROOT, capture_output=True, text=True, check=True).stdout
+    return [ROOT / p for p in dict.fromkeys(out.split("\0")) if p]
 
 
 def check_links(files: list[pathlib.Path]) -> None:

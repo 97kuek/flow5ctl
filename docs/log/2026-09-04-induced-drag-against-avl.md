@@ -103,14 +103,14 @@ largest, and induced drag is the dominant term in their drag budget. A modelled 
 for an HPA is optimistic by more than the "few percent" the design guide used to
 claim.
 
-It also puts a second term into the
-[drag reconstruction](2026-09-04-drag-resolved.md) conclusion. That log found the
-modelled L/D was not systematically wrong once the missing-drag budget was applied,
-on the strength of one aircraft whose airfoil modification was published. This
-finding says one component of the modelled drag *is* systematically low at that
-aspect ratio. Both can be true — the budget band is wide — but the earlier
-conclusion should be read as "the airfoil substitution explains the gap between
-aircraft", not as "the modelled drag is unbiased".
+It also puts a second term into the reconstruction conclusion recorded in
+[DESIGN-GUIDE §1a](../DESIGN-GUIDE.md). That work found the modelled L/D was not
+systematically wrong once the missing-drag budget was applied, on the strength of
+one aircraft whose airfoil modification was published. This finding says one
+component of the modelled drag *is* systematically low at that aspect ratio. Both
+can be true — the budget band is wide — but the earlier conclusion should be read as
+"the airfoil substitution explains the gap between those aircraft", not as "the
+modelled drag is unbiased".
 
 ## What changed as a result
 
