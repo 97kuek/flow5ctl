@@ -186,6 +186,7 @@ not correct.
   | mesh convergence at best L/D | 0.4 % over 544→3172 panels | **0.3 %** over 612→4032 |
   | mesh convergence at α = 0 | 6 % | **8.4 %**, and still climbing at 4032 panels |
   | best L/D against CG | "22.8 throughout" | **23.668 to five figures at every CG**, while trimmed L/D goes 7.72 → 17.78 |
+  | interpolated vs on-the-fly XFoil | 10–25 % | **19–28 %**, and on-the-fly is consistently the lower of the two |
 - **The version was declared in two places and they drifted.** `pyproject.toml` was
   bumped to 0.1.0 while `__init__.py` still said `0.1.0.dev0`, so the wheel was built
   correctly and `flow5ctl --version`, `doctor` and the `flow5://status` resource all

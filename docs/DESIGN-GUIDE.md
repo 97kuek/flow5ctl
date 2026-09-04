@@ -224,8 +224,24 @@ viscous** — the inviscid run left out **98 %** of the drag. Re-run it with
 never quote an L/D from an inviscid run.
 
 **Pick one viscous method and stay with it.** The interpolated method (a
-pre-computed 2D polar mesh) and on-the-fly XFoil disagree by 10–25 % on viscous drag,
-so mixing them inside a comparison invents a difference that is not in the aircraft.
+pre-computed 2D polar mesh) and on-the-fly XFoil disagree substantially, and
+**on-the-fly is consistently the lower of the two**. Measured on
+[`examples/rc-glider.yaml`](../examples/rc-glider.yaml), the same run with and
+without `--on-the-fly`:
+
+| α | viscous CD, interpolated | on-the-fly | on-the-fly is |
+|---|---|---|---|
+| 0° | 0.017659 | 0.014258 | 19 % lower |
+| 2° | 0.017238 | 0.013800 | 20 % lower |
+| 4° | 0.018450 | 0.013461 | 27 % lower |
+| 6° | 0.020263 | 0.014584 | 28 % lower |
+
+Total CD is 19 % lower throughout. **Which one is right is not known here** — the
+interpolated mesh smooths across the gaps where XFoil did not converge, and
+on-the-fly computes at the exact condition but fails more often. What is certain is
+that mixing them inside a comparison invents a fifth of the drag that is not in the
+aircraft.
+
 Interpolation is the default: on-the-fly failed to converge on the elevator of a
 3-surface glider and discarded every operating point, while interpolation ran five
 polar types on the same aircraft in 1.3 s.
