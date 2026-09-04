@@ -87,6 +87,44 @@ what an existing field means, or removing one, is the kind of change that needs 
 minor bump and a note in the changelog saying what to edit. The schema resource
 `flow5://schema/design` is generated from the model, so it follows automatically.
 
+## If the publish job fails with `invalid-publisher`
+
+This happened on the first attempt at 0.1.0, and it is the likely failure, so it is
+worth knowing what it does and does not mean.
+
+```
+* `invalid-publisher`: valid token, but no corresponding publisher
+  (Publisher with matching claims was not found)
+```
+
+**Nothing was published and no version was consumed.** PyPI reserves a filename only
+on a successful upload, so the same tag can be published again once the publisher is
+fixed — there is no need to bump the version or delete the tag.
+
+The action prints the claims GitHub actually sent. Every one of them has to match
+the registration exactly:
+
+| claim | what it will say | what to register |
+|---|---|---|
+| `repository` | `<owner>/<repo>` | Owner and Repository name, separately |
+| `workflow_ref` | `…/.github/workflows/release.yml@refs/tags/v0.1.0` | **`release.yml`** — the *filename*, not `Release`, which is the name shown in the Actions tab |
+| `environment` | `pypi` | `pypi` |
+
+The workflow-name field is the one that catches people: the tab in GitHub says
+"Release" and the field wants `release.yml`.
+
+Check the *Pending publishers* list on
+[pypi.org/manage/account/publishing](https://pypi.org/manage/account/publishing/) —
+if the row is not there at all, the form did not save. Delete and re-add a row that
+does not match rather than editing around it.
+
+Then re-run only the failed job; the build, the tests and `twine check` have already
+passed and do not need repeating:
+
+```bash
+gh run rerun <run-id> --failed
+```
+
 ## If the upload fails halfway
 
 PyPI filenames are permanent: a version that uploaded even partially cannot be
