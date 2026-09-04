@@ -6,6 +6,21 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Fixed
+
+- **The parser could drop an operating point in silence.** A row of the wrong width,
+  or one carrying a non-numeric field, was skipped — caught only if the file's
+  declared point count happened to disagree with the total. When flow5 declares no
+  count, or an unparsable one, nothing noticed and the polar came back short. Skipped
+  lines that carry numbers are counted now, and a loss that cannot be checked against
+  a declared total raises instead of returning a partial polar. That is the failure
+  ADR-0010 exists to prevent, in the code it was written about.
+- **`header_float` resolved an ambiguous key by dictionary order.** It fell back to
+  `startswith`, which is needed — the header genuinely has `XNP` beside
+  `XNP = d(XCp.Cl)/dCl` — but with two prefix matches and no exact one it silently
+  took whichever came first. An exact key wins now, and a genuine ambiguity raises.
+
+
 ## [0.1.15] — 2026-09-05
 
 ### Fixed

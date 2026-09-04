@@ -92,13 +92,29 @@ class Polar:
         `XNP = d(XCp.Cl)/dCl =     0.05 m`, whose "value" after the first `=` still
         contains an expression. The last numeric token is taken instead.
         """
+        # Exact first. `startswith` alone could take a different key that happens
+        # to begin with the same text, silently, and the header has keys like
+        # `XNP` beside `XNP = d(XCp.Cl)/dCl`.
+        def last_number(value: str) -> float | None:
+            for token in reversed(value.replace(",", " ").split()):
+                if _is_num(token):
+                    return float(token)
+            return None
+
         for k, v in self.header.items():
-            if k.startswith(key):
-                for token in reversed(v.replace(",", " ").split()):
-                    if _is_num(token):
-                        return float(token)
-                return None
-        return None
+            if k.strip() == key:
+                return last_number(v)
+        # Only then a prefix, which is how `XNP` finds
+        # `XNP = d(XCp.Cl)/dCl`. Ambiguity here is worth naming rather than
+        # resolving by dictionary order.
+        matches = [(k, v) for k, v in self.header.items() if k.startswith(key)]
+        if len(matches) > 1:
+            raise ParseError(
+                f"{key!r} matches {len(matches)} header keys "
+                f"({', '.join(repr(k) for k, _ in matches)}); which one is meant "
+                "cannot be decided by order. flow5's header labels may have changed."
+            )
+        return last_number(matches[0][1]) if matches else None
 
 
 def parse_polar(path: Path) -> Polar:
@@ -150,9 +166,18 @@ def parse_polar(path: Path) -> Polar:
 
     columns = [c for c in _LABEL_SPLIT.split(label_region.strip()) if c]
 
+    # Skipped lines are counted, not merely skipped. A row of the wrong width, or
+    # one carrying a non-numeric field, used to vanish - caught only if the declared
+    # point count happened to notice. When flow5 declares no count, or an
+    # unparsable one, nothing noticed at all and the polar came back short.
+    skipped: list[str] = []
     for ln in lines[head_i + 1:]:
         fields = ln.split()
+        if not fields:
+            continue
         if len(fields) != ncol or not all(_is_num(f) for f in fields):
+            if any(_is_num(f) for f in fields):
+                skipped.append(ln.strip()[:80])
             continue
         rows.append([float(f) for f in fields])
 
@@ -165,13 +190,24 @@ def parse_polar(path: Path) -> Polar:
 
     # self-check: flow5 states how many points it wrote. Trust that over our parsing.
     claimed = header.get(_POINT_COUNT)
+    want: int | None = None
     if claimed is not None:
         try:
             want = int(claimed)
         except ValueError:
             want = None
-        if want is not None and want != len(rows):
-            raise ParseError(
+    if want is None and skipped:
+        raise ParseError(
+            f"{path.name}: {len(skipped)} line(s) after the header carry numbers but "
+            f"could not be read as {ncol} numeric fields, and the file declares no "
+            "usable point count to check the total against — so there is no way to "
+            "tell whether operating points were lost. First: "
+            f"{skipped[0]!r}. See "
+            "https://github.com/97kuek/flow5ctl/blob/main/docs/FLOW5-INTERFACE.md "
+            "section 5.2."
+        )
+    if want is not None and want != len(rows):
+        raise ParseError(
                 f"{path.name}: recovered {len(rows)} operating points but the file "
                 f"declares {want}. Points were dropped — refusing to report a partial "
                 "polar. See https://github.com/97kuek/flow5ctl/blob/main/docs/adr/0010-treat-solver-output-as-hostile.md."

@@ -223,3 +223,90 @@ class TestFoilPolarCoverage:
         """No polar at all is a different failure, caught by the caller."""
         self._polar(tmp_path, [0.0])
         assert foilpolar.find_gaps(tmp_path, 0.5) == []
+
+
+class TestTheParserDoesNotDropRowsInSilence:
+    """ADR-0010 exists because flow5's output produces plausible wrong numbers.
+
+    A reviewer found two ways a row could vanish with nothing noticing: the wrong
+    field count, or a non-numeric field. Both were caught only if the file's declared
+    point count happened to disagree with the total - and when flow5 declares no
+    count, or an unparsable one, nothing noticed at all.
+
+    Built by mutating the real fixture rather than a synthetic header, because the
+    label widths and the welded first row are the parts that matter.
+    """
+
+    def _mutate(self, fixtures, tmp_path, *, corrupt_last, count=None):
+        import re
+
+        text = (fixtures / "polar_t1_rectwing.csv").read_text(encoding="utf-8")
+        lines = text.split("\n")
+        # the last line that parses as a full numeric row
+        idx = max(i for i, ln in enumerate(lines)
+                  if ln.split() and all(_is_number(f) for f in ln.split()))
+        if corrupt_last == "short":
+            lines[idx] = " ".join(lines[idx].split()[:-1])
+        else:
+            lines[idx] = " ".join([*lines[idx].split()[:-1], "oops"])
+        out = "\n".join(lines)
+        if count is not None:
+            out = re.sub(r"(Nbr\. of data points\s*=\s*)\S+", rf"\g<1>{count}", out)
+        p = tmp_path / "p.csv"
+        p.write_text(out, encoding="utf-8")
+        return p
+
+    def test_a_dropped_row_with_no_declared_count_raises(self, fixtures, tmp_path):
+        p = self._mutate(fixtures, tmp_path, corrupt_last="short", count="unknown")
+        with pytest.raises(ParseError, match="no way to tell whether"):
+            parse_polar(p)
+
+    def test_a_non_numeric_field_is_the_same_case(self, fixtures, tmp_path):
+        p = self._mutate(fixtures, tmp_path, corrupt_last="bad", count="unknown")
+        with pytest.raises(ParseError, match="could not be read as"):
+            parse_polar(p)
+
+    def test_a_declared_count_still_catches_the_loss(self, fixtures, tmp_path):
+        p = self._mutate(fixtures, tmp_path, corrupt_last="short")
+        with pytest.raises(ParseError, match="Points were dropped"):
+            parse_polar(p)
+
+    def test_the_untouched_fixture_still_parses(self, fixtures):
+        assert len(parse_polar(fixtures / "polar_t1_rectwing.csv").rows) == 5
+
+
+def _is_number(token: str) -> bool:
+    try:
+        float(token)
+    except ValueError:
+        return False
+    return True
+
+
+class TestAnAmbiguousHeaderKeyIsRefused:
+    """`header_float` fell back to `startswith` and took whichever came first.
+
+    The header genuinely has keys that share a prefix - `XNP` beside
+    `XNP = d(XCp.Cl)/dCl` - so the fallback is needed; what it must not do is pick
+    one of several by dictionary order.
+    """
+
+    def _polar(self, header):
+        import pathlib as _p
+
+        from flow5ctl.flow5.results import Polar
+        return Polar(name="p", header=header, columns=["CL"], rows=[[0.1]],
+                     path=_p.Path("p.csv"))
+
+    def test_an_exact_key_wins(self):
+        p = self._polar({"XNP": "0.05 m", "XNP = d(XCp.Cl)/dCl": "0.09 m"})
+        assert p.header_float("XNP") == pytest.approx(0.05)
+
+    def test_two_prefix_matches_and_no_exact_one_is_an_error(self):
+        p = self._polar({"XNPa": "0.05 m", "XNPb": "0.09 m"})
+        with pytest.raises(ParseError, match="matches 2 header keys"):
+            p.header_float("XNP")
+
+    def test_a_single_prefix_match_is_still_used(self):
+        p = self._polar({"XNP = d(XCp.Cl)/dCl": "0.09 m"})
+        assert p.header_float("XNP") == pytest.approx(0.09)
