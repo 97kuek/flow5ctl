@@ -81,11 +81,17 @@ flow5ctl reports this on every analysis, so a modelled L/D of 27 is shown alongs
 a realistic 19–23. **Compare a published aircraft's figure against that band**, not
 against the modelled number.
 
-> This does not explain every discrepancy, and it is worth knowing why. Against
-> three reconstructed aircraft the modelled L/D came out 16–28 % *below* what the
-> published thrust implies, and adding the missing drag moves it further away, not
-> closer. Something else is going on there — see the drag section of
-> [ROADMAP.md](ROADMAP.md).
+> **Use this band, not the raw number, when comparing against a published aircraft.**
+> Three reconstructions make the point. Two of them substitute the unmodified DAE
+> sections, because the teams' own modifications to them are not published, and both
+> come out far below what their published thrust implies. The third uses FX76MP149,
+> which its team *did* publish as a blend of FX76MP160 and FX76MP120 to 14.9 %
+> thickness — reproducible exactly — and its published figure of 31.9 falls inside
+> the band this gives (27.7–32.4) from a modelled 38.8.
+>
+> Two things follow. The modelled drag is not systematically wrong. And a team's own
+> airfoil work is worth roughly 40 % on lift-to-drag, so **substituting the parent
+> section for a modified one is not a small approximation** — say so when you do it.
 
 ## 2. Choosing the analysis type
 
