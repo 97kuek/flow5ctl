@@ -6,6 +6,8 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+## [0.1.8] — 2026-09-04
+
 ### Fixed
 
 - **The panel count disagreed with flow5's whenever there was a fin.** ADR-0010 and

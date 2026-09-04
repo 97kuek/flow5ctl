@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "flow5ctl"
-version = "0.1.7"
+version = "0.1.8"
 description = "AI-driven aircraft design with flow5 — MCP server and CLI for low-Reynolds-number aircraft"
 readme = "README.md"
 requires-python = ">=3.11"
