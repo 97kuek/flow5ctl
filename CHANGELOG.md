@@ -6,6 +6,8 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+## [0.1.13] — 2026-09-05
+
 ### Fixed
 
 - **`airfoil add` let a source given twice pass silently**, and its help advertised
