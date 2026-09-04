@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from flow5ctl.advisor import dragbudget, guardrails, structure
+from flow5ctl.advisor import dragbudget, guardrails, stability, structure
 from flow5ctl.errors import DesignError, UnsupportedByFlow5
 from flow5ctl.flow5 import markers
 from flow5ctl.geometry import derived as geometry
@@ -298,6 +298,11 @@ class TestRootBendingMoment:
     that needs the section, the material and a safety factor - but it surfaces the
     aerodynamic load and checks it against the closed form, so a figure that is wrong
     by a factor is caught before it reaches a laminate schedule.
+
+    The check compares the strips against the lift at the operating point, not
+    against the weight. A fixed-speed polar does not fly the aeroplane, so most of
+    its points are out of balance and a weight comparison there measures the load
+    factor rather than the strip table.
     """
 
     def _strips(self, moments: list[float], ys: list[float]) -> dict:
@@ -323,7 +328,7 @@ class TestRootBendingMoment:
         s = self._strips([0.0, 12000.0, 0.0], [-16.0, 0.0, 16.0])
         out = structure.root_load(s, mass_kg=89.0, semi_span_m=16.0)
         assert "disagreement" in out
-        assert structure.warning(out) is not None
+        assert structure.notes(out)
 
     def test_no_strips_or_no_column_means_no_claim(self):
         assert structure.root_load(None, mass_kg=89.0, semi_span_m=16.0) is None
@@ -332,9 +337,99 @@ class TestRootBendingMoment:
         bare = {"surfaces": {"Main": {"y(m)": [0.0], "Cl": [1.0]}}}
         assert structure.root_load(bare, mass_kg=89.0, semi_span_m=16.0) is None
 
-    def test_without_a_mass_the_load_is_reported_but_not_checked(self):
+    def test_without_a_mass_or_a_lift_the_load_is_reported_but_not_checked(self):
         s = self._strips([0.0, 2804.0, 0.0], [-16.0, 0.0, 16.0])
         out = structure.root_load(s, mass_kg=None, semi_span_m=16.0)
         assert out["root_bending_moment_Nm"] == pytest.approx(2804.0)
         assert "elliptic_estimate_Nm" not in out
-        assert structure.warning(out) is None
+        assert structure.notes(out) == []
+
+    def test_the_estimate_uses_the_lift_at_the_point_not_the_weight(self):
+        """The shipped 3 m glider, measured.
+
+        Best L/D on its fixed-speed polar sits at CL 0.7132 and 12 m/s over
+        0.5551 m2, which is 34.9 N of lift against 7.8 N of weight. flow5's strips
+        give 10.8 N.m there. Against the weight that is 4.3x the estimate and reads
+        like a broken parser; against the lift it is 3 % - nothing is wrong.
+        """
+        s = self._strips([0.0, 10.8, 0.0], [-1.5, 0.006, 1.5])
+        out = structure.root_load(s, mass_kg=0.8, semi_span_m=1.5, lift_N=34.9)
+        assert out["elliptic_estimate_Nm"] == pytest.approx(11.1, abs=0.1)
+        assert out["ratio_to_estimate"] == pytest.approx(0.97, abs=0.02)
+        assert "disagreement" not in out
+
+    def test_a_point_that_is_not_level_flight_says_so(self):
+        """The same run: the load factor is the finding, not a parser fault."""
+        s = self._strips([0.0, 10.8, 0.0], [-1.5, 0.006, 1.5])
+        out = structure.root_load(s, mass_kg=0.8, semi_span_m=1.5, lift_N=34.9)
+        assert out["load_factor"] == pytest.approx(4.45, abs=0.05)
+        text = out["not_level_flight"]
+        assert "4.45x the aircraft's weight" in text
+        assert "not the level-flight load" in text
+        assert structure.notes(out) == [text]
+
+    def test_level_flight_is_silent(self):
+        s = self._strips([0.0, 2804.0, 0.0], [-16.0, 0.0, 16.0])
+        lift = 89.0 * 9.81
+        out = structure.root_load(s, mass_kg=89.0, semi_span_m=16.0, lift_N=lift)
+        assert out["load_factor"] == pytest.approx(1.0)
+        assert structure.notes(out) == []
+
+    def test_both_findings_can_be_reported_at_once(self):
+        s = self._strips([0.0, 12000.0, 0.0], [-16.0, 0.0, 16.0])
+        out = structure.root_load(s, mass_kg=89.0, semi_span_m=16.0, lift_N=400.0)
+        assert len(structure.notes(out)) == 2
+
+
+class TestStaticMarginIsChecked:
+    """A negative static margin used to be reported in silence.
+
+    The shipped HPA example analysed at -10.1 % MAC against its own declared
+    requirement of 5-15 %, printed beside a lift-to-drag figure of 50.6, and nothing
+    in the report said the aircraft was unflyable. `requirements.static_margin` and
+    the preset bands both existed and neither was ever compared against a result.
+    """
+
+    class _S:
+        def __init__(self, sm, stiffness=None):
+            self.static_margin = sm
+            self.pitch_stiffness_margin = stiffness
+
+    def test_a_negative_margin_is_called_unflyable(self):
+        out = stability.notes(self._S(-0.101), required=(0.05, 0.15), design="Albatross")
+        assert len(out) == 1
+        assert "CG is behind the neutral point" in out[0]
+        assert "Albatross diverges in pitch" in out[0]
+        assert "not flyable" in out[0]
+        assert "--target static-margin" in out[0]
+
+    def test_the_cg_height_term_does_not_rescue_a_negative_margin(self):
+        """The HPA case exactly: classical -10.1 %, pitch stiffness +3.4 %."""
+        out = stability.notes(self._S(-0.101, 0.034), required=(0.05, 0.15))
+        assert "not flyable" in out[0]
+        assert "+3.4%" in out[0]
+        assert "not a substitute" in out[0]
+
+    def test_a_margin_inside_the_band_says_nothing(self):
+        assert stability.notes(self._S(0.10), required=(0.05, 0.15)) == []
+
+    def test_below_the_band_is_reported_against_the_design_s_own_requirement(self):
+        out = stability.notes(self._S(0.02), required=(0.05, 0.15),
+                              preset_band=(0.05, 0.12))
+        assert "this design asks for 5%-15%" in out[0]
+        assert "It is stable, but" in out[0]
+
+    def test_without_a_requirement_the_preset_band_is_used_and_named(self):
+        out = stability.notes(self._S(0.02), preset_band=(0.05, 0.12))
+        assert "the preset for this class expects 5%-12%" in out[0]
+
+    def test_over_stable_is_worth_saying_too(self):
+        out = stability.notes(self._S(0.30), required=(0.05, 0.15))
+        assert "Over-stable costs trim drag" in out[0]
+
+    def test_no_margin_means_no_claim(self):
+        assert stability.notes(self._S(None), required=(0.05, 0.15)) == []
+
+    def test_no_band_anywhere_still_catches_instability(self):
+        assert stability.notes(self._S(-0.01)) != []
+        assert stability.notes(self._S(0.30)) == []

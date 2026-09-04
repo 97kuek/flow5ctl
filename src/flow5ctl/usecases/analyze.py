@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..advisor import dragbudget, guardrails, structure
+from ..advisor import dragbudget, guardrails, stability, structure
 from ..errors import InternalError, SolverError
 from ..flow5 import airfoils as foil_io
 from ..flow5 import foilpolar, xmlgen
@@ -23,7 +23,7 @@ from ..flow5 import probe as probe_mod
 from ..flow5.markers import explain_interpolation_failure
 from ..flow5.results import owning_polar, parse_polar, parse_strips
 from ..flow5.runner import DEFAULT_TIMEOUT, Workspace, run_script
-from ..flow5.summary import summarise
+from ..flow5.summary import Summary, summarise
 from ..geometry import derived as geometry
 from ..geometry.derived import Derived
 from ..model import presets
@@ -423,13 +423,20 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
     strips_data = _strip_data(ws, req.name, design.name,
                               at_alpha=summary.best_ld.alpha if summary.best_ld
                               else summary.trim_alpha)
+    warnings.extend(stability.notes(
+        summary,
+        required=design.requirements.static_margin,
+        preset_band=preset.band("static_margin"),
+        design=design.name,
+    ))
+
     root_load = structure.root_load(
         strips_data,
         mass_kg=derived.mass.total,
         semi_span_m=derived.reference_span / 2.0 if derived.reference_span else None,
+        lift_N=_lift_at(summary, derived, speed),
     )
-    if (w := structure.warning(root_load)):
-        warnings.append(w)
+    warnings.extend(structure.notes(root_load))
 
     if summary.best_ld is not None:
         note = dragbudget.warning(preset.name, summary.best_ld.value)
@@ -592,3 +599,19 @@ def _strip_data(ws: Workspace, polar_name: str, plane: str,
             continue
         out["surfaces"][wing] = {c: [r[i] for r in table.rows] for c, i in keep.items()}
     return out if out["surfaces"] else None
+
+
+def _lift_at(summary: Summary, derived: Derived, speed: float | None) -> float | None:
+    """Lift the polar reports at the point the strip table was read at.
+
+    It has to be the same point, or the structural cross-check compares two
+    different flight conditions and reports the difference as a fault. A fixed-lift
+    or glide polar varies the speed point by point and records it on the extremum;
+    a fixed-speed polar holds the analysis speed for all of them.
+    """
+    point = summary.best_ld
+    cl = point.cl if point is not None else summary.cl_at_trim
+    v = (point.speed if point is not None and point.speed else speed)
+    if cl is None or not v or not derived.reference_area:
+        return None
+    return 0.5 * derived.density * v * v * derived.reference_area * cl

@@ -14,11 +14,17 @@ requirements:
   static_margin: [0.05, 0.15]
   objective: max_range
 
+# The x of each component is measured from the wing root leading edge, so these
+# positions are what sets the static margin. The pilot is two thirds of the mass:
+# move that one number and the whole aircraft's stability moves with it. As written
+# the CG lands at 0.424 m, which is a margin of about +9 % MAC — inside the 5-15 %
+# asked for above. Push the pilot aft to 0.55 and it becomes -10 %, and the aircraft
+# diverges in pitch while still reporting a lift-to-drag figure above 50.
 mass:
   components:
-    - {tag: pilot,      mass: 68.0, at: [0.55,  0.00, -0.55]}
+    - {tag: pilot,      mass: 68.0, at: [0.30,  0.00, -0.55]}
     - {tag: fuselage,   mass:  8.0, at: [1.20,  0.00, -0.30]}
-    - {tag: drive,      mass:  6.0, at: [0.20,  0.00, -0.70]}
+    - {tag: drive,      mass:  6.0, at: [0.15,  0.00, -0.70]}
     # spanwise structure mass, so the roll inertia is real
     - {tag: wing_left,  mass: 11.0, at: [0.60, -7.00,  0.15]}
     - {tag: wing_right, mass: 11.0, at: [0.60,  7.00,  0.15]}

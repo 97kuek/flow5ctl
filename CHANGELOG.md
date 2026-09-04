@@ -38,6 +38,21 @@ The core library, the CLI and the MCP server all work — see
 
 ### Fixed
 
+- **A negative static margin was reported in silence.** `requirements.static_margin`
+  and the preset bands both existed and neither was ever compared against a result.
+  The shipped HPA example analysed at **−10.1 % MAC** against its own declared
+  requirement of 5–15 % — the CG behind the neutral point, so the aircraft diverges
+  in pitch — printed beside a lift-to-drag figure of 50.6 that reads like success.
+  Both examples were also corrected: the HPA's pilot sits far enough forward to give
+  +8.7 %, and the glider's nose ballast is halved, from 21 % to +9.8 %.
+- **The root bending moment was checked against the weight, not against the lift at
+  the operating point.** A fixed-speed polar does not fly the aeroplane — it holds
+  the speed and sweeps alpha — so most of its points are out of balance. On the 3 m
+  glider example the check reported the strip table as 4.3x the estimate, which
+  reads like a broken parser; against the lift the polar itself reports at that
+  point it is 3 %. Nothing was wrong with the strips. The load factor is now
+  reported on its own, and a point more than 15 % from level flight says that the
+  bending moment there is not the load a spar is sized from.
 - Twin fins (`tail.fin.count: 2`). flow5 has no twin-fin flag — a plane is a list of
   `<wing>` elements with no cap — so two fins are two entries at ±y.
 - Airfoil files in Lednicer format, which is how the UIUC database serves every

@@ -145,7 +145,8 @@ Every report says what its lift-to-drag figure **excludes** — a VLM run of a w
 a tail returns the drag of a wing and a tail, and on a human-powered aircraft the
 rigging and the fairing are a fifth to two fifths of the aeroplane again. It also
 reports the wing root bending moment, which is the number a spar is sized from, with
-a closed-form cross-check beside it.
+a closed-form cross-check beside it — and says when the operating point it came from
+is not level flight, because a fixed-speed polar's best-L/D point usually is not.
 
 For an aircraft that flies in ground effect, one call does both:
 

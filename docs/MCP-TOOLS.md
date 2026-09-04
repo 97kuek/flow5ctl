@@ -176,12 +176,24 @@ wing and a tail:
     "items": [{"item": "rigging wires", "low": 0.10, "high": 0.30, "note": "..."}]
   },
   "structure": {
-    "root_bending_moment_Nm": 2772.0,   // what the main spar is sized from
+    "root_bending_moment_Nm": 2772.0,   // the aerodynamic load at this point
+    "lift_at_point_N": 872.9,           // what the polar says the wing is carrying
+    "load_factor": 1.0,                 // that lift over the aircraft's weight
     "elliptic_estimate_Nm": 2964.0,     // closed-form cross-check
+    "estimate_from": "lift at this operating point",
     "ratio_to_estimate": 0.935
   }
 }
 ```
+
+`load_factor` is the check that matters before quoting the bending moment. A
+fixed-speed (T1) polar holds the speed and sweeps alpha, so most of its points are
+not level flight — on the shipped 3 m glider, best L/D sits at a load factor of
+**4.45**, and its bending moment is the load *there*, not the load a spar is sized
+from. When the factor is more than 15 % from 1 the report says so and points at
+`trim` or a T2 polar. The elliptic cross-check is made against the lift at the point
+rather than the weight, so it tests the strip table instead of measuring the load
+factor a second time.
 
 `compare_ground: true` runs the analysis free-air **and** in ground effect and
 returns both with the change between them. For a Birdman Rally aircraft that

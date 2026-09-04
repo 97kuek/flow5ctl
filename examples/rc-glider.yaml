@@ -16,7 +16,9 @@ requirements:
 mass:
   components:
     - {tag: fuselage,     mass: 0.40, at: [ 0.12,  0.00, 0.00]}
-    - {tag: nose_ballast, mass: 0.20, at: [-0.10,  0.00, 0.00]}
+    # 0.20 kg here pulls the CG to 4.8 cm and the static margin to 21 % MAC — stable,
+    # but far outside the 5-12 % asked for above, and paid for in trim drag.
+    - {tag: nose_ballast, mass: 0.10, at: [-0.10,  0.00, 0.00]}
     - {tag: wing_left,    mass: 0.10, at: [ 0.05, -0.75, 0.02]}
     - {tag: wing_right,   mass: 0.10, at: [ 0.05,  0.75, 0.02]}
 
