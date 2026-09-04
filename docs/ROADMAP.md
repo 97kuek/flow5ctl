@@ -149,8 +149,13 @@ were all pulled forward into Phases 1-3. What is left:
       surface finish, rigging, the pilot's body — rather than leaving the reader to
       remember that the total is optimistic. Every analysis of an HPA or a glider
       now says what its L/D excludes and what a realistic figure would be
-- [ ] A `trim`-aware sweep: solve the trim at each point rather than reporting the
-      untrimmed polar
+- [x] A `trim`-aware sweep: `sweep --trimmed` (and `trimmed: true` over MCP or in a
+      study file). Each point runs as a fixed-lift polar, so the speed is solved at
+      every alpha to carry the aircraft's weight, and the metrics are read where Cm
+      crosses zero — level and trimmed, rather than the best point of a polar the
+      aircraft never flies. Measured on the HPA example: moving the CG from 0.36 m
+      to 0.50 m takes trimmed L/D from 41.4 to 49.7 while the static margin falls
+      from +16.1 % to +0.3 %, which is the trade a CG study exists to show
 - [x] Structural sanity from the strip table's bending-moment column — the wing
       root bending moment is reported with a closed-form cross-check beside it
       (elliptic loading puts the load centroid at 4s/3π). Measured on a 32 m

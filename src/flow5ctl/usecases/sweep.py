@@ -11,6 +11,7 @@ sweep cannot leave the design in an intermediate state if it is interrupted.
 from __future__ import annotations
 
 import copy
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -51,6 +52,11 @@ OBJECTIVE_METRIC = {
 }
 
 DEFAULT_METRICS = ("best_LD", "best_LD_alpha", "min_sink", "static_margin", "trim_alpha")
+
+#: What a trimmed sweep reports instead. Best L/D is deliberately absent: it is the
+#: best point on a polar the aircraft is not flying, and quoting it beside trimmed
+#: numbers invites the reader to compare the two.
+TRIMMED_METRICS = ("ld_at_trim", "trim_alpha", "cl_at_trim", "min_sink", "static_margin")
 
 #: Costs a potential-flow sweep cannot see, keyed by the parameter being varied.
 #: Without these, a sweep reliably "discovers" that washout should be zero and span
@@ -96,6 +102,19 @@ class SweepRequest:
     analysis: Request = field(default_factory=Request)
     metrics: tuple[str, ...] = DEFAULT_METRICS
     stop_on_error: bool = False
+    trimmed: bool = False
+    """Solve the flight condition at every point instead of reporting a polar.
+
+    A fixed-speed sweep holds the speed and sweeps alpha, so almost every point on
+    it is out of balance in both senses: the lift does not equal the weight, and the
+    pitching moment is not zero. The numbers that come off it — best L/D above all —
+    belong to a condition the aircraft never flies.
+
+    With this set, each point runs as a **fixed-lift (T2) polar**, which solves the
+    speed at every alpha so that lift equals weight, and the reported metrics are
+    read at the alpha where Cm crosses zero. That row is the aircraft actually
+    flying: level, trimmed, at its own weight.
+    """
 
 
 def _set_path(data: dict, path: str, value: Any) -> dict:
@@ -188,6 +207,47 @@ def load_study(path: Path) -> SweepRequest:
             mass=a.get("mass"),
         ),
         metrics=tuple((data.get("report") or {}).get("metrics") or DEFAULT_METRICS),
+        trimmed=bool(a.get("trimmed") or data.get("trimmed")),
+    )
+
+
+def _shape(text: str) -> str:
+    """A warning with the numbers taken out, for collapsing a sweep's repeats.
+
+    Every point of a sweep runs a full analysis and every analysis warns about the
+    same things, so a four-point CG sweep returned the CG-height explanation four
+    times with four different percentages. Exact-match de-duplication cannot see
+    that they are one finding, and the reader has to diff them by eye to find out.
+    """
+    return re.sub(r"[-+]?\d[\d,._]*", "#", text)
+
+
+def _apply_trimmed(req: SweepRequest, design: Design) -> str | None:
+    """Turn a trimmed sweep into the analysis that can actually answer it.
+
+    Two things have to change together, which is why this is one function rather
+    than two flags a caller has to remember to set. The polar becomes fixed-lift, so
+    that every alpha is flown at the aircraft's own weight; and the metrics become
+    the ones read at Cm = 0, because on a trimmed sweep the best point of the polar
+    is not the point being asked about.
+    """
+    if not req.trimmed:
+        return None
+    if design.tail.elevator is None:
+        raise DesignError(
+            "a trimmed sweep needs something to trim against, and this design has no "
+            "elevator. Without one there is no Cm = 0 crossing to solve for. Run the "
+            "sweep without --trimmed, or add a tail."
+        )
+    req.analysis.polar_type = "T2"
+    if req.metrics == DEFAULT_METRICS:
+        req.metrics = TRIMMED_METRICS
+    return (
+        "trimmed sweep: every point is a fixed-lift (T2) polar, so the speed is "
+        "solved at each alpha to carry the aircraft's weight, and the metrics are "
+        "read where Cm crosses zero. These are level, trimmed numbers and they are "
+        "not comparable with a fixed-speed sweep's best L/D, which is the best point "
+        "of a polar the aircraft is not flying."
     )
 
 
@@ -200,10 +260,11 @@ def sweep(project: Project, req: SweepRequest, *,
     design = project.load()
     base_raw = design.model_dump(mode="json", by_alias=True, exclude_none=True)
     is_analysis_param = req.parameter in ANALYSIS_PARAMS
+    trimmed_note = _apply_trimmed(req, design)
 
     rows: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
-    warnings: list[str] = []
+    seen: dict[str, tuple[str, int]] = {}
 
     for i, value in enumerate(req.values):
         run = _clone_request(req.analysis, f"{req.name}_{i:02d}")
@@ -227,8 +288,16 @@ def sweep(project: Project, req: SweepRequest, *,
             row[m] = _metric(out["summary"], m)
         rows.append(row)
         for w in out["warnings"]:
-            if w not in warnings:
-                warnings.append(w)
+            key = _shape(w)
+            first, n = seen.get(key, (w, 0))
+            seen[key] = (first, n + 1)
+
+    warnings = [
+        first if n < 2 else
+        f"{first}  (the same warning came back from {n} of the {len(rows)} points, "
+        "with different numbers; this is the first)"
+        for first, n in seen.values()
+    ]
 
     if not rows:
         raise SolverError(
@@ -244,6 +313,9 @@ def sweep(project: Project, req: SweepRequest, *,
             usable = [r for r in rows if isinstance(r.get(metric), int | float)]
             if usable:
                 best = (max if direction == "max" else min)(usable, key=lambda r: r[metric])
+
+    if trimmed_note:
+        warnings.insert(0, trimmed_note)
 
     leaf = req.parameter.rsplit(".", 1)[-1]
     if leaf in TRADEOFF_NOTES:

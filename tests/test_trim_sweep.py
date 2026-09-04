@@ -11,6 +11,7 @@ from typing import ClassVar
 import pytest
 
 from flow5ctl.errors import DesignError, SolverError
+from flow5ctl.model.design import Design
 from flow5ctl.project.store import Project
 from flow5ctl.usecases import analyze, define, ground
 from flow5ctl.usecases import sweep as sweep_uc
@@ -365,3 +366,77 @@ class TestGroundEffectComparison:
         assert ground._pct(None, 31.4) is None
         assert ground._pct(28.8, None) is None
         assert ground._pct(0.0, 31.4) is None
+
+
+class TestTrimmedSweeps:
+    """A fixed-speed sweep reports numbers from a condition the aircraft never flies.
+
+    It holds the speed and sweeps alpha, so at almost every point the lift does not
+    equal the weight and the pitching moment is not zero. Best L/D off such a polar
+    is the best point of a flight condition that does not exist. A trimmed sweep
+    runs each point as a fixed-lift polar, so the speed is solved to carry the
+    weight, and reads the metrics where Cm crosses zero.
+    """
+
+    def _tailed(self, rect_design) -> Design:
+        raw = dict(rect_design)
+        raw["tail"] = {"type": "conventional", "elevator": {
+            "airfoil": "NACA0012", "position": [0.6, 0.0, 0.05],
+            "planform": {"span": 0.5, "root_chord": 0.1}}}
+        return Design.model_validate(raw)
+
+    def test_it_switches_the_polar_and_the_metrics_together(self, rect_design):
+        req = sweep_uc.SweepRequest(parameter="cg_x", values=[0.04, 0.06],
+                                    analysis=analyze.Request(polar_type="T1"),
+                                    trimmed=True)
+        note = sweep_uc._apply_trimmed(req, self._tailed(rect_design))
+        assert req.analysis.polar_type == "T2"
+        assert req.metrics == sweep_uc.TRIMMED_METRICS
+        assert "best_LD" not in req.metrics
+        assert "fixed-lift" in note and "Cm crosses zero" in note
+
+    def test_metrics_the_caller_chose_are_left_alone(self, rect_design):
+        req = sweep_uc.SweepRequest(parameter="cg_x", values=[0.04, 0.06],
+                                    metrics=("static_margin",), trimmed=True)
+        sweep_uc._apply_trimmed(req, self._tailed(rect_design))
+        assert req.metrics == ("static_margin",)
+
+    def test_without_an_elevator_there_is_nothing_to_trim_against(self, rect_design):
+        req = sweep_uc.SweepRequest(parameter="cg_x", values=[0.04, 0.06], trimmed=True)
+        with pytest.raises(DesignError, match="no elevator"):
+            sweep_uc._apply_trimmed(req, Design.model_validate(rect_design))
+
+    def test_an_untrimmed_sweep_is_untouched(self, rect_design):
+        req = sweep_uc.SweepRequest(parameter="cg_x", values=[0.04, 0.06],
+                                    analysis=analyze.Request(polar_type="T1"))
+        assert sweep_uc._apply_trimmed(req, Design.model_validate(rect_design)) is None
+        assert req.analysis.polar_type == "T1"
+        assert req.metrics == sweep_uc.DEFAULT_METRICS
+
+    def test_a_study_file_can_ask_for_it(self, tmp_path):
+        path = tmp_path / "t.yaml"
+        path.write_text("name: t\nvary:\n  parameter: cg_x\n  values: [0.04, 0.06]\n"
+                        "analysis:\n  trimmed: true\n", encoding="utf-8")
+        assert sweep_uc.load_study(path).trimmed is True
+
+
+class TestRepeatedWarningsAreCollapsed:
+    """Every point of a sweep runs a full analysis and warns about the same things.
+
+    A four-point CG sweep came back with the CG-height explanation four times, each
+    carrying a different percentage, so exact-match de-duplication could not see
+    they were one finding and the reader had to diff them by eye.
+    """
+
+    def test_warnings_differing_only_in_their_numbers_share_a_shape(self):
+        a = "the CG sits 0.74 MAC below the wing, adding +15.8% to pitch stiffness"
+        b = "the CG sits 0.31 MAC below the wing, adding +9.2% to pitch stiffness"
+        assert sweep_uc._shape(a) == sweep_uc._shape(b)
+
+    def test_genuinely_different_warnings_do_not(self):
+        a = "the static margin is +16.1% MAC and this design asks for 5%-15%"
+        b = "this L/D of 49.84 is for the lifting surfaces only"
+        assert sweep_uc._shape(a) != sweep_uc._shape(b)
+
+    def test_a_signed_number_is_not_mistaken_for_a_word(self):
+        assert sweep_uc._shape("margin -10.1%") == sweep_uc._shape("margin +8.7%")

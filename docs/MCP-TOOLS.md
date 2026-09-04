@@ -253,6 +253,35 @@ full results. Three things it does that a hand-rolled loop would not:
   "discover" that washout should be zero, because what washout buys — tip-stall
   margin, roll damping, an unloaded tip — is invisible to a solver with no separation
   model. The tool says so rather than letting the table speak for itself.
+- **Collapses the repeats.** Every point runs a full analysis and warns about the
+  same things, so a four-value sweep used to return the CG-height explanation four
+  times with four different percentages. Warnings that differ only in their numbers
+  are reported once, with a count.
+
+#### `trimmed: true`
+
+A fixed-speed sweep holds the speed and sweeps α, so at almost every point the lift
+does not equal the weight and the pitching moment is not zero. Its best L/D is the
+best point of a flight condition the aircraft never reaches.
+
+With `trimmed`, each point runs as a **fixed-lift (T2) polar** — flow5 solves the
+speed at every α so that lift equals weight — and the metrics are read at the α where
+Cm crosses zero. That row is the aircraft actually flying: level, trimmed, at its own
+weight. It overrides `type`, switches the default metrics to
+`ld_at_trim, trim_alpha, cl_at_trim, min_sink, static_margin`, and needs an elevator
+to trim against.
+
+Measured on the HPA example, moving the CG aft:
+
+| cg_x (m) | ld_at_trim | trim_alpha | static_margin |
+|---|---|---|---|
+| 0.360 | 41.45 | 1.77° | +16.1 % |
+| 0.407 | 45.40 | 3.02° | +10.8 % |
+| 0.453 | 48.81 | 4.71° | +5.5 % |
+| 0.500 | 49.74 | 6.91° | +0.3 % |
+
+That is the trade a CG study exists to show, and none of it is visible on best L/D,
+which does not respond to CG at all.
 
 ### `plot`
 `design`, `polar` (one or more), `kind` (`polar` | `cl_alpha` | `cm_alpha` |

@@ -416,7 +416,10 @@ def cmd_sweep(args: argparse.Namespace) -> int:
                 name="sweep", polar_type=args.type, speed=args.speed, alpha=alpha,
                 viscous=args.viscous, ground_effect=args.ground_effect,
                 mass=args.mass, timeout=args.timeout),
+            trimmed=args.trimmed,
         )
+    if args.trimmed:
+        req.trimmed = True
     if args.metrics:
         req.metrics = tuple(m.strip() for m in args.metrics.split(",") if m.strip())
     _emit(sweep_uc.sweep(project, req, flow5=args.flow5), args.json)
@@ -606,6 +609,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--metrics", metavar="LIST")
     p.add_argument("--name")
     p.add_argument("--type", default="T1")
+    p.add_argument("--trimmed", action="store_true",
+                   help="solve the flight condition at every point: fixed-lift polar, "
+                        "metrics read where Cm = 0")
     p.add_argument("--speed", type=float)
     p.add_argument("--alpha", metavar="MIN,MAX,STEP")
     p.add_argument("--mass", type=float)

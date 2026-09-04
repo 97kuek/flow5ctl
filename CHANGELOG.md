@@ -24,6 +24,13 @@ The core library, the CLI and the MCP server all work — see
 - **Wing root bending moment**, with a closed-form cross-check beside it. The strip
   table already carried the number a spar is sized from and it was being discarded.
 
+- **`sweep --trimmed`** — solve the flight condition at every point instead of
+  reporting a polar. A fixed-speed sweep holds the speed and sweeps alpha, so at
+  almost every point the lift does not equal the weight and the moment is not zero;
+  its best L/D belongs to a condition the aircraft never flies. Each point now runs
+  as a fixed-lift polar and the metrics are read where Cm crosses zero. On the HPA
+  example, moving the CG from 0.36 m to 0.50 m takes trimmed L/D from 41.4 to 49.7
+  while the static margin falls from +16.1 % to +0.3 %.
 - **A Japanese getting-started guide** — `docs/ja/QUICKSTART.md`. Written for the
   reader Phase 3's exit criterion names: a Birdman Rally team member who knows
   aerodynamics, has never used a terminal, and does not read English documentation.
@@ -69,6 +76,10 @@ The core library, the CLI and the MCP server all work — see
   point it is 3 %. Nothing was wrong with the strips. The load factor is now
   reported on its own, and a point more than 15 % from level flight says that the
   bending moment there is not the load a spar is sized from.
+- A sweep repeated every per-point warning once per point. A four-value CG sweep
+  returned the CG-height explanation four times with four different percentages, and
+  exact-match de-duplication could not tell they were one finding. Warnings that
+  differ only in their numbers are now collapsed, with a count.
 - Twin fins (`tail.fin.count: 2`). flow5 has no twin-fin flag — a plane is a list of
   `<wing>` elements with no cap — so two fins are two entries at ±y.
 - Airfoil files in Lednicer format, which is how the UIUC database serves every

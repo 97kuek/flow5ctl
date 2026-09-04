@@ -327,7 +327,9 @@ async def trim(
                 "ground_height. Returns a table, the best row by the design's "
                 "objective, and — importantly — a warning when a requested metric does "
                 "not respond to the parameter you varied. Best L/D does not respond to "
-                "CG at all; compare CG positions on ld_at_trim.",
+                "CG at all; compare CG positions on ld_at_trim. Set `trimmed` to solve "
+                "the flight condition at every point instead of reporting a polar the "
+                "aircraft is not flying.",
 )
 async def sweep(
     name: DesignName,
@@ -338,6 +340,11 @@ async def sweep(
                                          "static_margin, trim_alpha, cl_at_trim, "
                                          "ld_at_trim, cl_alpha, neutral_point_x")] = None,
     type: PolarType = "T1",
+    trimmed: Annotated[bool, Field(
+        description="solve the flight condition at every point: each runs as a "
+                    "fixed-lift (T2) polar, so the speed carries the weight, and the "
+                    "metrics are read where Cm = 0. Overrides `type`, and switches "
+                    "the default metrics to the trimmed ones. Needs an elevator.")] = False,
     speed: float | None = None,
     alpha: Annotated[list[float] | None, Field(description="[min, max, step]")] = None,
     study: Annotated[str | None,
@@ -354,6 +361,7 @@ async def sweep(
         analysis=analyze_uc.Request(polar_type=type, speed=speed,
                                     alpha=tuple(alpha) if alpha else None),
         metrics=tuple(metrics) if metrics else sweep_uc.DEFAULT_METRICS,
+        trimmed=trimmed,
     )
     out = await _run(sweep_uc.sweep, project, req)
     await _progress(ctx, len(values), len(values), "sweep complete")
