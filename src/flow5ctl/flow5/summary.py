@@ -136,6 +136,17 @@ class Summary:
     min_sink: Extremum | None = None
     cm_alpha_per_deg: float | None = None
     dcm_dcl: float | None = None
+    """Pairs with `static_margin`, which is minus this.
+
+    When a CG-height offset makes the two margins differ, this is the classical
+    slope — about the wing's own mean height — so that the textbook identity
+    `static_margin == -dcm_dcl` holds in the response a reader is looking at. The
+    slope about the aircraft's real CG is `dcm_dcl_about_cg`, and pairs with
+    `pitch_stiffness_margin` the same way. Reporting one unqualified slope beside two
+    margins meant one of the two identities was always false and nothing said which.
+    """
+    dcm_dcl_about_cg: float | None = None
+    """dCm/dCL about the real CG: minus `pitch_stiffness_margin`."""
     neutral_point_x: float | None = None
     static_margin: float | None = None
     """Classical stick-fixed static margin, (X_np − X_cg)/MAC.
@@ -197,6 +208,7 @@ class Summary:
             "alpha_zero_lift": r(self.alpha_zero_lift, 3),
             "cm_alpha_per_deg": r(self.cm_alpha_per_deg),
             "dcm_dcl": r(self.dcm_dcl),
+            "dcm_dcl_about_cg": r(self.dcm_dcl_about_cg),
             "neutral_point_x": r(self.neutral_point_x),
             "static_margin": r(self.static_margin, 4),
             "pitch_stiffness_margin": r(self.pitch_stiffness_margin, 4),

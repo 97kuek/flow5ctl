@@ -390,6 +390,7 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
 
     # Separate the classical static margin from the pitch stiffness about the real CG.
     summary.pitch_stiffness_margin = summary.static_margin
+    summary.dcm_dcl_about_cg = summary.dcm_dcl
     # True while `static_margin` is the classical figure. With no CG height offset
     # the two are the same number and it already is; with one, it only becomes so if
     # the reference-height pass produced a polar we could read.
@@ -403,6 +404,19 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
             summary.static_margin = ref.static_margin
             summary.neutral_point_x = ref.neutral_point_x or summary.neutral_point_x
             classical_margin = summary.static_margin is not None
+            # One unqualified slope beside two margins meant one of the two
+            # identities was always false, and nothing said which: a payload
+            # reported static_margin +8.7 % next to dcm_dcl -0.2222, and static
+            # margin is -dCm/dCL. Both slopes are named now - `dcm_dcl` pairs with
+            # `static_margin`, `dcm_dcl_about_cg` with `pitch_stiffness_margin` -
+            # so neither reader has to guess which one they are holding.
+            if ref.dcm_dcl is not None:
+                summary.dcm_dcl = ref.dcm_dcl
+            # trim_alpha and everything read at it stay from the first pass, and
+            # should: the aircraft trims where Cm about its *real* CG is zero, which
+            # is what the first pass computes. Measured on the HPA example, moving
+            # the reference height moves the crossing 3.601 deg -> 6.003 deg, and the
+            # 6.003 is not a condition the aeroplane ever reaches.
             if (summary.static_margin is not None
                     and summary.pitch_stiffness_margin is not None):
                 gap = summary.pitch_stiffness_margin - summary.static_margin

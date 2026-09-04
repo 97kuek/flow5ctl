@@ -407,3 +407,34 @@ def test_strip_reynolds_stays_proportional_to_chord(install, workspace, polar_ty
     assert strips, "no strip table"
     re = [v for v in strips["Re"] if v]
     assert max(re) / min(re) == pytest.approx(2.212, abs=0.01)
+
+
+def test_the_two_margins_do_not_contradict_each_other(install, workspace):
+    """Static margin is -dCm/dCL, so the two have to come from the same pass.
+
+    `dcm_dcl` was kept from the first pass while `static_margin` was replaced by the
+    reference-height pass's, so one payload reported a static margin of +8.7 % beside
+    a dcm_dcl of -0.2222. A reader computing -dCm/dCL got 0.2222 - two and a half
+    times the number printed next to it.
+
+    The about-the-real-CG value is not lost. It is `pitch_stiffness_margin`, which is
+    what it is, and `trim_alpha` stays from the first pass because the aircraft trims
+    where Cm about its *real* CG is zero: moving the reference height moves the
+    crossing from 3.601 deg to 6.003 deg, and the second is a condition it never
+    reaches.
+    """
+    import pathlib as _p
+
+    import yaml
+    root = _p.Path(__file__).resolve().parent.parent
+    raw = yaml.safe_load((root / "examples" / "hpa.yaml").read_text())
+    define.create("Margins", raw)
+    out = analyze_uc.analyze(Project.resolve("Margins"), analyze_uc.Request(
+        name="m", polar_type="T1", alpha=(0.0, 8.0, 2.0), viscous=False))
+
+    s = out["summary"]
+    # both identities hold, and the payload rounds, so compare at what it prints
+    assert s["static_margin"] == pytest.approx(-s["dcm_dcl"], abs=1e-3)
+    assert s["pitch_stiffness_margin"] == pytest.approx(-s["dcm_dcl_about_cg"], abs=1e-3)
+    # and the two margins are genuinely different on this aircraft
+    assert s["pitch_stiffness_margin"] > s["static_margin"] + 0.05

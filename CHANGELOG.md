@@ -6,6 +6,17 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Added
+
+- **`dcm_dcl_about_cg`**, so neither of the two margin identities is false. A
+  response reported `static_margin +8.7 %` beside `dcm_dcl -0.2222`, and static
+  margin is −dCm/dCL: a reader checking that found it broken by a factor of two and
+  a half. One unqualified slope cannot pair with two margins, so both are named —
+  `dcm_dcl` with `static_margin`, `dcm_dcl_about_cg` with `pitch_stiffness_margin`.
+  A reviewer argued the original was right on its own terms, which it was; what it
+  could not do was say which of the two relations it satisfied.
+
+
 ### Fixed
 
 - **The `xml` export named a polar it did not come from.** `plane.xml` sits outside

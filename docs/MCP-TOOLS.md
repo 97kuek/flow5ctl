@@ -187,6 +187,12 @@ wing and a tail:
 }
 ```
 
+When a CG-height offset makes the two margins differ, **two slopes are reported so
+neither identity is false**: `dcm_dcl` pairs with `static_margin` (minus one is the
+other) and `dcm_dcl_about_cg` pairs with `pitch_stiffness_margin`. One unqualified
+slope beside two margins meant a reader checking the textbook relation found it broken
+half the time, with nothing to say which half.
+
 `load_factor` is the check that matters before quoting the bending moment. A
 fixed-speed (T1) polar holds the speed and sweeps alpha, so most of its points are
 not level flight — on the shipped 3 m glider, best L/D sits at a load factor of
