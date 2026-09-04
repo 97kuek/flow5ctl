@@ -2,8 +2,17 @@
 
 A Birdman Rally aircraft launches from a platform and flies a few metres above
 water for its whole flight. Ground effect is not a correction to its performance,
-it is a large part of it — measured on a reconstructed 30 m aircraft at h = 2.0 m,
-best lift-to-drag went 38.7 to 47.6 (**+23 %**) and minimum sink 0.172 to 0.133 m/s.
+it is a large part of it. Measured on the shipped examples, which anyone can
+reproduce from this repository:
+
+| example | height | best L/D | minimum sink |
+|---|---|---|---|
+| `examples/hpa.yaml`, 34 m | 2.0 m | 43.66 → 50.64 (**+16.0 %**) | 0.1599 → 0.1330 (−16.8 %) |
+| `examples/rc-glider.yaml`, 3 m | 0.30 m | 23.67 → 27.27 (**+15.2 %**) | 0.1991 → 0.1646 (−17.3 %) |
+
+Earlier versions of this file quoted +23 %, measured before the Reynolds ladder was
+widened to eight rungs per decade and the spanwise default raised to 40. Both of
+those changed the drag, so the old figure no longer describes what this code does.
 
 Comparing the two used to mean running `analyze` twice by hand, remembering to
 change only the one flag, and doing the arithmetic. Getting that wrong is easy and

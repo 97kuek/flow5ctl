@@ -449,7 +449,7 @@ def design_guide() -> str:
         "pilot's body are not modelled. Treat absolute L/D as an upper bound; "
         "comparisons between designs run identically are far more reliable.\n"
         "- Viscous analysis is not optional at these Reynolds numbers. An inviscid "
-        "run omitted 93 % of the drag at Re 2e5.\n"
+        "run left out 98 % of the drag on the shipped 3 m glider at alpha 0.\n"
         "- Ground effect is a design driver for human-powered aircraft, worth 15-20 % "
         "in L/D a few metres above water.\n"
         "- No aircraft carrying a person should be committed to build on a "

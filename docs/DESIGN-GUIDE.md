@@ -217,9 +217,10 @@ Compute Re at the MAC at cruise before choosing an airfoil. flow5ctl reports it 
 | 2×10⁵ – 1×10⁶ | HPA and large models. Better behaved. DAE, FX, SG series. |
 | > 1×10⁶ | Above this community's normal range. |
 
-**Viscous analysis is not optional here.** Measured on one wing at Re 2×10⁵: CD at
-α=0° was 0.00095 inviscid versus 0.0133 viscous — the inviscid run omitted **93 %**
-of the drag. flow5ctl defaults `viscous: true`; if you turn it off, say why, and
+**Viscous analysis is not optional here.** Measured on the shipped 3 m glider
+(Re 1.5×10⁵ at the MAC) at α = 0°: CD was **0.000332 inviscid against 0.017991
+viscous** — the inviscid run left out **98 %** of the drag. Re-run it with
+`analyze --inviscid` and without. flow5ctl defaults `viscous: true`; if you turn it off, say why, and
 never quote an L/D from an inviscid run.
 
 **Pick one viscous method and stay with it.** The interpolated method (a
@@ -328,10 +329,20 @@ induced drag is most of the drag budget on a high-AR aircraft.
 - flow5 models the ground with an image plane. That is the right first-order model
   and it is not exact near the surface.
 
-Measured magnitudes: a 3 m glider at h = 0.30 m gained CL +8 %, lost CD 9.6 %, and
-went from L/D 24.4 to 29.2 (**+20 %**). A 34 m HPA at h = 2.0 m went from L/D 45.5 to
-53.8 (**+18 %**), with static margin moving 5.08 → 7.08 %. For a Birdman Rally
-aircraft this is a design driver, not a correction.
+Measured on the two shipped examples with the current defaults, so any reader can
+reproduce them with `analyze --compare-ground`:
+
+| example | height | best L/D | minimum sink |
+|---|---|---|---|
+| [`examples/hpa.yaml`](../examples/hpa.yaml), 34 m | 2.0 m | 43.66 → 50.64 (**+16.0 %**) | 0.1599 → 0.1330 (−16.8 %) |
+| [`examples/rc-glider.yaml`](../examples/rc-glider.yaml), 3 m | 0.30 m | 23.67 → 27.27 (**+15.2 %**) | 0.1991 → 0.1646 (−17.3 %) |
+
+Earlier versions of this guide quoted +18 to +20 %, measured before the Reynolds
+ladder was widened to eight rungs per decade and the spanwise panel default raised
+to 40. Both changed the drag, so those figures no longer describe what this tool
+does — which is the reason for preferring numbers a reader can re-run.
+
+For a Birdman Rally aircraft this is a design driver, not a correction.
 
 Negative `ground_height` models a hydrofoil under a free surface — a different
 feature, not a mistake to make by accident.
