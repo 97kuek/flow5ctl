@@ -115,6 +115,23 @@ class TestMassProperties:
         assert d.mass.total == pytest.approx(4.0)
         assert d.mass.cg[0] == pytest.approx(0.3)
 
+    def test_the_total_carries_no_binary_noise(self, rect_design):
+        """0.40 + 0.10 + 0.10 + 0.10 came back as 0.7000000000000001 kg.
+
+        It was reported that way, and a number that looks broken makes a careful
+        reader doubt every other number beside it.
+        """
+        raw = dict(rect_design)
+        raw["mass"] = {"components": [
+            {"tag": "a", "mass": 0.40, "at": [0.1, 0.0, 0.0]},
+            {"tag": "b", "mass": 0.10, "at": [0.1, -0.5, 0.0]},
+            {"tag": "c", "mass": 0.10, "at": [0.1, 0.5, 0.0]},
+            {"tag": "d", "mass": 0.10, "at": [0.2, 0.0, 0.0]},
+        ]}
+        total = geometry.solve(Design.model_validate(raw)).mass.total
+        assert total == 0.7
+        assert repr(total) == "0.7"
+
     def test_centreline_masses_give_no_roll_inertia(self, rect_design):
         d = solve(rect_design)
         assert d.mass.ixx == pytest.approx(0.0)

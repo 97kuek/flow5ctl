@@ -330,8 +330,27 @@ def cmd_analyze(args: argparse.Namespace) -> int:
 
 
 def cmd_set(args: argparse.Namespace) -> int:
-    project = Project.resolve(args.design)
-    _emit(edit_uc.set_fields(project, args.assignment), args.json)
+    # Every other verb takes the design name as its first positional, so people
+    # write `set Glider wing.planform.taper=0.6`. Without this that reads as three
+    # assignments, none of which contain an `=`, and the failure that surfaces is
+    # "no design.yaml in the current directory" — which is about the wrong thing.
+    assignments = list(args.assignment)
+    design = args.design
+    if design is None and assignments and "=" not in assignments[0]:
+        design = assignments.pop(0)
+    if not assignments:
+        raise Flow5ctlError(
+            "nothing to set. Assignments are `path=value`, for example "
+            "`flow5ctl set Glider wing.planform.washout=-2.5`."
+        )
+    bad = [a for a in assignments if "=" not in a]
+    if bad:
+        raise Flow5ctlError(
+            f"{', '.join(repr(b) for b in bad)} is not a `path=value` assignment. "
+            "Write `wing.planform.taper=0.6`, with no spaces around the `=`."
+        )
+    project = Project.resolve(design)
+    _emit(edit_uc.set_fields(project, assignments), args.json)
     return 0
 
 
@@ -523,8 +542,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_show)
 
     p = add("set", help="change fields in a design")
-    p.add_argument("assignment", nargs="+", metavar="PATH=VALUE",
-                   help="e.g. wing.planform.washout=-2.5")
+    p.add_argument("assignment", nargs="+", metavar="[DESIGN] PATH=VALUE",
+                   help="e.g. Glider wing.planform.washout=-2.5")
     p.add_argument("--design")
     p.set_defaults(func=cmd_set)
 

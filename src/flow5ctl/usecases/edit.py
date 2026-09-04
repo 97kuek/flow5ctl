@@ -204,6 +204,15 @@ def expand(project: Project, *, write: bool = True) -> dict[str, Any]:
     return out
 
 
+#: Suffixes this tool appends to a polar name for its own runs. A user never asks
+#: for one of these by name, and neither should a default.
+INTERNAL_SUFFIXES = ("__zref", "__free")
+
+
+def _is_internal(name: str) -> bool:
+    return name.endswith(INTERNAL_SUFFIXES)
+
+
 def export(project: Project, fmt: str, *, polar: str | None = None,
            out_dir: Path | None = None) -> dict[str, Any]:
     """Copy a build artifact out of `build/` under a predictable name."""
@@ -218,11 +227,23 @@ def export(project: Project, fmt: str, *, polar: str | None = None,
 
     runs = sorted((p for p in build_out.iterdir() if p.is_dir()),
                   key=lambda p: p.stat().st_mtime, reverse=True)
-    chosen = next((p for p in runs if polar is None or p.name == polar), None)
+    if polar is not None:
+        chosen = next((p for p in runs if p.name == polar), None)
+    else:
+        # Never default to one of our own by-products. The reference-height pass
+        # runs the aircraft with the CG at wing height so the CG-height term can be
+        # separated out, and the ground comparison runs a free-air copy; both land
+        # in build/out and both are usually the most recent thing there. Exporting
+        # one of them hands the user a different aircraft than the one they asked
+        # about, under a name that looks close enough to be missed.
+        chosen = next((p for p in runs if not _is_internal(p.name)), None)
     if chosen is None:
+        offered = [p.name for p in runs if not _is_internal(p.name)]
         raise DesignError(
-            f"no analysis called {polar!r}. Available: "
-            f"{', '.join(p.name for p in runs) or 'none'}"
+            f"no analysis called {polar!r}. Available: {', '.join(offered) or 'none'}"
+            if polar is not None else
+            "the only analyses on disk are internal by-products of `trim` and "
+            "`analyze --compare-ground`, not runs you asked for. Run `analyze` first."
         )
 
     fmt = fmt.lower()
@@ -263,5 +284,9 @@ def export(project: Project, fmt: str, *, polar: str | None = None,
         "format": fmt,
         "from_analysis": chosen.name,
         "path": str(dst),
-        "notes": (["Open it in the flow5 GUI with `flow5ctl open`."] if fmt == "fl5" else []),
+        "notes": (["Open it in the flow5 GUI with `flow5ctl open`."] if fmt == "fl5" else [])
+                 + ([f"{chosen.name} is an internal by-product, not an analysis you "
+                     "asked for: a reference-height pass holds the CG at wing height, "
+                     "and a ground comparison's free-air copy has ground effect off. "
+                     "You named it, so it was used."] if _is_internal(chosen.name) else []),
     }

@@ -81,6 +81,19 @@ The core library, the CLI and the MCP server all work — see
   point it is 3 %. Nothing was wrong with the strips. The load factor is now
   reported on its own, and a point more than 15 % from level flight says that the
   bending moment there is not the load a spar is sized from.
+- **`export` defaulted to one of our own by-products.** The reference-height pass
+  (`__zref`, which holds the CG at wing height so the CG-height term can be
+  separated) and a ground comparison's free-air copy (`__free`) both land in
+  `build/out` and are usually the most recent thing there, so `export` handed back a
+  different aircraft than the one asked about, under a name close enough to be
+  missed. They are skipped by default, still usable by name, and labelled when used.
+- **`set` now takes the design name positionally**, like every other verb. It did
+  not, so `flow5ctl set Glider wing.planform.taper=0.6` read as three assignments
+  and failed with "no design.yaml in the current directory" — an error about the
+  wrong thing. An assignment without an `=` now says so.
+- **The total mass carried binary noise.** 0.40 + 0.10 + 0.10 + 0.10 came back as
+  0.7000000000000001 kg and `trim` printed it that way. A number that looks broken
+  makes a careful reader doubt every other number beside it.
 - A sweep repeated every per-point warning once per point. A four-value CG sweep
   returned the CG-height explanation four times with four different percentages, and
   exact-match de-duplication could not tell they were one finding. Warnings that

@@ -169,6 +169,49 @@ class TestExport:
         with pytest.raises(DesignError, match="fl5, stl, csv or xml"):
             edit.export(project, "dxf")
 
+    def _run(self, project, name: str) -> None:
+        """A build directory shaped like one flow5 leaves behind."""
+        d = project.build / "out" / name
+        d.mkdir(parents=True, exist_ok=True)
+        (d / name).write_bytes(b"fl5")
+
+    def test_the_default_skips_our_own_by_products(self, project):
+        """The reference-height pass is usually the most recent thing on disk.
+
+        It holds the CG at wing height so the CG-height term can be separated out,
+        so exporting it hands the user a different aircraft than the one they asked
+        about, under a name close enough to be missed.
+        """
+        self._run(project, "cruise")
+        self._run(project, "cruise__zref")
+        out = edit.export(project, "fl5")
+        assert out["from_analysis"] == "cruise"
+
+    def test_a_free_air_copy_is_not_defaulted_to_either(self, project):
+        self._run(project, "cruise")
+        self._run(project, "cruise__free")
+        assert edit.export(project, "fl5")["from_analysis"] == "cruise"
+
+    def test_naming_one_explicitly_works_and_says_what_it_is(self, project):
+        self._run(project, "cruise")
+        self._run(project, "cruise__zref")
+        out = edit.export(project, "fl5", polar="cruise__zref")
+        assert out["from_analysis"] == "cruise__zref"
+        assert any("internal by-product" in n for n in out["notes"])
+
+    def test_when_only_by_products_exist_it_says_so_rather_than_picking_one(self, project):
+        self._run(project, "cruise__zref")
+        with pytest.raises(DesignError, match="internal by-products"):
+            edit.export(project, "fl5")
+
+    def test_an_unknown_name_does_not_offer_the_by_products(self, project):
+        self._run(project, "cruise")
+        self._run(project, "cruise__zref")
+        with pytest.raises(DesignError) as exc:
+            edit.export(project, "fl5", polar="nope")
+        assert "cruise" in str(exc.value)
+        assert "__zref" not in str(exc.value)
+
 
 def test_a_twin_fin_edit_that_would_overlap_is_refused(rect_design):
     """count: 2 with the fin on the centreline would build two coincident surfaces."""
@@ -185,3 +228,42 @@ def test_a_twin_fin_edit_that_would_overlap_is_refused(rect_design):
     with pytest.raises(DesignError, match="half-spacing"):
         edit.set_fields(project, ["tail.fin.position=[3.0, 0.0, 0.2]"])
     assert project.load().tail.fin.position[1] == pytest.approx(0.8)
+
+
+class TestSetTakesTheDesignPositionally:
+    """Every other verb takes the design name first, so people write it that way.
+
+    `flow5ctl set Glider wing.planform.taper=0.6` used to read as three assignments,
+    none containing an `=`, and the error that surfaced was "no design.yaml in the
+    current directory" — which is about the wrong thing entirely.
+    """
+
+    def _args(self, assignment: list[str]):
+        import argparse
+        return argparse.Namespace(assignment=assignment, design=None, json=True)
+
+    def test_a_leading_bare_name_is_the_design(self, project, capsys):
+        from flow5ctl.cli import cmd_set
+        assert cmd_set(self._args(["Rect", "wing.planform.taper=0.5"])) == 0
+        assert project.load().wing.planform.taper == pytest.approx(0.5)
+
+    def test_an_assignment_without_an_equals_says_what_is_wrong(self, project):
+        from flow5ctl.cli import cmd_set
+        from flow5ctl.errors import Flow5ctlError
+        with pytest.raises(Flow5ctlError, match="not a `path=value` assignment"):
+            cmd_set(self._args(["Rect", "taper", "0.6"]))
+
+    def test_a_design_name_alone_is_not_an_edit(self, project):
+        from flow5ctl.cli import cmd_set
+        from flow5ctl.errors import Flow5ctlError
+        with pytest.raises(Flow5ctlError, match="nothing to set"):
+            cmd_set(self._args(["Rect"]))
+
+    def test_the_design_flag_still_works(self, project):
+        import argparse
+
+        from flow5ctl.cli import cmd_set
+        args = argparse.Namespace(assignment=["wing.planform.taper=0.4"],
+                                  design="Rect", json=True)
+        assert cmd_set(args) == 0
+        assert project.load().wing.planform.taper == pytest.approx(0.4)

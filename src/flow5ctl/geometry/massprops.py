@@ -58,7 +58,12 @@ def solve_mass(mass: Mass, length_unit: str, mass_unit: str) -> MassProperties:
              tuple(to_si_length(v, length_unit) for v in c.at))
             for c in mass.components
         ]
-        total = sum(m for m, _ in items)
+        # Rounded because summing masses a designer typed in decimal produces
+        # binary representation noise: 0.40 + 0.10 + 0.10 + 0.10 came back as
+        # 0.7000000000000001 kg and was reported that way. At 1e-12 kg this is far
+        # below anything meaningful, and a number that looks broken makes a careful
+        # reader doubt every other number in the report.
+        total = round(sum(m for m, _ in items), 12)
         if total <= 0:
             raise DesignError("total mass is zero")
         cg = tuple(sum(m * p[i] for m, p in items) / total for i in range(3))
