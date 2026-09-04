@@ -38,6 +38,7 @@ from .project.store import list_designs, resolve_in_workspace, workspace_root
 from .usecases import analyze as analyze_uc
 from .usecases import define as define_uc
 from .usecases import edit as edit_uc
+from .usecases import ground as ground_uc
 from .usecases import gui as gui_uc
 from .usecases import plot as plot_uc
 from .usecases import sweep as sweep_uc
@@ -266,6 +267,10 @@ async def analyze(
                                        "this is the SIDESLIP range, not incidence — "
                                        "alpha is held at 0 and beta is swept.")] = None,
     viscous: bool | None = None,
+    compare_ground: Annotated[bool, Field(
+        description="run free-air AND in ground effect, and report the difference. "
+                    "For a human-powered aircraft that difference is a design "
+                    "driver, not a correction - measured +9 % on best L/D at 2 m")] = False,
     ground_effect: bool | None = None,
     ground_height: Annotated[float | None,
                              Field(description="height of the CG above the surface, m")] = None,
@@ -280,7 +285,10 @@ async def analyze(
         ground_effect=ground_effect, ground_height=ground_height,
         mass=mass, cg_x=cg_x, stability=(type == "T7"), export_stl=export_stl,
     )
-    out = await _run(analyze_uc.analyze, project, req)
+    if compare_ground:
+        out = await _run(ground_uc.compare, project, req, height=ground_height)
+    else:
+        out = await _run(analyze_uc.analyze, project, req)
     return _trim(out)
 
 

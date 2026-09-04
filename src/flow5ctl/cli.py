@@ -20,6 +20,7 @@ from .project.store import Project, list_designs, workspace_root
 from .usecases import analyze as analyze_uc
 from .usecases import define as define_uc
 from .usecases import edit as edit_uc
+from .usecases import ground as ground_uc
 from .usecases import gui as gui_uc
 from .usecases import sweep as sweep_uc
 from .usecases import trim as trim_uc
@@ -98,6 +99,11 @@ def _pretty(p: dict[str, Any]) -> None:
             line("pitch stiffness", f"{s['pitch_stiffness_margin'] * 100:.2f} % MAC"
                                     " (incl. CG height)")
         line("trim alpha", s.get("trim_alpha"))
+        st = p.get("structure")
+        if st and st.get("root_bending_moment_Nm"):
+            est = st.get("elliptic_estimate_Nm")
+            tail = f"  (elliptic estimate {est:,.0f})" if est else ""
+            line("root bending", f"{st['root_bending_moment_Nm']:,.0f} N·m{tail}")
         for key, label in (("longitudinal_modes", "Longitudinal"), ("lateral_modes", "Lateral")):
             if s.get(key):
                 print(f"\n{label} modes")
@@ -109,6 +115,29 @@ def _pretty(p: dict[str, Any]) -> None:
                           f"{period}ζ={m['damping_ratio']}  {mark}")
         if p.get("data"):
             print(f"\n  full data: {p['data']}")
+    if "in_ground_effect" in p:
+        f, n, d = p["free_air"], p["in_ground_effect"], p["change_pct"]
+        print(f"\n{p['design']} / {p['polar']}   ground effect at h = {p['ground_height']} m")
+        print(f"\n  {'':<16}{'free air':>12}{'in ground':>12}{'change':>10}")
+
+        def row(label: str, key: str, fmt: str = "{:.3f}") -> None:
+            a, b, c = f.get(key), n.get(key), d.get(key)
+            if a is None or b is None:
+                return
+            pct = f"{c:+.1f} %" if c is not None else "—"
+            print(f"  {label:<16}{fmt.format(a):>12}{fmt.format(b):>12}{pct:>10}")
+
+        row("best L/D", "best_LD", "{:.2f}")
+        row("min sink m/s", "min_sink", "{:.4f}")
+        row("CL_alpha /deg", "cl_alpha_per_deg", "{:.5f}")
+        if p.get("data"):
+            print(f"\n  full data: {p['data']}")
+        for w in p.get("warnings", []):
+            print(f"\n  ⚠ {w}")
+        for note in p.get("notes", []):
+            print(f"  · {note}")
+        return
+
     if "solved" in p:
         print(f"\n{p['design']}   trim: {p['target']}"
               + (f" = {p['requested']}" if p.get("requested") is not None else ""))
@@ -292,6 +321,10 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         timeout=args.timeout,
         recompute_polars=args.recompute_polars,
     )
+    if getattr(args, "compare_ground", False):
+        _emit(ground_uc.compare(project, req, height=args.ground_height,
+                                flow5=args.flow5), args.json)
+        return 0
     _emit(analyze_uc.analyze(project, req, flow5=args.flow5), args.json)
     return 0
 
@@ -538,6 +571,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--cp", action="store_true", help="export Cp per operating point")
     p.add_argument("--recompute-polars", dest="recompute_polars", action="store_true",
                    help="rebuild the 2D airfoil polar cache")
+    p.add_argument("--compare-ground", action="store_true",
+                   help="run free-air and in ground effect, and report the difference. "
+                        "For an HPA that difference is a design driver, not a "
+                        "correction: +23 %% on best L/D at 2 m on a 30 m aircraft")
     p.add_argument("--timeout", type=float, default=900.0)
     p.set_defaults(func=cmd_analyze)
 

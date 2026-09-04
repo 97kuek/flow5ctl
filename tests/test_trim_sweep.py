@@ -12,7 +12,7 @@ import pytest
 
 from flow5ctl.errors import DesignError, SolverError
 from flow5ctl.project.store import Project
-from flow5ctl.usecases import analyze, define
+from flow5ctl.usecases import analyze, define, ground
 from flow5ctl.usecases import sweep as sweep_uc
 from flow5ctl.usecases import trim as trim_uc
 
@@ -334,3 +334,34 @@ class TestStripOperatingPoint:
         assert names[len(names) // 2] == " 6_00°_x.csv"
         by_angle = sorted(analyze._oppoint_alpha(Path(n)) for n in names)
         assert by_angle[len(by_angle) // 2] == 4.0   # the middle ANGLE
+
+
+class TestGroundEffectComparison:
+    """Free-air and in-ground-effect from one call.
+
+    Doing it by hand means running the same analysis twice and changing exactly one
+    flag. Getting that wrong is silent: two runs at the same height report no
+    difference, which reads like "ground effect does not matter here" rather than
+    like a mistake. On a Birdman Rally aircraft it matters a great deal - measured
+    on a reconstructed 32 m machine at h = 2 m, best L/D went 28.83 to 31.43.
+    """
+
+    def test_only_the_ground_settings_and_the_name_change(self):
+        req = analyze.Request(name="cruise", polar_type="T1", speed=7.2,
+                              alpha=(-2.0, 8.0, 2.0), mass=89.0)
+        free = ground.replace_ground(req, effect=False, height=None, suffix="__free")
+        near = ground.replace_ground(req, effect=True, height=2.0, suffix=None)
+        assert free.ground_effect is False and free.ground_height is None
+        assert near.ground_effect is True and near.ground_height == 2.0
+        assert free.name == "cruise__free" and near.name == "cruise"
+        for field in ("polar_type", "speed", "alpha", "mass"):
+            assert getattr(free, field) == getattr(near, field) == getattr(req, field)
+
+    def test_the_percentage_is_signed_from_free_air(self):
+        assert ground._pct(28.83, 31.43) == pytest.approx(9.0, abs=0.1)
+        assert ground._pct(0.2394, 0.2142) == pytest.approx(-10.5, abs=0.1)
+
+    def test_a_missing_or_zero_baseline_gives_no_percentage(self):
+        assert ground._pct(None, 31.4) is None
+        assert ground._pct(28.8, None) is None
+        assert ground._pct(0.0, 31.4) is None

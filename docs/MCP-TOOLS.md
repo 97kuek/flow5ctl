@@ -163,6 +163,31 @@ so the usual rule reads correctly. No `static_margin` or `neutral_point_x` is
 returned — flow5's own header claimed 593 % for a 34 m HPA.
 ([FLOW5-INTERFACE.md §5.3a](FLOW5-INTERFACE.md))
 
+Every analysis of an HPA or a glider also returns a **drag budget** — what the L/D
+does *not* include, because a VLM run of a wing and a tail returns the drag of a
+wing and a tail:
+
+```jsonc
+{
+  "drag_budget": {
+    "modelled_best_LD": 27.03,
+    "missing_fraction": {"low": 0.20, "high": 0.40},
+    "realistic_best_LD": {"low": 19.31, "high": 22.53},
+    "items": [{"item": "rigging wires", "low": 0.10, "high": 0.30, "note": "..."}]
+  },
+  "structure": {
+    "root_bending_moment_Nm": 2772.0,   // what the main spar is sized from
+    "elliptic_estimate_Nm": 2964.0,     // closed-form cross-check
+    "ratio_to_estimate": 0.935
+  }
+}
+```
+
+`compare_ground: true` runs the analysis free-air **and** in ground effect and
+returns both with the change between them. For a Birdman Rally aircraft that
+difference is a design driver rather than a correction — measured +9 % on best L/D
+and −10 % on minimum sink at h = 2 m.
+
 Guardrails enforced here:
 - `type: "T1"` with a stability question → refused, pointing at `T7`
 - a T5 polar reporting an unstable `Cn_beta` or `Cl_beta` → warned, with the fix
