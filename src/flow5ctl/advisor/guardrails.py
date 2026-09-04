@@ -164,6 +164,21 @@ def check_geometry(derived: Derived, preset: Preset) -> Check:
     band("tail_volume_h", derived.tail_volume_h, "horizontal tail volume")
     band("tail_volume_v", derived.tail_volume_v, "vertical tail volume", "{:.4g}")
 
+    fin = next((x for x in derived.surfaces if x.wing.role == "fin"), None)
+    if fin is not None and fin.wing.count == 2 and preset.band("tail_volume_v"):
+        lo, hi = preset.band("tail_volume_v")
+        if derived.tail_volume_v is not None and not (lo <= derived.tail_volume_v <= hi):
+            # The band was fitted to single-fin aircraft. A twin fin needs more total
+            # area for the same effect - each one sits in a worse part of the flow -
+            # and one published human-powered aircraft flies at 0.0264 with two.
+            # Rather than invent a second band from one data point, say so.
+            c.note(
+                "that band was set from aircraft with one fin. This design has two, "
+                "which normally need more total area for the same effect, so the "
+                "figure above may be reasonable — compare it against twin-fin "
+                "aircraft rather than against the band."
+            )
+
     if derived.tail_volume_h is None and len(derived.surfaces) == 1:
         c.note("wing only — no tail, so pitch trim and stability cannot be assessed.")
 

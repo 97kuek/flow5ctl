@@ -99,10 +99,13 @@ def _section_xml(sec: Section, wing_airfoil: str | None, chord_dist: str,
 FIN_ROLL_ANGLE = -90.0
 
 
-def _wing_xml(surface: Surface, indent: int, *, has_fuselage: bool = False) -> str:
+def _wing_xml(surface: Surface, indent: int, *, has_fuselage: bool = False,
+              mirror_y: bool = False, name_suffix: str = "") -> str:
     w = surface.wing
     pad = " " * indent
     px, py, pz = surface.position_m
+    if mirror_y:
+        py = -py
     sections = "\n".join(
         _section_xml(s, w.airfoil, w.panels.chord_distribution,
                      w.panels.span_distribution, indent + 4)
@@ -111,7 +114,7 @@ def _wing_xml(surface: Surface, indent: int, *, has_fuselage: bool = False) -> s
     is_fin = w.role == "fin"
     rx = FIN_ROLL_ANGLE if is_fin else 0.0
     rows = [
-        _tag("Name", w.name or w.role.title(), indent + 2),
+        _tag("Name", (w.name or w.role.title()) + name_suffix, indent + 2),
         _tag("Type", _WING_TYPE[w.role], indent + 2),
         _tag("Position", f"{px:.6g}, {py:.6g}, {pz:.6g}", indent + 2),
         _tag("Rx_angle", f"{rx:.6g}", indent + 2),
@@ -147,8 +150,20 @@ def plane_xml(design: Design, derived: Derived) -> str:
         masses = f"    <Inertia>\n{rows}\n    </Inertia>\n"
 
     has_fuselage = design.fuselage.type != "none"
-    wings = "\n".join(_wing_xml(s, 4, has_fuselage=has_fuselage)
-                      for s in derived.surfaces)
+    # A plane is a list of `<wing>` elements with no cap - `xmlplanereader.cpp` calls
+    # `addWing()` once per element - so a twin fin is two entries at ±y rather than
+    # anything in the schema. flow5 has no `isDoubleFin` or equivalent: the only tags
+    # its reader accepts for a wing are Name, Type, Position, Rx_angle, Ry_angle,
+    # symmetric and Closed_Inner_Side (`flow5-io-lib/xml/xflxmlreader.cpp`).
+    parts: list[str] = []
+    for s in derived.surfaces:
+        if s.wing.count == 2:
+            parts.append(_wing_xml(s, 4, has_fuselage=has_fuselage, name_suffix=" L"))
+            parts.append(_wing_xml(s, 4, has_fuselage=has_fuselage,
+                                   mirror_y=True, name_suffix=" R"))
+        else:
+            parts.append(_wing_xml(s, 4, has_fuselage=has_fuselage))
+    wings = "\n".join(parts)
     return (
         f"{_HEAD}\n<!DOCTYPE flow5>\n<xflplane version=\"1.0\">\n"
         + _units_block(2) + "\n"

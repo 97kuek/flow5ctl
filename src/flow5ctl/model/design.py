@@ -145,6 +145,19 @@ class Wing(Base):
     sections: list[Section] | None = None
     panels: Panels = Field(default_factory=Panels)
     symmetric: bool | None = None
+    count: Annotated[int, Field(ge=1, le=2)] = 1
+    """How many of this surface there are. Only a fin may have two.
+
+    Twin fins are ordinary on human-powered aircraft and on twin-boom layouts, and
+    flow5 handles them natively - a plane is a list of `<wing>` elements with no cap,
+    so two fins are two entries, each stood up by its own `Rx_angle`. Measured: two
+    fins of exactly double the area gave 1.92x the side force and 1.96x the yaw
+    moment of one, the shortfall being tip loss. Modelling them as one equivalent
+    fin of the combined area is the workaround this replaces; it gets the yaw
+    stiffness about right but puts all of it on the centreline.
+
+    With `count: 2` the y in `position` is the half-spacing: the fins are placed at
+    +y and -y. `tail_volume_v` counts both."""
 
     @model_validator(mode="after")
     def _exactly_one_geometry(self) -> Wing:
@@ -170,10 +183,17 @@ class Tail(Base):
     def _roles(self) -> Tail:
         if self.elevator is not None:
             self.elevator.role = "elevator"
+            if self.elevator.count != 1:
+                raise ValueError("only a fin may have count: 2")
         if self.fin is not None:
             self.fin.role = "fin"
             if self.fin.symmetric is None:
                 self.fin.symmetric = False
+            if self.fin.count == 2 and self.fin.position[1] == 0.0:
+                raise ValueError(
+                    "two fins need a half-spacing: set the y in the fin's `position` "
+                    "to where one of them sits, and the pair is placed at ±y"
+                )
         return self
 
 

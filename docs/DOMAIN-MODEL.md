@@ -107,6 +107,7 @@ tail:
     airfoil: DAE-21
     planform: {span: 1.2, root_chord: 0.70, taper: 0.6}
     panels: {chordwise: 7, spanwise: 8}
+    count: 1                  # 2 for a twin fin; y above is then the half-spacing
 
 fuselage:
   type: none                  # none | pod | frames   (Phase 3)
@@ -121,6 +122,12 @@ fuselage:
 - **`airfoil` cascades**: wing-level default, overridden per section, overridden per
   section side (`airfoil_left` / `airfoil_right`) for a transition.
 - **`fin` is not mirrored.** It becomes a flow5 `FIN` wing with `Symmetric=false`.
+- **`fin.count: 2` builds a twin fin**, at `+y` and `−y` from the fin's `position`.
+  flow5 has no twin-fin flag — a plane is a list of `<wing>` elements with no cap, so
+  two fins are two entries, each stood up by its own `Rx_angle`. Both count towards
+  the vertical tail volume and the panel budget. Only a fin may be doubled, and two
+  fins on the centreline are refused because they would be coincident.
+  ([FLOW5-INTERFACE.md §3.0a](FLOW5-INTERFACE.md))
 - **Everything not given takes a preset default**, and every applied default is
   reported back to the agent in the `define_plane` response. Silent defaults are
   how designs go wrong.

@@ -279,6 +279,25 @@ Enumerations **[src]** `xml_globals.cpp`, **[run]** binary strings:
 >
 > Also write `Closed_Inner_Side = true` for a fin with no fuselage to close against.
 
+### 3.0a A plane holds any number of wings — there is no twin-fin flag
+
+**[src]** `xmlplanereader.cpp` handles `<wing>` by calling `m_pPlane->addWing()` once
+per element, with no cap. **[run]** A plane with four `<wing>` elements — main,
+elevator and two fins at ±2 m — was accepted and solved: two fins of exactly double
+the area gave **1.92×** the side force and **1.96×** the yaw moment of one, the
+shortfall being tip loss.
+
+**[src]** The only wing tags the reader accepts are `Name`, `Type`, `Position`,
+`Rx_angle`, `Ry_angle`, `symmetric` and `Closed_Inner_Side`
+(`flow5-io-lib/xml/xflxmlreader.cpp`; the writer emits the same set). There is **no**
+`isDoubleFin`, `isSymFin` or `isFin` — those are XFLR5 names and flow5's XML has no
+equivalent. **[run]** Writing them in anyway is silently inert: the polar came back
+bit-identical with `isDoubleFin=true`, with `isSymFin=true`, and with neither.
+
+> So a twin fin is two `<wing>` entries, each stood up by its own `Rx_angle`
+> ([§3](FLOW5-INTERFACE.md)), positioned at `+y` and `−y`. flow5ctl writes them from
+> `tail.fin.count: 2`, taking the `y` in the fin's position as the half-spacing.
+
 ### 3.1 Airfoil resolution
 
 Airfoils are referenced **by name**, and the name must match a foil the script has

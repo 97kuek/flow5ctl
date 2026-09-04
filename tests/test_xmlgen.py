@@ -10,6 +10,7 @@ import re
 from xml.etree import ElementTree as ET
 
 import pytest
+from pydantic import ValidationError
 
 from flow5ctl.errors import InternalError
 from flow5ctl.flow5 import xmlgen
@@ -252,3 +253,83 @@ class TestFinOrientation:
         elev = self._wing(xmlgen.plane_xml(design, geometry.solve(design)), "ELEVATOR")
         assert float(elev.findtext("Ry_angle")) == pytest.approx(-2.5)
         assert float(elev.findtext("Rx_angle")) == pytest.approx(0.0)
+
+
+class TestTwinFin:
+    """flow5 has no twin-fin flag; a plane is just a list of `<wing>` elements.
+
+    Verified against the source: `xmlplanereader.cpp` calls `addWing()` once per
+    `<wing>` element with no cap, and the only wing tags its reader accepts are Name,
+    Type, Position, Rx_angle, Ry_angle, symmetric and Closed_Inner_Side
+    (`flow5-io-lib/xml/xflxmlreader.cpp`). Writing `isDoubleFin` or `isSymFin` into
+    the file changes nothing - measured, the polar came back bit-identical.
+
+    So two fins are two entries at ±y. Measured on one HPA, two fins of exactly
+    double the area gave 1.92x the side force and 1.96x the yaw moment of one.
+    """
+
+    def _design(self, count: int, y: float) -> Design:
+        d = Design.model_validate({
+            "name": "TwinFinTest",
+            "mass": {"components": [{"tag": "all", "mass": 100.0, "at": [0.3, 0, 0]}]},
+            "airfoils": [{"name": "NACA0012", "source": "naca:0012"}],
+            "wing": {"airfoil": "NACA0012",
+                     "planform": {"span": 10.0, "root_chord": 1.0}},
+            "tail": {"fin": {"airfoil": "NACA0012", "count": count,
+                             "position": [5.0, y, 0.0],
+                             "planform": {"span": 1.0, "root_chord": 0.5}}},
+        })
+        return d
+
+    def test_one_fin_emits_one_wing(self):
+        d = self._design(1, 0.0)
+        assert xmlgen.plane_xml(d, geometry.solve(d)).count("<wing>") == 2
+
+    def test_two_fins_emit_two_wings_mirrored_in_y(self):
+        d = self._design(2, 1.6)
+        xml = xmlgen.plane_xml(d, geometry.solve(d))
+        assert xml.count("<wing>") == 3
+        assert "<Position>5, 1.6, 0</Position>" in xml
+        assert "<Position>5, -1.6, 0</Position>" in xml
+
+    def test_both_fins_are_stood_up_vertically(self):
+        """Rx_angle is the only thing that orients a surface, so both need it."""
+        xml = xmlgen.plane_xml(self._design(2, 1.6), geometry.solve(self._design(2, 1.6)))
+        assert xml.count(f"<Rx_angle>{xmlgen.FIN_ROLL_ANGLE:.6g}</Rx_angle>") == 2
+
+    def test_the_two_fins_are_named_apart(self):
+        xml = xmlgen.plane_xml(self._design(2, 1.6), geometry.solve(self._design(2, 1.6)))
+        assert "<Name>Fin L</Name>" in xml and "<Name>Fin R</Name>" in xml
+
+    def test_no_twin_fin_flag_is_written(self):
+        """flow5's reader has no such tag; writing one would be cargo cult."""
+        xml = xmlgen.plane_xml(self._design(2, 1.6), geometry.solve(self._design(2, 1.6)))
+        assert "isDoubleFin" not in xml and "isSymFin" not in xml
+
+    def test_both_fins_count_towards_the_tail_volume(self):
+        one, two = geometry.solve(self._design(1, 0.0)), geometry.solve(self._design(2, 1.6))
+        assert two.tail_volume_v == pytest.approx(2 * one.tail_volume_v, rel=1e-6)
+
+    def test_both_fins_count_towards_the_panel_budget(self):
+        one, two = geometry.solve(self._design(1, 0.0)), geometry.solve(self._design(2, 1.6))
+        fin_panels = next(s.geom.panel_count for s in one.surfaces
+                          if s.wing.role == "fin")
+        assert two.panel_count == one.panel_count + fin_panels
+
+    def test_two_fins_on_the_centreline_are_refused(self):
+        """They would be coincident, which flow5 solves into a narrow mesh."""
+        with pytest.raises(ValidationError, match="half-spacing"):
+            self._design(2, 0.0)
+
+    def test_only_a_fin_may_be_doubled(self):
+        with pytest.raises(ValidationError, match="only a fin may have count"):
+            Design.model_validate({
+                "name": "X",
+                "mass": {"components": [{"tag": "a", "mass": 1.0, "at": [0, 0, 0]}]},
+                "airfoils": [{"name": "NACA0012", "source": "naca:0012"}],
+                "wing": {"airfoil": "NACA0012",
+                         "planform": {"span": 10.0, "root_chord": 1.0}},
+                "tail": {"elevator": {"airfoil": "NACA0012", "count": 2,
+                                      "position": [5.0, 0, 0],
+                                      "planform": {"span": 2.0, "root_chord": 0.4}}},
+            })

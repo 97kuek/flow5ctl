@@ -67,7 +67,8 @@ class Derived:
 
     @property
     def panel_count(self) -> int:
-        return sum(s.geom.panel_count for s in self.surfaces)
+        # a twin fin is emitted as two `<wing>` elements, so it costs twice the panels
+        return sum(s.geom.panel_count * s.wing.count for s in self.surfaces)
 
     @property
     def cg_percent_mac(self) -> float | None:
@@ -161,7 +162,9 @@ class Derived:
         arm = (t.geom.mac_le_x + 0.25 * t.geom.mac) - (
             self.main.geom.mac_le_x + 0.25 * self.main.geom.mac
         )
-        return t.geom.planform_area * arm / (self.reference_area * self.reference_span)
+        # a twin fin contributes both areas; `count` is 1 for every other surface
+        area = t.geom.planform_area * t.wing.count
+        return area * arm / (self.reference_area * self.reference_span)
 
     def as_dict(self) -> dict:
         """The payload returned to an agent. Rounded for legibility, SI throughout."""
