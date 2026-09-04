@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from ..errors import DesignError, UnsupportedByFlow5
-from ..geometry.derived import Derived
+from ..geometry.derived import Derived, Surface
 from ..model.presets import Preset
 
 STABILITY_TYPES = {"T7"}
@@ -300,27 +300,34 @@ def _check_wake_plane(derived: Derived, c: Check) -> None:
     # chord-weighted mean height and is what the CG-height separation already uses -
     # so comparing the two roots would miss a tail level with a dihedral wing's root
     # and flag one level with its mean height.
-    z_wing = main.position_m[2] + main.geom.mac_z
-    for s in derived.surfaces:
-        if s is main or s.wing.role == "fin":
-            continue                      # a fin is vertical; it has no such plane
-        if s.position_m[0] <= main.position_m[0]:
-            continue                      # a canard is upstream of the sheet
-        gap = abs(s.position_m[2] + s.geom.mac_z - z_wing)
-        if gap >= WAKE_PLANE_MAC * mac:
-            continue
-        name = s.wing.name or s.wing.role
-        c.warn(
-            f"{name} sits {gap:.3g} m from the wing's own height, which is "
-            f"{gap / mac:.0%} of the MAC, and it is behind the wing. That puts it in "
-            "the wing's trailing vortex sheet, where the induced drag comes out "
-            "wrong and flow5 says nothing. Measured on a comparable layout: at zero "
-            "offset the induced drag was half its converged value and the span "
-            "efficiency read 1.81, which is impossible; moving the tail 2 cm — 8 % "
-            f"of chord — doubled it and brought it to 0.05 % of AVL. Offset {name} "
-            "vertically by at least a tenth of the MAC, or model the height it "
-            "actually has."
-        )
+    def height(s: Surface) -> float:
+        return s.position_m[2] + s.geom.mac_z
+
+    # Every ordered pair, not just "behind the main wing". A canard is upstream of
+    # the main wing's sheet, so the earlier version skipped it - and never asked the
+    # reciprocal question, which on a canard layout is the one that matters: the
+    # main wing is the surface sitting in the canard's wake.
+    lifting = [s for s in derived.surfaces if s.wing.role != "fin"]
+    for upstream in lifting:
+        for s in lifting:
+            if s is upstream or s.position_m[0] <= upstream.position_m[0]:
+                continue
+            gap = abs(height(s) - height(upstream))
+            if gap >= WAKE_PLANE_MAC * mac:
+                continue
+            name = s.wing.name or s.wing.role
+            ahead = upstream.wing.name or upstream.wing.role
+            c.warn(
+                f"{name} sits {gap:.3g} m from {ahead}'s own height, which is "
+                f"{gap / mac:.0%} of the MAC, and it is behind it. That puts it in "
+                "its trailing vortex sheet, where the induced drag comes out "
+                "wrong and flow5 says nothing. Measured on a comparable layout: at "
+                "zero offset the induced drag was half its converged value and the "
+                "span efficiency read 1.81, which is impossible; moving the tail "
+                "2 cm — 8 % of chord — doubled it and brought it to 0.05 % of AVL. "
+                f"Offset {name} vertically by at least a tenth of the MAC, or model "
+                "the height it actually has."
+            )
 
 
 def _check_extra_surfaces(derived: Derived, c: Check) -> None:

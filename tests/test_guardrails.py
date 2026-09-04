@@ -737,8 +737,20 @@ class TestWakePlane:
         """0.005 m is 2 % of chord, where the span efficiency still read 0.996."""
         assert "trailing vortex sheet" in self._warnings(tail_z=0.005)
 
-    def test_a_surface_ahead_of_the_wing_is_not_in_its_wake(self):
-        assert "trailing vortex sheet" not in self._warnings(tail_z=0.0, tail_x=-0.6)
+    def test_a_canard_puts_the_MAIN_WING_in_its_wake(self):
+        """The reciprocal case, which the check used to skip entirely.
+
+        A surface ahead of the main wing is not in the main wing's sheet, so the
+        first version passed over it and asked nothing further. On a canard layout
+        that is the wrong way round: the main wing is the surface sitting in the
+        canard's wake, and it is the one that needs naming.
+        """
+        text = self._warnings(tail_z=0.0, tail_x=-0.6)
+        assert "trailing vortex sheet" in text
+        assert "main sits" in text or "Main sits" in text
+
+    def test_offsetting_the_canard_clears_it_too(self):
+        assert "trailing vortex sheet" not in self._warnings(tail_z=0.03, tail_x=-0.6)
 
     def test_a_fin_is_vertical_and_has_no_such_plane(self):
         d = geometry.solve(Design.model_validate({

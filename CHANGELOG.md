@@ -8,6 +8,11 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ### Fixed
 
+- **The wake-plane check never asked the reciprocal question.** It looked for
+  surfaces behind the main wing and skipped anything ahead of it — so on a canard
+  layout, where the main wing is the surface sitting in the canard's wake, it looked
+  at the one pair that could not be a problem and passed. It now checks every
+  ordered pair by streamwise position and names whichever surface is downstream.
 - **`open` refused by naming `export`.** It reuses the export path and inherited its
   wording, so running `open` before any analysis said "there is nothing to export" —
   an operation the user had not asked for. It says what it needs and what produces
