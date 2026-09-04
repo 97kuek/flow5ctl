@@ -84,7 +84,9 @@ not correct.
   VLM1-against-VLM2 moves it by 0.4 %, so it is none of those; lift is unaffected,
   the two solvers agreeing within 0.6 % on CL. Human-powered aircraft fly at AR
   30–45, where **12–19 % of the induced drag is missing** and induced drag is most
-  of the budget. `analyze` now warns above AR 15 with the figure for that aircraft.
+  of the budget. Changing method is not a workaround: flow5's panel methods land
+  21 % on the *other* side of the same limit (QUADS 0.783 at AR 40), all
+  mesh-converged. `analyze` now warns above AR 15 with the figure for that aircraft.
   It is reported, not corrected: a fudge factor on a solver's output would hide the
   problem and would be wrong wherever it was not measured.
 - **Span efficiency above 1 was the mesh, not the physics.** A rectangular wing came

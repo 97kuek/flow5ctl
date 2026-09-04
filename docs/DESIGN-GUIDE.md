@@ -90,6 +90,13 @@ returns confident numbers that are wrong. Most of this document is about the edg
   those. **Lift is unaffected** — the two solvers agree within 0.6 % on CL at both
   aspect ratios — so this is specific to the induced drag.
 
+  **Changing method is not a workaround.** On the same AR 40 wing, flow5's panel
+  methods land 21 % on the *other* side of the limit — QUADS 0.783, TRIUNIFORM
+  0.793, TRILINEAR 0.787, all mesh-converged, against the vortex lattice's 1.211.
+  At AR 10 the panel method is at least admissible (QUADS 0.980, below the limit)
+  where the VLM is not (1.023). A large gap between a VLM run and a QUADS run is a
+  useful smell test; averaging them is not a method.
+
   **Human-powered aircraft fly at AR 30–45, where induced drag is most of the drag
   budget.** That is the worst place for this error to be, and it is optimistic: the
   aircraft has more drag than the model says, on top of everything §1a lists as

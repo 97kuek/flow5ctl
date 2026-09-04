@@ -59,6 +59,42 @@ and it is not this.
 spanwise on the rectangular AR 10 wing — five identical values to four figures — while
 flow5's ran 1.035 → 0.989 over the same range.
 
+## 2a. Switching methods does not fix it — it errs the other way
+
+flow5's panel methods model thickness and solve a different problem, so they are the
+obvious thing to try. Same elliptic AR 40 wing, every method flow5 offers:
+
+| method | e (exact answer: 1.0000) | panels |
+|---|---|---|
+| VLM1 | 1.2104 | 1800 |
+| VLM2 | 1.2108 | 1800 |
+| LLT | flow5 reported errors on every point | — |
+| **QUADS** | **0.7826** | 1800 |
+| **TRIUNIFORM** | **0.7925** | 3600 |
+| **TRILINEAR** | **0.7868** | 3600 |
+
+The vortex-lattice methods are 21 % **above** the limit and the panel methods 21 %
+**below** it. Both are mesh-converged: QUADS ran 0.7842 → 0.7826 → 0.7826 → 0.7817
+from 1080 to 5040 panels.
+
+At AR 10 the panel method is at least physically admissible where the VLM is not:
+
+| AR 10 elliptic | e |
+|---|---|
+| AVL | 0.9969 |
+| **flow5 QUADS** | **0.9800** — below the limit, 1.7 % pessimistic |
+| flow5 VLM2 | 1.0233 — above the limit, impossible |
+
+**So no flow5 method gives the induced drag correctly at high aspect ratio**, and
+changing method is not a workaround. CL is unaffected throughout — QUADS gives
+0.51561 at AR 40 against AVL's 0.51779, 0.4 % apart.
+
+The two families happen to bracket the true answer in both cases measured, and their
+midpoint lands within 0.1 % of it. **That is two data points and a coincidence, not
+a method** — do not average them. What it is good for is a smell test: a large gap
+between a VLM run and a QUADS run means the induced drag from either is not to be
+trusted.
+
 ## 3. The error against aspect ratio
 
 Elliptic wing, b = 34 m, 100 spanwise panels, inviscid VLM2. The exact answer is
