@@ -268,6 +268,23 @@ def export(project: Project, fmt: str, *, polar: str | None = None,
                 "`analyze` and export straight after it."
             )
 
+    notes: list[str] = []
+    from_analysis: str | None = chosen.name
+
+    # Build output can be older than the design: an edit since the analysis leaves
+    # the two describing different aeroplanes, and nothing in the exported file says
+    # which one it is.
+    if project.design_path.is_file():
+        try:
+            if project.design_path.stat().st_mtime > chosen.stat().st_mtime:
+                notes.append(
+                    f"the design has been edited since {chosen.name} was run, so this "
+                    "is the geometry as it was then, not as it is now. Re-run the "
+                    "analysis if you want the current shape."
+                )
+        except OSError:
+            pass
+
     fmt = fmt.lower()
     if fmt == "fl5":
         # flow5 writes the project with no extension; the GUI wants one.
@@ -285,18 +302,40 @@ def export(project: Project, fmt: str, *, polar: str | None = None,
         dst = target_dir / f"{design.name}.stl"
         shutil.copyfile(candidates[0], dst)
     elif fmt in {"csv", "polar"}:
-        candidates = sorted((chosen / design.name).glob("*.csv")) \
-            if (chosen / design.name).is_dir() else []
+        where = chosen / design.name
+        candidates = sorted(where.glob("*.csv")) if where.is_dir() else []
         if not candidates:
-            raise DesignError(f"no polar file found in {chosen / design.name}")
-        dst = target_dir / f"{design.name}-{candidates[0].name}"
-        shutil.copyfile(candidates[0], dst)
+            raise DesignError(f"no polar file found in {where}")
+        # The polar's own file, not whichever sorts first. Taking candidates[0]
+        # alphabetically is a silent choice when there is more than one.
+        named = [c for c in candidates if c.stem == chosen.name]
+        pick = named[0] if named else candidates[0]
+        if not named and len(candidates) > 1:
+            notes.append(
+                f"{where} holds {len(candidates)} polar files and none is named "
+                f"{chosen.name!r}; took {pick.name} because it sorts first. The "
+                "others are: " + ", ".join(c.name for c in candidates if c is not pick)
+            )
+        dst = target_dir / f"{design.name}-{pick.name}"
+        shutil.copyfile(pick, dst)
     elif fmt == "xml":
         dst = target_dir / f"{design.name}-plane.xml"
         src = project.build / "planes" / "plane.xml"
         if not src.is_file():
             raise DesignError("no generated plane XML found; run an analysis first.")
         shutil.copyfile(src, dst)
+        # This one is not the selected run's. `plane.xml` sits outside `build/out/`
+        # and every analysis overwrites it, so it is whatever ran last - and the
+        # payload used to report `from_analysis` beside it, which read as a claim
+        # that the geometry came from the polar named there.
+        from_analysis = None
+        notes.append(
+            "this is the plane XML from the most recent solver run, whichever that "
+            "was. It is not tied to a polar: flow5ctl writes one `plane.xml` per "
+            "project and every analysis overwrites it, so if you have run anything "
+            "since the analysis you have in mind, this is the geometry of that "
+            "later run."
+        )
     else:
         raise DesignError(f"unknown export format {fmt!r}. Use fl5, stl, csv or xml.")
 
@@ -304,9 +343,10 @@ def export(project: Project, fmt: str, *, polar: str | None = None,
         "status": "ok",
         "design": design.name,
         "format": fmt,
-        "from_analysis": chosen.name,
+        "from_analysis": from_analysis,
         "path": str(dst),
-        "notes": (["Open it in the flow5 GUI with `flow5ctl open`."] if fmt == "fl5" else [])
+        "notes": notes
+                 + (["Open it in the flow5 GUI with `flow5ctl open`."] if fmt == "fl5" else [])
                  + ([f"{chosen.name} is an internal by-product, not an analysis you "
                      "asked for: a reference-height pass holds the CG at wing height, "
                      "and a ground comparison's free-air copy has ground effect off. "

@@ -310,6 +310,17 @@ planform, so two would share neither.
 `design`, `format` (`fl5` | `stl` | `csv` | `xml`), optional `polar`.
 Returns the path, and for `fl5` a reminder that `open_in_flow5` exists.
 
+`build/` holds the **last solver invocation only**, so what can be exported is a
+much smaller set than what has been analysed. The default skips flow5ctl's own
+by-products (`__zref`, `__free`) and prefers a run you named; when a named analysis
+exists in `results/` but its build output has been overwritten, it says that rather
+than claiming the analysis never happened.
+
+`xml` is the exception: `plane.xml` sits outside `build/out/` and every analysis
+overwrites it, so it is **whatever ran last** and `from_analysis` comes back `null`
+rather than naming a polar it may not belong to. An export whose build output is
+older than the design says so too.
+
 ### `open_in_flow5`
 Launches the flow5 GUI on the design's `.fl5` project. Available only to the CLI and
 to MCP clients running on the user's own machine.

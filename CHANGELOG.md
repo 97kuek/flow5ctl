@@ -6,6 +6,20 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Fixed
+
+- **The `xml` export named a polar it did not come from.** `plane.xml` sits outside
+  `build/out/` and every analysis overwrites it, so it is whatever ran last — but the
+  payload reported `from_analysis` beside it, which reads as a claim about where the
+  geometry came from. It returns `null` now and says what the file is.
+- **The `csv` export took whichever file sorted first** when a run's directory held
+  more than one, silently. It prefers the one named after the run, and says which it
+  took and what else was there when it cannot.
+- **An export older than the design now says so.** An edit since the analysis leaves
+  the two describing different aeroplanes, and nothing in the exported file said
+  which one it was.
+
+
 ## [0.1.13] — 2026-09-05
 
 ### Fixed

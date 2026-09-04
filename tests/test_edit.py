@@ -212,6 +212,58 @@ class TestExport:
         assert "cruise" in str(exc.value)
         assert "__zref" not in str(exc.value)
 
+    def test_the_xml_export_does_not_claim_a_polar(self, project):
+        """`plane.xml` sits outside build/out/ and every analysis overwrites it.
+
+        The payload reported `from_analysis` beside it, which reads as a claim that
+        the geometry came from that polar. It is whatever ran last.
+        """
+        self._run(project, "cruise")
+        (project.build / "planes").mkdir(parents=True, exist_ok=True)
+        (project.build / "planes" / "plane.xml").write_text("<plane/>", encoding="utf-8")
+        out = edit.export(project, "xml")
+        assert out["from_analysis"] is None
+        assert any("most recent solver run" in n for n in out["notes"])
+
+    def test_the_fl5_export_still_names_its_run(self, project):
+        self._run(project, "cruise")
+        self._stored(project, "cruise")
+        assert edit.export(project, "fl5")["from_analysis"] == "cruise"
+
+    def test_a_csv_pick_among_several_is_not_silent(self, project):
+        """It took whichever sorted first, with nothing said about the others."""
+        self._run(project, "cruise")
+        self._stored(project, "cruise")
+        d = project.build / "out" / "cruise" / project.load().name
+        d.mkdir(parents=True, exist_ok=True)
+        for n in ("aaa.csv", "zzz.csv"):
+            (d / n).write_text("x", encoding="utf-8")
+        out = edit.export(project, "csv")
+        assert any("holds 2 polar files" in n for n in out["notes"])
+        assert any("zzz.csv" in n for n in out["notes"])
+
+    def test_a_csv_named_after_the_run_is_preferred(self, project):
+        self._run(project, "cruise")
+        self._stored(project, "cruise")
+        d = project.build / "out" / "cruise" / project.load().name
+        d.mkdir(parents=True, exist_ok=True)
+        for n in ("aaa.csv", "cruise.csv"):
+            (d / n).write_text("x", encoding="utf-8")
+        out = edit.export(project, "csv")
+        assert out["path"].endswith("cruise.csv")
+        assert not any("sorts first" in n for n in out["notes"])
+
+    def test_an_export_older_than_the_design_says_so(self, project):
+        """An edit since the analysis leaves the two describing different aeroplanes."""
+        import os
+        import time
+        self._run(project, "cruise")
+        self._stored(project, "cruise")
+        old = time.time() - 3600
+        os.utime(project.build / "out" / "cruise", (old, old))
+        out = edit.export(project, "fl5")
+        assert any("has been edited since" in n for n in out["notes"])
+
     def _stored(self, project, name: str) -> None:
         project.write_result(name, {"status": "ok"})
 
