@@ -6,6 +6,8 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+## [0.1.11] — 2026-09-04
+
 ### Fixed
 
 - **The wake-plane check accused surfaces that were nowhere near the wake, and its
