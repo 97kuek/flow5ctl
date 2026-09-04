@@ -52,7 +52,9 @@ def _strip_table(result: dict[str, Any]) -> dict[str, Any] | None:
         if not ys or not cls:
             continue
         if any(math.isfinite(v) and v != 0.0 for v in cls):
-            return {wing: {"y": ys, "cl": cls, "source": stored.get("source", "")}}
+            return {wing: {"y": ys, "cl": cls,
+                           "source": stored.get("source", ""),
+                           "alpha": stored.get("alpha")}}
     return None
 
 
@@ -79,7 +81,9 @@ def plot(project: Project, *, kind: str = "polar", polars: list[str] | None = No
         "mime_type": "image/png",
     }
     if strips:
-        payload["strip_source"] = next(iter(strips.values()))["source"]
+        first = next(iter(strips.values()))
+        payload["strip_source"] = first["source"]
+        payload["strip_alpha"] = first.get("alpha")
     if out is not None:
         payload["path"] = str(charts.write(Path(out), data))
     return payload, data

@@ -92,3 +92,30 @@ def describe(gaps: list[Gap]) -> str:
         "of one can differ by tens of percent. Treat the drag from this run as "
         "uncertain, and try a different alpha step or ncrit."
     )
+
+
+def cl_coverage(directory: Path) -> dict[str, tuple[float, float]]:
+    """Lift-coefficient range each staged 2D polar actually covers.
+
+    The alpha sweep asked for is not the same thing: XFoil stops where it stops, so
+    a sweep to 16 degrees may only deliver Cl up to 1.3 while the wing wants 1.5.
+    Reading it back is the only way to know.
+    """
+    out: dict[str, tuple[float, float]] = {}
+    for path in sorted(directory.glob("*.txt")):
+        cls: list[float] = []
+        seen_header = False
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            if not seen_header:
+                seen_header = "alpha" in line and "CL" in line and "CD" in line
+                continue
+            parts = line.split()
+            if len(parts) < 7:
+                continue
+            try:
+                cls.append(float(parts[1]))
+            except ValueError:
+                continue
+        if cls:
+            out[path.stem] = (min(cls), max(cls))
+    return out

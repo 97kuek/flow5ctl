@@ -299,6 +299,14 @@ def _spanwise(design: str, strips: dict[str, Any] | None, th: Theme,
     scale = (sum(cls) / sum(ell_raw)) if sum(ell_raw) else 1.0
     elliptic = Series("elliptic (same lift)", ys, [v * scale for v in ell_raw])
 
+    # A lift distribution is read at one angle of attack and is a different curve at
+    # every other one, so the angle belongs on the chart. It used to be absent, while
+    # the strips themselves came from whichever operating-point file sorted to the
+    # middle of the directory.
+    alpha = table.get("alpha")
+    if alpha is not None:
+        subtitle = " · ".join(filter(None, [subtitle, f"at α {alpha:g}°"]))
+
     return _draw(
         [Series(f"{wing} — local Cl", ys, cls)],
         title=f"{design} — spanwise lift distribution",

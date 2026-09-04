@@ -6,6 +6,7 @@ import pytest
 
 from flow5ctl.advisor import guardrails
 from flow5ctl.errors import DesignError, UnsupportedByFlow5
+from flow5ctl.flow5 import markers
 from flow5ctl.geometry import derived as geometry
 from flow5ctl.model import presets
 from flow5ctl.model.design import Design
@@ -195,3 +196,53 @@ class TestAoaFailureExplanation:
                "  Span position     -0.72 m,  Re =    344198,  AoA_effective = -18.5\n")
         msg = explain_interpolation_failure(log, 100_000, 2_000_000)
         assert "alpha sweep" in msg
+
+
+class TestInterpolationDiagnostic:
+    """flow5 prints the failure header with nothing under it.
+
+    Measured on a real run: the log ends at `...Viscous interpolation failures:`
+    with no strip, Reynolds or Cl beneath it, so the detailed explainer found
+    nothing and a static message took over. That static message named the Reynolds
+    range as the cause and talked about fixed-lift polars - on a T1 run whose actual
+    fix was widening the alpha sweep. It sent a real investigation the wrong way.
+    """
+
+    LOG = (
+        "       Calculating plane\n"
+        "          Adding interpolated viscous drag...\n"
+        "             Processing Main\n"
+        "                ...Viscous interpolation failures:\n"
+        "\nPanel analysis completed ... Errors encountered\n"
+    )
+
+    def test_the_surface_is_named_from_the_log(self):
+        assert markers.failing_surface(self.LOG) == "Main"
+
+    def test_a_later_surface_does_not_steal_the_name(self):
+        log = self.LOG + "             Processing Elevator\n"
+        assert markers.failing_surface(log) == "Main"
+
+    def test_no_failure_means_no_surface(self):
+        assert markers.failing_surface("Calculating plane\n Processing Main\n") is None
+
+    def test_the_message_reports_both_ranges_and_picks_no_cause(self):
+        text = markers.explain_interpolation_failure(
+            self.LOG, 100_000, 1_500_000, cl_cover=(-0.88, 1.67))
+        assert text is not None
+        assert "Main" in text
+        assert "100,000" in text and "1,500,000" in text
+        assert "-0.88" in text and "1.67" in text
+        # it must not assert an axis it cannot know
+        assert "Either could be the cause" in text
+
+    def test_a_lift_range_short_of_the_wing_is_called_out(self):
+        text = markers.explain_interpolation_failure(
+            self.LOG, 100_000, 1_500_000, cl_cover=(-0.5, 1.20), cl_wanted=1.55)
+        assert "1.55" in text and "alpha" in text
+
+    def test_the_static_remedy_no_longer_names_one_axis(self):
+        d = markers.diagnose(
+            "Viscous interpolation failures\n", 0)
+        assert "fixed-lift polar" not in d.hint
+        assert "Either the Reynolds range or the lift range" in d.hint

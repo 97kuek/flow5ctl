@@ -75,8 +75,14 @@ _DIAGNOSTICS: tuple[tuple[str, Diagnosis], ...] = (
     ("Viscous interpolation failures", Diagnosis(
         Outcome.SOLVER_ERROR,
         "The 2D airfoil polar mesh does not cover the conditions this analysis reached.",
-        "Widen the Reynolds range of the airfoil polars. A fixed-lift polar flies "
-        "slower at high CL, so the tip can fall well below the cruise Reynolds number.",
+        # Deliberately does not pick an axis. flow5 usually prints this header with no
+        # detail lines under it, so nothing here knows whether Reynolds or lift ran
+        # off the mesh - `explain_interpolation_failure` replaces this text whenever
+        # it can work it out, and naming a cause here sent at least one real
+        # investigation the wrong way.
+        "Either the Reynolds range or the lift range of the 2D polars is too narrow. "
+        "Widening the airfoil polar alpha sweep extends the lift range; widening its "
+        "Reynolds range covers a tip that flies slower than the cruise point.",
     )),
     ("OTF failures:", Diagnosis(
         Outcome.SOLVER_ERROR,
@@ -180,7 +186,26 @@ def aoa_failures(log: str) -> list[tuple[float, float, float]]:
     return [(float(a), float(b), float(c)) for a, b, c in _FAILED_AOA.findall(log)]
 
 
-def explain_interpolation_failure(log: str, mesh_lo: float, mesh_hi: float) -> str | None:
+#: flow5 names the surface it is working on just before it gives up on it.
+_PROCESSING = re.compile(r"^\s*(?:\.\.\.)?Processing\s+(.+?)\s*$", re.MULTILINE)
+
+
+def failing_surface(log: str) -> str | None:
+    """The surface flow5 was processing when interpolation failed.
+
+    flow5 prints `...Viscous interpolation failures:` with no detail lines beneath
+    it, so this is often the only fact available about where the failure was.
+    """
+    idx = log.find("Viscous interpolation failures")
+    if idx == -1:
+        return None
+    names = _PROCESSING.findall(log[:idx])
+    return names[-1].strip() if names else None
+
+
+def explain_interpolation_failure(log: str, mesh_lo: float, mesh_hi: float,
+                                  cl_cover: tuple[float, float] | None = None,
+                                  cl_wanted: float | None = None) -> str | None:
     """Say which of the two very different causes actually applies.
 
     A "viscous interpolation failure" can mean the 2D polar mesh is too narrow, or it
@@ -211,7 +236,35 @@ def explain_interpolation_failure(log: str, mesh_lo: float, mesh_hi: float) -> s
 
     failures = interpolation_failures(log)
     if not failures:
-        return None
+        if "Viscous interpolation failures" not in log:
+            return None          # nothing went wrong; there is nothing to explain
+        # flow5 usually prints the header with nothing under it. Say what is known
+        # rather than guessing an axis, and name the surface if the log gives one.
+        where = failing_surface(log)
+        parts = ["flow5 could not interpolate 2D drag"]
+        parts.append(f" for {where}" if where else "")
+        parts.append(", and printed no detail about which strip or condition.\n")
+        parts.append(
+            f"The 2D polars cover Reynolds {mesh_lo:,.0f} to {mesh_hi:,.0f}"
+        )
+        if cl_cover:
+            parts.append(f" and lift coefficients {cl_cover[0]:.2f} to {cl_cover[1]:.2f}")
+        parts.append(".\n")
+        if cl_cover and cl_wanted is not None and cl_wanted > cl_cover[1]:
+            parts.append(
+                f"The wing reaches a local Cl of about {cl_wanted:.2f}, above what "
+                "those polars carry, so the alpha sweep in `airfoils[].polars.alpha` "
+                "is the thing to widen."
+            )
+        else:
+            parts.append(
+                "Either could be the cause and flow5 does not say which. Widening the "
+                "alpha sweep in `airfoils[].polars.alpha` is the cheaper thing to try "
+                "- it costs one more 2D pass, not a whole ladder of Reynolds numbers "
+                "- and it did resolve this on a 32 m aircraft whose polars ran to 16 "
+                "degrees. Widen the Reynolds range if that does not help."
+            )
+        return "".join(parts)
     res = [re_ for _, re_, _ in failures]
     cls = [cl for _, _, cl in failures]
     lo, hi = min(res), max(res)

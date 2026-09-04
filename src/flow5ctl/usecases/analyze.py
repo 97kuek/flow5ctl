@@ -476,7 +476,11 @@ def _explain_failure(run, ws: Workspace, req: Request,
 
     reynolds = polars_report.get("reynolds") or []
     if reynolds:
-        detail = explain_interpolation_failure(log, min(reynolds), max(reynolds))
+        cover = foilpolar.cl_coverage(ws.xfoil_polars)
+        cl_cover = ((min(lo for lo, _ in cover.values()),
+                     max(hi for _, hi in cover.values())) if cover else None)
+        detail = explain_interpolation_failure(
+            log, min(reynolds), max(reynolds), cl_cover=cl_cover)
         if detail:
             from ..errors import SolverError
             raise SolverError(detail)
