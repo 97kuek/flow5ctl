@@ -333,7 +333,7 @@ def _spanwise(design: str, strips: dict[str, Any] | None, th: Theme,
     if not ys:
         raise DesignError("the strip table has no usable rows")
 
-    half = max(abs(y) for y in ys)
+    half = table.get("semi_span") or max(abs(y) for y in ys)
     chord = _relative_chord(table, keep)
     elliptic = _elliptic_reference(ys, cls, chord, half)
 
@@ -359,8 +359,21 @@ def _relative_chord(table: dict[str, Any], keep: list[int]) -> list[float] | Non
 
     flow5's strip table has no chord column, but within one operating point the
     freestream is uniform, so Re is exactly proportional to the local chord.
-    Measured on the 34 m example at taper 0.45: root-to-tip Re ratio 2.21 against a
-    taper ratio of 2.22.
+
+    A reviewer said that was assumed rather than established, and named the cases
+    that might break it. Measured on the shipped 34 m example, which has ground
+    effect on and a taper ratio of 2.222:
+
+    | polar | root Re | tip Re | ratio |
+    |---|---|---|---|
+    | T1 fixed speed | 612,685 | 276,957 | 2.212 |
+    | T2 fixed lift — speed solved per point | 561,166 | 253,668 | **2.212** |
+    | T5 sideslip | 612,685 | 276,957 | 2.212 |
+
+    The absolute values move, T2 solving a lower speed, but the ratio does not — and
+    this normalises by the maximum, so only the ratio is used. Under sideslip the
+    left and right values are identical to the digit. The 2.212 against a taper of
+    2.222 is the outermost strip's centroid sitting inboard of the tip.
     """
     re = table.get("re")
     if not re:
@@ -374,8 +387,22 @@ def _relative_chord(table: dict[str, Any], keep: list[int]) -> list[float] | Non
     return [v / hi for v in vals]
 
 
-def _integrate(ys: list[float], vs: list[float]) -> float:
-    return sum((vs[i] + vs[i - 1]) / 2.0 * (ys[i] - ys[i - 1]) for i in range(1, len(ys)))
+def _integrate(ys: list[float], vs: list[float], half: float | None = None) -> float:
+    """Trapezoid over the strip centroids, closed to zero at the tips.
+
+    The centroids stop short of the tip, so integrating only between them leaves
+    the outermost interval out of both totals. Closing each end at zero load on the
+    physical tip is the right closure and keeps the two sides comparable.
+    """
+    xs, ws = list(ys), list(vs)
+    if half:
+        if xs[0] > -half:
+            xs.insert(0, -half)
+            ws.insert(0, 0.0)
+        if xs[-1] < half:
+            xs.append(half)
+            ws.append(0.0)
+    return sum((ws[i] + ws[i - 1]) / 2.0 * (xs[i] - xs[i - 1]) for i in range(1, len(xs)))
 
 
 def _elliptic_reference(ys: list[float], cls: list[float],
@@ -400,8 +427,8 @@ def _elliptic_reference(ys: list[float], cls: list[float],
         scale = (sum(cls) / total) if total else 1.0
         return Series("elliptic (approximate)", ys, [v * scale for v in shape])
 
-    lift = _integrate(ys, [cls[i] * chord[i] for i in range(len(ys))])
-    ref = _integrate(ys, shape)
+    lift = _integrate(ys, [cls[i] * chord[i] for i in range(len(ys))], half)
+    ref = _integrate(ys, shape, half)
     scale = (lift / ref) if ref else 1.0
     return Series("elliptic loading (same lift)", ys,
                   [scale * shape[i] / chord[i] for i in range(len(ys))])

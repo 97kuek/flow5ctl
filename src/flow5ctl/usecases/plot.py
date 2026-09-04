@@ -58,7 +58,15 @@ def _strip_table(result: dict[str, Any]) -> dict[str, Any] | None:
             # 0.45: the Re ratio root to tip came out 2.21 against a taper ratio of
             # 2.22. The elliptic reference needs the chord and flow5's strip table
             # does not carry one.
+            # The physical semi-span, not the outermost strip's centroid. A strip's
+            # y is where its load acts, so the last one sits inboard of the tip -
+            # and using it as the ellipse's half-span forces the reference to zero
+            # early. On the 34 m example that is 0.28 % of semi-span, which is
+            # -0.1 % on the curve at mid-span and -15 % at 99 % of span, where the
+            # reader is judging tip loading and the chart exists to be read.
+            span = (result.get("geometry") or {}).get("span")
             return {wing: {"y": ys, "cl": cls, "re": cols.get("Re"),
+                           "semi_span": (span / 2.0) if span else None,
                            "source": stored.get("source", ""),
                            "alpha": stored.get("alpha")}}
     return None

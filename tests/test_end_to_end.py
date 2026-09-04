@@ -367,3 +367,43 @@ def test_expanding_a_planform_changes_no_result(install, workspace):
         pytest.approx(before["summary"]["best_LD"]["value"])
     assert after["summary"]["cl_alpha_per_deg"] == \
         pytest.approx(before["summary"]["cl_alpha_per_deg"])
+
+
+@pytest.mark.parametrize("polar_type", ["T1", "T2", "T5"])
+def test_strip_reynolds_stays_proportional_to_chord(install, workspace, polar_type):
+    """The spanwise chart recovers the chord from the strip Reynolds numbers.
+
+    A reviewer said that inference was assumed rather than established, and listed
+    the cases that might break it: a fixed-lift polar where the speed is solved per
+    point, ground effect, sideslip. Measured on the shipped 34 m example, which has
+    ground effect on by default and a taper ratio of 2.222:
+
+    | polar | root Re | tip Re | ratio |
+    |---|---|---|---|
+    | T1 | 612,685 | 276,957 | 2.212 |
+    | T2 | 561,166 | 253,668 | 2.212 |
+    | T5 | 612,685 | 276,957 | 2.212 |
+
+    The absolute values move - T2 solves a lower speed - but the ratio does not, and
+    `_relative_chord` normalises by the maximum so only the ratio is used. Under
+    sideslip the left and right Re are identical to the digit. The 2.212 against a
+    taper of 2.222 is the outermost strip's centroid sitting inboard of the tip.
+    """
+    import pathlib as _p
+
+    import yaml
+    root = _p.Path(__file__).resolve().parent.parent
+    raw = yaml.safe_load((root / "examples" / "hpa.yaml").read_text())
+    define.create(f"Re{polar_type}", raw)
+    project = Project.resolve(f"Re{polar_type}")
+    alpha = (3.0, 7.0, 2.0) if polar_type != "T5" else (-6.0, 6.0, 3.0)
+    out = analyze_uc.analyze(project, analyze_uc.Request(
+        name="p", polar_type=polar_type, speed=8.0, alpha=alpha, viscous=False))
+
+    # the strip table is written into the stored result, not the returned payload
+    import json
+    stored = json.loads((project.root / out["data"]).read_text(encoding="utf-8"))
+    strips = (stored.get("strips") or {}).get("surfaces", {}).get("Main")
+    assert strips, "no strip table"
+    re = [v for v in strips["Re"] if v]
+    assert max(re) / min(re) == pytest.approx(2.212, abs=0.01)

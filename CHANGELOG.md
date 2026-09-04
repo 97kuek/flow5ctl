@@ -6,6 +6,21 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Fixed
+
+- **The elliptic reference on the spanwise chart went to zero before the tip.** It
+  used the outermost strip's centroid as the ellipse's half-span, and a strip's `y`
+  is where its load acts, so the last one sits inboard of the tip. On the 34 m
+  example that is 0.28 % of semi-span — which is −0.1 % on the curve at mid-span
+  and **−15 % at 99 % of span**, where the tip loading is read and the chart exists
+  to be read. It uses the geometry's own semi-span now, and both integrals close at
+  zero load on the physical tip rather than stopping at the last centroid.
+- The chord-from-Reynolds inference behind that reference is now **measured** rather
+  than argued: the root-to-tip Re ratio is 2.212 on T1, T2 and T5 alike on the 34 m
+  example, with ground effect on — a fixed-lift polar solves a lower speed but the
+  ratio does not move, and only the ratio is used.
+
+
 ## [0.1.11] — 2026-09-04
 
 ### Fixed

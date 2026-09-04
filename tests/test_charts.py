@@ -269,3 +269,66 @@ class TestChartsThatCannotShowTwoRuns:
                                               "cl": [0.2, 0.5, 0.2],
                                               "re": [1e5, 2e5, 1e5]}})
         assert data[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+class TestTheEllipseUsesThePhysicalSemiSpan:
+    """A strip's y is where its load acts, so the last one sits inboard of the tip.
+
+    Using it as the ellipse's half-span forced the reference to zero early. On the
+    34 m example the outermost centroid is at 16.9518 m against a semi-span of
+    17.0: 0.28 % short, which is -0.1 % on the curve at mid-span and **-15 %** at
+    99 % of span - where the reader is judging tip loading and the chart exists to
+    be read.
+    """
+
+    #: The 34 m example's own numbers: semi-span 17.0 m, outermost centroid 16.9518.
+    SEMI, LAST = 17.0, 16.9518
+
+    def _strips(self):
+        n = 12
+        ys = [self.LAST * (i + 1) / n for i in range(n)]
+        return [-y for y in reversed(ys)] + ys
+
+    def test_the_reference_is_not_zero_at_the_last_centroid(self):
+        ys = self._strips()
+        cls = [0.8] * len(ys)
+        ref = charts._elliptic_reference(ys, cls, [1.0] * len(ys), self.SEMI)
+        assert ref.y[-1] > 0.05, "forced to zero before the tip"
+
+    def test_using_the_centroid_as_the_half_span_is_what_broke_it(self):
+        """-15 % at 99 % of span, where the tip loading is read."""
+        ys = self._strips()
+        cls = [0.8] * len(ys)
+        right = charts._elliptic_reference(ys, cls, [1.0] * len(ys), self.SEMI)
+        wrong = charts._elliptic_reference(ys, cls, [1.0] * len(ys), self.LAST)
+        assert wrong.y[-1] == pytest.approx(0.0, abs=1e-9)
+        assert right.y[-1] > wrong.y[-1]
+        # and the gap is small inboard, which is why it went unnoticed
+        mid = len(ys) // 2 + 2
+        assert abs(wrong.y[mid] / right.y[mid] - 1) < 0.02
+
+    def test_the_integration_closes_at_the_tips(self):
+        """Between the centroids alone, the outermost interval is left out of both
+        totals; closing each end at zero load on the physical tip is the right
+        closure and keeps the two sides comparable."""
+        ys = [-1.0, 0.0, 1.0]
+        vs = [0.5, 1.0, 0.5]
+        open_ends = charts._integrate(ys, vs)
+        closed = charts._integrate(ys, vs, 1.5)
+        assert closed > open_ends
+        # each tip interval adds (0.5 + 0) / 2 * 0.5
+        assert closed == pytest.approx(open_ends + 2 * (0.5 / 2 * 0.5))
+
+    def test_no_half_span_means_no_closure(self):
+        ys = [-1.0, 0.0, 1.0]
+        vs = [0.5, 1.0, 0.5]
+        assert charts._integrate(ys, vs, None) == charts._integrate(ys, vs)
+
+    def test_the_strip_table_carries_the_span(self):
+        from flow5ctl.usecases import plot as plot_uc
+        result = {"geometry": {"span": 34.0},
+                  "strips": {"source": "s.csv", "alpha": 7.0, "surfaces": {
+                      "Main": {"y(m)": [-16.9, 0.0, 16.9], "Cl": [0.4, 1.1, 0.4],
+                               "Re": [2.7e5, 6.1e5, 2.7e5]}}}}
+        table = plot_uc._strip_table(result)["Main"]
+        assert table["semi_span"] == pytest.approx(17.0)
