@@ -8,6 +8,10 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ### Fixed
 
+- **The wake-plane warning still quoted the pre-fix numbers.** It said the span
+  efficiency read 1.93 and that offsetting the tail brought it within 3 % of AVL;
+  re-measured under the wake this release ships, those are 1.81 and 0.05 %. An
+  earlier attempt to update them had not applied.
 - **A comparison chart captioned every curve with the first one's conditions.** A
   12 m/s polar plotted against an 8 m/s one was labelled "12 m/s", so the second
   curve was silently attributed a speed it was not run at — on the chart whose whole

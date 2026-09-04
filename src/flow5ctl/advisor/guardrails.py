@@ -259,14 +259,18 @@ def _check_wake_plane(derived: Derived, c: Check) -> None:
 
     | tail z | as a fraction of chord | induced drag | span efficiency |
     |---|---|---|---|
-    | 0.000 | 0 | 0.00483 | **1.93 — impossible** |
-    | 0.001 | 0.4 % | 0.00734 | 1.27 — impossible |
-    | 0.005 | 2 % | 0.00935 | 0.996 |
-    | 0.010 | 4 % | 0.00964 | 0.966 |
-    | 0.020 | 8 % | 0.00977 | 0.953 |
+    | 0.000 | 0 | 0.00514 | **1.81 — impossible** |
+    | 0.005 | 2 % | 0.00965 | 0.962 |
+    | 0.010 | 4 % | 0.00994 | 0.934 |
+    | 0.020 | 8 % | 0.01007 | 0.922 |
+    | 0.200 | 80 % | 0.01008 | 0.925 |
+
+    (Re-measured after the wake went from 30 chords to 20 spans. The effect is the
+    same; the agreement with AVL away from the plane improved, because the short
+    wake was under-reading the whole configuration as well.)
 
     Two centimetres of offset **doubles** the induced drag, to a value that then
-    matches AVL within 3 %. So this is not a small sensitivity to a modelling
+    matches AVL to 0.05 % — 0.010070 against 0.010075. So this is not a small sensitivity to a modelling
     choice: at zero offset the answer is out by a factor of two, in the optimistic
     direction, with nothing in the output to say so.
 
@@ -300,8 +304,8 @@ def _check_wake_plane(derived: Derived, c: Check) -> None:
             "the wing's trailing vortex sheet, where the induced drag comes out "
             "wrong and flow5 says nothing. Measured on a comparable layout: at zero "
             "offset the induced drag was half its converged value and the span "
-            "efficiency read 1.93, which is impossible; moving the tail 2 cm — 8 % "
-            f"of chord — doubled it and brought it within 3 % of AVL. Offset {name} "
+            "efficiency read 1.81, which is impossible; moving the tail 2 cm — 8 % "
+            f"of chord — doubled it and brought it to 0.05 % of AVL. Offset {name} "
             "vertically by at least a tenth of the MAC, or model the height it "
             "actually has."
         )
