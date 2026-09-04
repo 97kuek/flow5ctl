@@ -14,11 +14,11 @@ import math
 
 import pytest
 
+from flow5ctl.errors import DesignError
 from flow5ctl.flow5 import airfoils
 from flow5ctl.geometry import derived as geometry
 from flow5ctl.geometry.planform import allocate_spanwise_panels
 from flow5ctl.model.design import Design
-from flow5ctl.errors import DesignError
 
 
 def solve(raw: dict) -> geometry.Derived:

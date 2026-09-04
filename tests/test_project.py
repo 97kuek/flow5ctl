@@ -102,3 +102,40 @@ def test_state_records_what_produced_a_result(rect_design, workspace):
     project.update_state(flow5_version="7.57", last_analysis="cruise")
     assert project.state()["flow5_version"] == "7.57"
     assert define.describe(project)["flow5_version_last_used"] == "7.57"
+
+
+class TestInvalidDesignFile:
+    """design.yaml is meant to be hand-edited, so a bad one is a normal event.
+
+    Before this, every failure came out as a Pydantic `ValidationError` traceback
+    with a docs URL - reproduced by copying `examples/hpa.yaml`, which is a template
+    and deliberately has no `name`.
+    """
+
+    def _project(self, tmp_path, text: str):
+        (tmp_path / "design.yaml").write_text(text)
+        return Project.open(tmp_path)
+
+    def test_a_missing_field_is_named(self, tmp_path):
+        p = self._project(tmp_path, "description: no name here\n")
+        with pytest.raises(DesignError) as e:
+            p.load()
+        assert "name is required but missing" in str(e.value)
+        assert "pydantic" not in str(e.value).lower()
+
+    def test_a_misspelled_field_says_so(self, tmp_path):
+        p = self._project(tmp_path, "name: X\nwing:\n  plamform: {span: 10}\n")
+        with pytest.raises(DesignError) as e:
+            p.load()
+        assert "wing.plamform is not a field flow5ctl knows" in str(e.value)
+
+    def test_broken_yaml_reports_the_line(self, tmp_path):
+        p = self._project(tmp_path, "name: X\nwing: [oops\n")
+        with pytest.raises(DesignError) as e:
+            p.load()
+        assert "not valid YAML" in str(e.value) and "line" in str(e.value)
+
+    def test_a_file_that_is_not_a_mapping_is_refused(self, tmp_path):
+        p = self._project(tmp_path, "- just\n- a list\n")
+        with pytest.raises(DesignError, match="should hold a mapping"):
+            p.load()
