@@ -334,3 +334,36 @@ def test_a_wing_alone_puts_its_neutral_point_at_the_quarter_chord(install, rect_
     assert np_x == pytest.approx(mac / 4.0, rel=0.02)
     assert any("neutral point and static margin are still" in n
                for n in out.get("notes", []))
+
+
+def test_expanding_a_planform_changes_no_result(install, workspace):
+    """DOMAIN-MODEL says shorthand never silently diverges from the truth.
+
+    `expand` rewrites `planform` into explicit `sections`, and that expansion is the
+    only way sections ever appear. If the two described different aeroplanes, a
+    designer who expanded in order to hand-tune would find their numbers had moved
+    before they touched anything. Checked on the shipped glider, all three surfaces.
+    """
+    import pathlib as _p
+
+    import yaml
+
+    from flow5ctl.usecases import edit as edit_uc
+    root = _p.Path(__file__).resolve().parent.parent
+    raw = yaml.safe_load((root / "examples" / "rc-glider.yaml").read_text())
+    define.create("Expanded", raw)
+    project = Project.resolve("Expanded")
+    req = analyze_uc.Request(name="p", polar_type="T1", speed=12.0,
+                             alpha=(0.0, 8.0, 2.0), viscous=False)
+
+    before = analyze_uc.analyze(project, req, store=False)
+    edit_uc.expand(project)
+    after = analyze_uc.analyze(project, req, store=False)
+
+    design = project.load()
+    assert design.wing.sections is not None and design.wing.planform is None
+    assert after["panels"] == before["panels"]
+    assert after["summary"]["best_LD"]["value"] == \
+        pytest.approx(before["summary"]["best_LD"]["value"])
+    assert after["summary"]["cl_alpha_per_deg"] == \
+        pytest.approx(before["summary"]["cl_alpha_per_deg"])
