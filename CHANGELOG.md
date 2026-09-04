@@ -6,6 +6,8 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+## [0.1.7] — 2026-09-04
+
 ### Fixed
 
 - **The "wing only" note said stability could not be assessed, and then the tool
