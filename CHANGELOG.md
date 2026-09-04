@@ -6,6 +6,8 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-09-04
+
 ### Added
 
 - **Both design guides ship inside the wheel**, and the Japanese one is served as
