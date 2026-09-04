@@ -214,6 +214,18 @@ def render(results: list[dict[str, Any]], kind: str, *, theme_name: str = "light
     subtitle = _subtitle(results)
 
     if kind == "spanwise_lift":
+        if len(results) > 1:
+            # The strips come from one result, so a second polar was silently
+            # dropped while the subtitle went on naming both runs' conditions -
+            # a chart showing one aircraft's loading captioned as if it covered
+            # two. Refusing is what `drag_breakdown` already does.
+            raise DesignError(
+                "a spanwise loading chart shows one analysis at a time. The strip "
+                "table it is drawn from belongs to a single operating point, and the "
+                "elliptic reference is computed for that aircraft's own planform, so "
+                "two of them in one frame would share neither. Plot them separately "
+                "and compare the two images."
+            )
         return _spanwise(design, strips, th, subtitle)
 
     if kind == "drag_breakdown":

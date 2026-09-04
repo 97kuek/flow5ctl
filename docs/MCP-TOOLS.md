@@ -291,6 +291,14 @@ Returns a **PNG as MCP image content**. This exists for Claude Desktop, where th
 user cannot open a file and where a curve communicates in one glance what twenty
 numbers do not. The CLI writes the file instead.
 
+`polar`, `cl_alpha` and `cm_alpha` take **several analyses at once** and draw them
+against each other; the subtitle then shows any condition that differs as a range,
+so a 12 m/s run plotted against an 8 m/s one is not captioned with one of them.
+`drag_breakdown` and `spanwise_lift` take **one** and refuse more: a stack of two
+aircraft's drag components cannot be read, and a spanwise chart is drawn from one
+operating point's strip table against an elliptic reference computed for that
+planform, so two would share neither.
+
 ### `export`
 `design`, `format` (`fl5` | `stl` | `csv` | `xml`), optional `polar`.
 Returns the path, and for `fl5` a reminder that `open_in_flow5` exists.

@@ -232,3 +232,40 @@ class TestTheSubtitleDescribesEveryCurve:
         s = charts._subtitle([self._r(speed=None), self._r(speed=None)])
         assert "m/s" not in s
         assert "interpolated" in s
+
+
+class TestChartsThatCannotShowTwoRuns:
+    """Two of the five kinds are single-analysis by construction.
+
+    `drag_breakdown` already refused. `spanwise_lift` did not: the strip table is
+    read from the first result, so a second polar was silently dropped while the
+    subtitle went on naming both runs' conditions. A chart showing one aircraft's
+    loading, captioned as if it covered two, is worse than no chart.
+    """
+
+    def _r(self, name):
+        return {"design": "D", "polar": name, "columns": ["Ctrl", "α (°)", "CL", "CD"],
+                "rows": [[0, 0.0, 0.1, 0.01], [0, 2.0, 0.3, 0.012]],
+                "conditions": {"speed": 12.0, "viscous_method": "interpolated"},
+                "flow5_version": "7.57", "summary": {}}
+
+    def test_spanwise_lift_refuses_two(self):
+        with pytest.raises(DesignError, match="one analysis at a time"):
+            charts.render([self._r("a"), self._r("b")], "spanwise_lift",
+                          strips={"Main": {"y": [-1.0, 0.0, 1.0], "cl": [0.2, 0.5, 0.2],
+                                           "re": [1e5, 2e5, 1e5]}})
+
+    def test_it_says_what_to_do_instead(self):
+        with pytest.raises(DesignError, match="Plot them separately"):
+            charts.render([self._r("a"), self._r("b")], "spanwise_lift", strips=None)
+
+    def test_drag_breakdown_still_refuses_two(self):
+        with pytest.raises(DesignError, match="one analysis at a time"):
+            charts.render([self._r("a"), self._r("b")], "drag_breakdown")
+
+    def test_one_analysis_is_fine(self):
+        data = charts.render([self._r("a")], "spanwise_lift",
+                             strips={"Main": {"y": [-1.0, 0.0, 1.0],
+                                              "cl": [0.2, 0.5, 0.2],
+                                              "re": [1e5, 2e5, 1e5]}})
+        assert data[:8] == b"\x89PNG\r\n\x1a\n"

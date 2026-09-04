@@ -6,6 +6,15 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Fixed
+
+- **A spanwise loading chart silently dropped every polar but the first.** The strip
+  table is read from one result, so asking for two produced one aircraft's loading
+  under a subtitle naming both runs' conditions. It refuses now, like
+  `drag_breakdown` already did, and says to plot them separately. `MCP-TOOLS.md`
+  records which kinds take several analyses and which take one.
+
+
 ## [0.1.6] — 2026-09-04
 
 ### Fixed
