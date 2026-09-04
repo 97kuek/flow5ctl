@@ -144,14 +144,28 @@ polar types on the same aircraft in 1.3 s.
 4–6 for turbulent conditions. It should change low-Re drag substantially. Pick one,
 state it, and keep it fixed across comparisons.
 
-> **Verify that `ncrit` is doing anything before you rely on it.** Measured on a
-> 13.6 %-thick, 6.7 %-camber section at Re 4.5×10⁵ in flow5 7.57: raising ncrit from
-> 9 to 11 to 13 left the drag **identical** at every lift coefficient above 1.0, and
-> moved minimum drag the **wrong way** (0.01050 → 0.01150 → 0.01265; delaying
-> transition should reduce drag, not raise it). Some of that may be real — a strong
-> adverse gradient can force transition near the leading edge regardless of ncrit, and
-> a longer laminar bubble can cost drag — but not all of it. Run two ncrit values on
-> your own section and check the answer moves before treating it as a design knob.
+> **`ncrit` stops doing anything once transition reaches the leading edge**, which on
+> a cambered section happens well below stall. Measured on a 13.6 %-thick, 6.7 %-camber
+> section at Re 4.5×10⁵ in flow5 7.57, with the transition column read alongside the
+> drag:
+>
+> | Cl | Cd @ n9 | Xtr | Cd @ n11 | Xtr | Cd @ n13 | Xtr |
+> |---|---|---|---|---|---|---|
+> | 0.79 | 0.01050 | 0.715 | 0.01150 | 0.729 | 0.01265 | 0.741 |
+> | 0.90 | 0.01513 | **0.000** | 0.01513 | **0.000** | 0.01513 | **0.000** |
+> | 1.10 | 0.02013 | **0.000** | 0.02013 | **0.000** | 0.02013 | **0.000** |
+>
+> Above Cl 0.9 the upper surface is turbulent from the leading edge, so there is no
+> laminar run left for ncrit to act on and the drag is bit-identical by construction.
+> Below it ncrit works normally — transition moves aft monotonically. That minimum
+> drag *rises* with ncrit is also real: pushing transition aft lengthens the laminar
+> separation bubble, and on this section the bubble costs more than the skin friction
+> it saves. Both effects are physics.
+>
+> An earlier version of this guide called the identical drag a flow5 defect. It is
+> not; the transition column settles it. What is worth checking is where your own
+> section's transition reaches the leading edge, because ncrit is only a design knob
+> below that point.
 
 Make sure the 2D polar mesh **brackets** the Re the wing actually sees, root to tip
 **and across the whole speed range** — not just at cruise. A 34 m tapered wing at
