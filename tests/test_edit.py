@@ -337,3 +337,32 @@ class TestAirfoilAddTakesTheDesignPositionally:
         from flow5ctl.errors import Flow5ctlError
         with pytest.raises(Flow5ctlError, match="given twice"):
             cmd_airfoil(self._args("Rect", "AG35", "naca:2409", design="Rect"))
+
+    def test_a_source_flag_makes_two_positionals_design_and_name(self, project):
+        """`airfoil add Rect AG35 --naca 2409` is the natural way to type it.
+
+        A source flag means the second positional cannot be a source, so the pair
+        can only be (design, name). It used to be read as (name, source) and failed
+        with "no design.yaml in the current directory" - an error about something
+        else entirely.
+        """
+        from flow5ctl.cli import cmd_airfoil
+        a = self._args("Rect", "AG35")
+        a.naca = "2409"
+        assert cmd_airfoil(a) == 0
+        assert "AG35" in {x.name for x in project.load().airfoils}
+
+    def test_one_positional_with_a_source_flag_is_just_the_name(self, project):
+        from flow5ctl.cli import cmd_airfoil
+        a = self._args("AG35", design="Rect")
+        a.naca = "2409"
+        assert cmd_airfoil(a) == 0
+        assert "AG35" in {x.name for x in project.load().airfoils}
+
+    def test_the_design_twice_is_refused_with_a_source_flag_too(self, project):
+        from flow5ctl.cli import cmd_airfoil
+        from flow5ctl.errors import Flow5ctlError
+        a = self._args("Rect", "AG35", design="Rect")
+        a.naca = "2409"
+        with pytest.raises(Flow5ctlError, match="given twice"):
+            cmd_airfoil(a)

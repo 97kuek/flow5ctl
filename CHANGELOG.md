@@ -189,9 +189,13 @@ not correct.
   `sweep` on `speed` with a T1 polar, which asks the same question and works.
 - **`airfoil add` now takes the design name positionally too.** `airfoil list`
   does, and so does every other verb, so `flow5ctl airfoil add MyGlider AG35
-  naca:2409` read the design name as the airfoil name. Two positionals cannot be
-  told apart from `(name, source)` without guessing, so three are accepted and mean
-  `(design, name, source)`; giving the design twice is refused rather than resolved.
+  naca:2409` read the design name as the airfoil name, and
+  `airfoil add MyGlider AG35 --naca 2409` — the natural way to type it — failed with
+  "no design.yaml in the current directory", an error about something else. What the
+  positionals mean now follows from whether a source flag is present, which settles
+  it without guessing: three positionals are `(design, name, source)`, and two with
+  `--naca`/`--file`/`--url` are `(design, name)` because a positional source would
+  clash. Giving the design twice is refused rather than resolved.
 - **`set` now takes the design name positionally**, like every other verb. It did
   not, so `flow5ctl set Glider wing.planform.taper=0.6` read as three assignments
   and failed with "no design.yaml in the current directory" — an error about the

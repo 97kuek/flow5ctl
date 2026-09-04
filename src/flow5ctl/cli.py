@@ -357,6 +357,43 @@ def cmd_set(args: argparse.Namespace) -> int:
     return 0
 
 
+def _read_airfoil_positionals(args: argparse.Namespace) -> None:
+    """Work out whether the first positional is the design or the airfoil.
+
+    `airfoil list` takes the design positionally and so does every other verb, so
+    people write the design first here too. What the positionals mean depends on
+    whether the source was given as a flag, and that is enough to decide without
+    guessing:
+
+    | written | means |
+    |---|---|
+    | `add NAME SOURCE` | the airfoil and where it comes from |
+    | `add DESIGN NAME SOURCE` | three positionals can only be this |
+    | `add NAME --naca 2412` | the airfoil; the design comes from `--design` or the cwd |
+    | `add DESIGN NAME --naca 2412` | a source flag means a positional source would clash, so the pair is (design, name) |
+
+    Before this, the last line was read as (name, source) and failed with "no
+    design.yaml in the current directory" — an error about the wrong thing, and the
+    natural way to type the command.
+    """
+    if args.third is not None:                       # design name source
+        if args.design:
+            raise Flow5ctlError(
+                "the design was given twice: once as the first argument and once as "
+                "--design. Use one or the other."
+            )
+        args.design, args.name, args.source = args.name, args.source, args.third
+        return
+    if args.source is not None and (args.naca or args.file or args.url):
+        # a source flag is present, so the second positional cannot be a source
+        if args.design:
+            raise Flow5ctlError(
+                "the design was given twice: once as the first argument and once as "
+                "--design. Use one or the other."
+            )
+        args.design, args.name, args.source = args.name, args.source, None
+
+
 def cmd_expand(args: argparse.Namespace) -> int:
     project = Project.resolve(args.design)
     _emit(edit_uc.expand(project), args.json)
@@ -364,16 +401,8 @@ def cmd_expand(args: argparse.Namespace) -> int:
 
 
 def cmd_airfoil(args: argparse.Namespace) -> int:
-    if getattr(args, "third", None) is not None:
-        # `airfoil add <design> <name> <source>`. Two positionals stay (name, source)
-        # because that is what they have always meant and it cannot be told apart
-        # from (design, name) without guessing.
-        if args.design:
-            raise Flow5ctlError(
-                "the design was given twice: once as the first argument and once as "
-                "--design. Use one or the other."
-            )
-        args.design, args.name, args.source = args.name, args.source, args.third
+    if args.airfoil_command == "add":
+        _read_airfoil_positionals(args)
     project = Project.resolve(args.design)
     if args.airfoil_command == "list":
         _emit(edit_uc.list_airfoils(project), args.json)
