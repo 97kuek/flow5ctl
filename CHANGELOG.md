@@ -6,6 +6,8 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-09-04
+
 ### Added
 
 - **The examples ship in the wheel, and `init --example rc-glider` reads them.** The
