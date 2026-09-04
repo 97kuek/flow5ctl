@@ -262,7 +262,9 @@ async def analyze(
                                                      "unless the design has a cruise "
                                                      "speed")] = None,
     alpha: Annotated[list[float] | None,
-                     Field(description="[min, max, step] in degrees")] = None,
+                     Field(description="[min, max, step] in degrees. On a T5 polar "
+                                       "this is the SIDESLIP range, not incidence — "
+                                       "alpha is held at 0 and beta is swept.")] = None,
     viscous: bool | None = None,
     ground_effect: bool | None = None,
     ground_height: Annotated[float | None,

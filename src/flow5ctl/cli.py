@@ -65,6 +65,20 @@ def _pretty(p: dict[str, Any]) -> None:
         print(f"  {p['points']} points, {p['panels']} panels, {p['runtime_s']} s, "
               f"flow5 {p['flow5_version']}")
         print("\nResults")
+        if s.get("sideslip_sweep"):
+            # alpha is held fixed here, so nothing longitudinal is printed
+            line("Cn_beta  (yaw)", f"{s['cn_beta_per_deg']:+.6f} /deg  "
+                 + ("stable" if s["cn_beta_per_deg"] > 0 else "UNSTABLE")
+                 if s.get("cn_beta_per_deg") is not None else None)
+            line("Cl_beta  (roll)", f"{s['cl_beta_per_deg']:+.6f} /deg  "
+                 + ("stable" if s["cl_beta_per_deg"] < 0 else "UNSTABLE")
+                 if s.get("cl_beta_per_deg") is not None else None)
+            line("CY_beta  (side)", f"{s['cy_beta_per_deg']:+.6f} /deg"
+                 if s.get("cy_beta_per_deg") is not None else None)
+            print("\n  Cn_beta > 0 and Cl_beta < 0 are stable. flow5 writes both of")
+            print("  these with the opposite sign; the values above are converted.")
+        # Every longitudinal key is absent from a sideslip summary, so the lines
+        # below print nothing on a T5 run without needing to be guarded.
         line("CL_alpha", f"{s['cl_alpha_per_deg']} /deg" if s.get("cl_alpha_per_deg") else None)
         line("alpha at CL=0", s.get("alpha_zero_lift"))
         if s.get("best_LD"):
@@ -507,7 +521,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="T1 fixed speed, T2 fixed lift, T3 glide, T5 sideslip, T7 stability")
     p.add_argument("--method", help="LLT, VLM1, VLM2, QUADS, TRIUNIFORM, TRILINEAR")
     p.add_argument("--speed", type=float)
-    p.add_argument("--alpha", help="min,max,step in degrees")
+    # A T5 polar sweeps sideslip through this same range, so `--beta` is accepted
+    # as a name for it. Writing `--alpha` for a sideslip sweep reads like an error.
+    p.add_argument("--alpha", "--beta", dest="alpha",
+                   help="min,max,step in degrees (sideslip for T5)")
     p.add_argument("--viscous", dest="viscous", action="store_true", default=None)
     p.add_argument("--inviscid", dest="viscous", action="store_false")
     p.add_argument("--on-the-fly", dest="on_the_fly", action="store_true", default=None,
@@ -593,7 +610,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 _VALUE_OPTS = (
-    "--alpha", "--alpha-range", "--polar-alpha", "--speed", "--cg", "--mass",
+    "--alpha", "--beta", "--alpha-range", "--polar-alpha", "--speed", "--cg", "--mass",
     "--ground-height", "--timeout", "--value", "--values", "--ncrit",
 )
 

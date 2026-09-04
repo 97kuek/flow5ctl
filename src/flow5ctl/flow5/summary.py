@@ -158,6 +158,31 @@ class Summary:
     This is the number to compare when moving the CG. Best L/D does not change with
     CG at all — the drag polar is the same, only the trim point moves — so a CG study
     reported on best L/D looks like it makes no difference when it does."""
+    sideslip_sweep: bool = False
+    """True when the polar varies sideslip at fixed alpha (a T5 run).
+
+    Every longitudinal number is meaningless on such a polar and is left unset.
+    flow5 itself still prints an `XNP` and a `Static margin` in the header - on the
+    reference HPA it printed 5.77 m and 593%, because it divides a moment slope by a
+    lift slope that is zero by construction. Passing those through as results was a
+    bug: they read as authoritative and are noise."""
+
+    cn_beta_per_deg: float | None = None
+    """Directional (weathercock) stability. Positive is stable.
+
+    Reported in the textbook sign convention, which is NOT the one flow5 writes.
+    See `_LATERAL_SIGN` for how that was established."""
+
+    cl_beta_per_deg: float | None = None
+    """Dihedral effect - roll response to sideslip. Negative is stable.
+
+    Textbook convention, negated from flow5's. See `_LATERAL_SIGN`."""
+
+    cy_beta_per_deg: float | None = None
+    """Side-force slope. Negative for any conventional aircraft.
+
+    flow5 already writes this in the textbook convention, so it is not negated."""
+
     longitudinal_modes: list[Mode] = field(default_factory=list)
     lateral_modes: list[Mode] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -179,6 +204,14 @@ class Summary:
             "cl_at_trim": r(self.cl_at_trim, 5),
             "ld_at_trim": r(self.ld_at_trim, 3),
         }
+        if self.sideslip_sweep:
+            d = {"points": self.points, "sideslip_sweep": True}
+            d["cn_beta_per_deg"] = r(self.cn_beta_per_deg, 6)
+            d["cl_beta_per_deg"] = r(self.cl_beta_per_deg, 6)
+            d["cy_beta_per_deg"] = r(self.cy_beta_per_deg, 6)
+            d["sign_convention"] = (
+                "textbook: Cn_beta > 0 stable, Cl_beta < 0 stable"
+            )
         if self.best_ld:
             d["best_LD"] = self.best_ld.as_dict()
         if self.min_sink:
@@ -216,6 +249,65 @@ def parse_modes(log: str) -> tuple[list[Mode], list[Mode]]:
     return block("___Longitudinal modes___"), block("___Lateral modes___")
 
 
+#: flow5 7.57 writes the two lateral moment coefficients with the opposite sign to
+#: the convention every stability text uses. Established by control experiment, not
+#: by reading flow5's source - three configurations of one HPA, T5, beta -6..6:
+#:
+#:   fin 6.0 m aft of the CG   dCY/dbeta -0.006333   dCn/dbeta -0.000991
+#:   no fin at all             dCY/dbeta -0.000105   dCn/dbeta +0.000038
+#:   fin 1.5 m AHEAD of the CG dCY/dbeta -0.006235   dCn/dbeta +0.000381
+#:
+#: Moving the same fin from behind the CG to in front leaves the side force almost
+#: unchanged and flips dCn/dbeta. Only a moment-arm sign change does that, so the
+#: aft-fin case - which is stable by construction - is the NEGATIVE one. Likewise
+#: for roll, with the fin removed so only the wing contributes:
+#:
+#:   dihedral +6 deg   dCl/dbeta +0.002089      dihedral +2 deg   +0.000609
+#:   dihedral -6 deg   dCl/dbeta -0.002323
+#:
+#: Monotone in dihedral and flipped by anhedral, which is roll-unstable. So flow5's
+#: stable sign is POSITIVE for dCl/dbeta.
+#:
+#: dCY/dbeta is negative in every case, matching the textbook, and Cm is not
+#: affected either - the static margin built on it validates against three
+#: published aircraft. Only Cn and Cl are inverted.
+_LATERAL_SIGN = -1.0
+
+#: Below this, an alpha column is not being swept and longitudinal slopes are noise.
+_SWEPT_DEG = 0.5
+
+
+def _summarise_sideslip(polar: Polar, s: Summary) -> Summary:
+    """Reduce a sideslip polar to the three derivatives it exists to measure.
+
+    Converted into the textbook sign convention on the way out, so that the usual
+    rule - Cn_beta > 0 stable, Cl_beta < 0 stable - reads correctly. flow5's raw
+    output has both of them the other way round (`_LATERAL_SIGN`), which is a trap:
+    applied naively, a strongly weathercock-stable aircraft reads as unstable.
+    """
+    s.sideslip_sweep = True
+    beta = polar.column("β")
+    for attr, col, sign in (("cy_beta_per_deg", "CY", 1.0),
+                            ("cn_beta_per_deg", "Cn", _LATERAL_SIGN),
+                            ("cl_beta_per_deg", "Cl", _LATERAL_SIGN)):
+        if polar.has(col) and (fit := _fit(beta, polar.column(col))):
+            setattr(s, attr, sign * fit[0])
+
+    if s.cn_beta_per_deg is not None and s.cn_beta_per_deg <= 0:
+        s.warnings.append(
+            f"directionally UNSTABLE: Cn_beta is {s.cn_beta_per_deg:+.5f} /deg and "
+            "has to be positive. The aircraft will diverge in yaw rather than "
+            "weathercock back into the wind. Enlarge the fin or move it further aft."
+        )
+    if s.cl_beta_per_deg is not None and s.cl_beta_per_deg >= 0:
+        s.warnings.append(
+            f"the dihedral effect is UNSTABLE: Cl_beta is {s.cl_beta_per_deg:+.5f} "
+            "/deg and has to be negative. In a sideslip the aircraft rolls further "
+            "into it. Add dihedral, or raise the fin."
+        )
+    return s
+
+
 def summarise(polar: Polar, *, mac: float | None = None, cg_x: float | None = None,
               log: str = "", cg_height_offset_mac: float | None = None) -> Summary:
     """Reduce a polar to the numbers a designer asked for.
@@ -235,6 +327,16 @@ def summarise(polar: Polar, *, mac: float | None = None, cg_x: float | None = No
     alpha = polar.column("α")
     cl = polar.column("CL")
     cd = polar.column("CD")
+
+    # A T5 polar holds alpha fixed and sweeps beta. Fitting anything against alpha
+    # then divides by zero spread, and flow5's own header figures are noise too, so
+    # this leaves before any longitudinal number is computed.
+    if polar.has("β"):
+        beta = polar.column("β")
+        swept = max(beta) - min(beta) if beta else 0.0
+        held = max(alpha) - min(alpha) if alpha else 0.0
+        if swept > _SWEPT_DEG and held < _SWEPT_DEG:
+            return _summarise_sideslip(polar, s)
 
     if fit := _fit(alpha, cl):
         s.cl_alpha_per_deg = fit[0]

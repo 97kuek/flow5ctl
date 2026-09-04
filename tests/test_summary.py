@@ -164,3 +164,68 @@ class TestStaticMarginCrossCheck:
                       cg_x=0.05)
         assert "static_margin" in s.as_dict()
         assert "pitch_stiffness_margin" in s.as_dict()
+
+
+class TestSideslipPolar:
+    """A T5 polar holds alpha fixed and sweeps beta.
+
+    Every longitudinal number is noise on such a run. flow5 itself printed
+    `XNP = 5.77 m` and `Static margin = 593.311` for the reference HPA, because it
+    divides a moment slope by a lift slope that is zero by construction - and
+    flow5ctl reported both as headline results.
+
+    flow5 also writes the two lateral moment coefficients with the opposite sign to
+    the textbook convention, so the verdict inverts if they are taken at face value.
+    The three fixtures here are measured runs of one HPA, and each isolates one
+    thing: the fin behind the CG (stable), the same fin ahead of it (yaw-unstable),
+    and anhedral with no fin at all (roll-unstable).
+    """
+
+    @pytest.fixture
+    def stable(self, fixtures):
+        return summarise(parse_polar(fixtures / "polar_t5_finaft.csv"),
+                         mac=0.874, cg_x=0.59)
+
+    def test_lateral_derivatives_are_reported(self, stable):
+        assert stable.sideslip_sweep is True
+        assert stable.cn_beta_per_deg == pytest.approx(0.000991, abs=2e-6)
+        assert stable.cl_beta_per_deg == pytest.approx(-0.000788, abs=2e-6)
+        assert stable.cy_beta_per_deg == pytest.approx(-0.006333, abs=2e-6)
+
+    def test_a_conventional_layout_raises_no_warning(self, stable):
+        assert stable.warnings == []
+
+    def test_no_longitudinal_number_is_reported(self, stable, fixtures):
+        """flow5's own header claims a 593% static margin for this polar."""
+        reported = parse_polar(fixtures / "polar_t5_finaft.csv")
+        assert reported.header_float("Static margin") > 500  # flow5 really says this
+        assert stable.static_margin is None
+        assert stable.neutral_point_x is None
+        assert stable.best_ld is None
+        assert stable.cl_alpha_per_deg is None
+        d = stable.as_dict()
+        assert "static_margin" not in d and "neutral_point_x" not in d
+        assert d["sideslip_sweep"] is True
+
+    def test_a_fin_ahead_of_the_cg_is_directionally_unstable(self, fixtures):
+        """Same fin, moved from 6.0 m aft of the CG to 1.5 m ahead of it."""
+        s = summarise(parse_polar(fixtures / "polar_t5_finfwd.csv"),
+                      mac=0.874, cg_x=0.59)
+        assert s.cn_beta_per_deg is not None and s.cn_beta_per_deg < 0
+        assert any("directionally UNSTABLE" in w for w in s.warnings)
+        # the side force is almost unchanged - only the moment arm flipped
+        assert s.cy_beta_per_deg == pytest.approx(-0.006235, abs=2e-6)
+
+    def test_anhedral_is_roll_unstable(self, fixtures):
+        s = summarise(parse_polar(fixtures / "polar_t5_anhedral.csv"),
+                      mac=0.874, cg_x=0.59)
+        assert s.cl_beta_per_deg is not None and s.cl_beta_per_deg > 0
+        assert any("dihedral effect is UNSTABLE" in w for w in s.warnings)
+        assert not any("directionally UNSTABLE" in w for w in s.warnings)
+
+    def test_an_alpha_sweep_is_not_mistaken_for_one(self, fixtures):
+        """beta is present but constant in every T1 polar."""
+        s = summarise(parse_polar(fixtures / "polar_t1_rectwing.csv"),
+                      mac=0.2, cg_x=0.05)
+        assert s.sideslip_sweep is False
+        assert s.cl_alpha_per_deg is not None

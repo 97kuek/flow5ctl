@@ -604,6 +604,47 @@ reading −0.59 as a fraction would call a marginally-unstable aircraft wildly u
 > the aircraft actually resists a disturbance with. Never compare the second against a
 > textbook band.
 
+### 5.3a Lateral moment coefficients have the opposite sign to the textbook
+
+**[run]** In a **T5** (sideslip) polar, flow5 7.57 writes `Cn` and `Cl` with the
+opposite sign to the convention every stability text uses. `CY` is *not* affected,
+and neither is `Cm` — the static margin built on it validates against three
+published aircraft.
+
+Established by control experiment on one HPA, T5, β −6…6°, VLM2:
+
+| configuration | `dCY/dβ` | `dCn/dβ` | stability by construction |
+|---|---|---|---|
+| fin 6.0 m **behind** the CG | −0.006333 | **−0.000991** | stable |
+| no fin at all | −0.000105 | +0.000038 | ~neutral |
+| the same fin 1.5 m **ahead** of the CG | −0.006235 | **+0.000381** | unstable |
+
+Moving the same fin from behind the CG to in front leaves the side force almost
+unchanged and **flips `dCn/dβ`**. Only a moment-arm sign change does that, so the
+aft-fin case — stable by construction — is the negative one. Textbook: `Cn_β > 0`
+is stable. **flow5: `dCn/dβ < 0` is stable.**
+
+The roll derivative, with the fin removed so only the wing contributes:
+
+| wing | `dCl/dβ` | |
+|---|---|---|
+| dihedral +6° | +0.002089 | stable |
+| dihedral +2° | +0.000609 | stable, weaker |
+| anhedral −6° | −0.002323 | unstable |
+
+Monotone in dihedral and flipped by anhedral. Textbook: `Cl_β < 0` is stable.
+**flow5: `dCl/dβ > 0` is stable.**
+
+> An agent applying the textbook rule to flow5's raw output calls a strongly
+> weathercock-stable aircraft unstable, and vice versa. flow5ctl negates both and
+> reports them in the textbook convention, stating which it uses.
+
+**[run]** flow5's own header on a T5 polar is meaningless and must not be passed on:
+it printed `XNP = 5.77 m` and `Static margin = 593.311` for a 34 m HPA, because on a
+β sweep at fixed α the lift slope it divides by is zero by construction. On another
+T5 fixture the same header reads `Static margin = inf`. flow5ctl reports no
+longitudinal quantity at all from a sideslip polar.
+
 ### 5.4 Spanwise strip table — the useful part of an operating-point file
 
 **[run]** Each op-point file carries, per wing, a per-strip table:

@@ -142,8 +142,30 @@ Returns a summary, never the table:
 }
 ```
 
+A **T5** run returns a different summary, because α is held fixed and nothing
+longitudinal means anything on a sideslip sweep:
+
+```jsonc
+{
+  "summary": {
+    "sideslip_sweep": true,
+    "cn_beta_per_deg": 0.000991,    // > 0 is directionally stable
+    "cl_beta_per_deg": -0.000788,   // < 0 is a stable dihedral effect
+    "cy_beta_per_deg": -0.006333,
+    "sign_convention": "textbook: Cn_beta > 0 stable, Cl_beta < 0 stable"
+  }
+}
+```
+
+`alpha` is the **sideslip** range on a T5 run. flow5 writes both lateral moment
+coefficients with the opposite sign to the textbook convention; these are converted,
+so the usual rule reads correctly. No `static_margin` or `neutral_point_x` is
+returned — flow5's own header claimed 593 % for a 34 m HPA.
+([FLOW5-INTERFACE.md §5.3a](FLOW5-INTERFACE.md))
+
 Guardrails enforced here:
 - `type: "T1"` with a stability question → refused, pointing at `T7`
+- a T5 polar reporting an unstable `Cn_beta` or `Cl_beta` → warned, with the fix
 - `viscous: true` with no 2D polars → computes them, reports the cost
 - panel count above the preset ceiling → refused with the count and a suggestion
 - estimated runtime above the budget → asks for confirmation instead of hanging

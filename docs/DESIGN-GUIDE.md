@@ -65,9 +65,20 @@ saying "rigid, no interference drag, attached flow only" is misleading its user.
 | What is the speed range / glide polar? | **T2** fixed lift | Speed solves per α at fixed weight. Right for gliders. |
 | Best glide angle and speed? | **T3** glide polar | |
 | How does drag vary with speed at fixed attitude? | **T4** fixed α | |
-| Sideslip / fin sizing | **T5** beta | |
+| Sideslip / fin sizing | **T5** beta | Sweeps β through the `--alpha` range. Reports `Cn_beta`, `Cl_beta`, `CY_beta` and nothing longitudinal. |
 | Flap or control-surface effectiveness | **T6** control | Needs control definitions. |
 | **Is it stable? What are the modes?** | **T7** stability | The *only* correct source of eigenvalues and dynamic modes. |
+
+> **A T5 polar answers only lateral questions, and flow5's signs are inverted.**
+> flow5 7.57 writes `Cn` and `Cl` with the opposite sign to the textbook convention.
+> flow5ctl converts them, so the usual rule reads correctly: **`Cn_beta > 0` is
+> directionally stable, `Cl_beta < 0` is a stable dihedral effect.** If you read the
+> flow5 CSV yourself, the signs are the other way round.
+>
+> Nothing longitudinal is reported from a T5 run, because nothing longitudinal means
+> anything on it: α is held fixed, so flow5's own header claimed a **593 %** static
+> margin for a 34 m HPA. Use T1/T2/T7 for pitch.
+> ([FLOW5-INTERFACE.md §5.3a](FLOW5-INTERFACE.md))
 
 > **Never take stability results from a T1 polar.** Measured on the same aircraft:
 > a T1 run with `Compute_derivatives` returned lateral eigenvalues of `5.995e+51`
