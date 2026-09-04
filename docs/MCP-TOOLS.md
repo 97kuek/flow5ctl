@@ -181,6 +181,7 @@ wing and a tail:
     "load_factor": 1.0,                 // that lift over the aircraft's weight
     "elliptic_estimate_Nm": 2964.0,     // closed-form cross-check
     "estimate_from": "lift at this operating point",
+    "estimate_assumes": "the wing carries all of that lift…",   // it carries ~97 %
     "ratio_to_estimate": 0.935
   }
 }

@@ -6,6 +6,18 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Changed
+
+- **The bending cross-check now says the wing does not carry quite all the lift.** A
+  reviewer objected that the estimate uses the aircraft's *total* lift for what is
+  presented as a main-wing check. Measured by integrating each surface's own strips
+  on the shipped examples: the elevator carries **3.5 %** on the 3 m glider at α 6°
+  and **3.2 %** on the 34 m HPA at α 7°, so the estimate is high by about that. It
+  is stated rather than corrected — splitting the total by the strips' own shares
+  would check the strip table against itself, and the whole value of the comparison
+  is that its two sides come from different places.
+
+
 ## [0.1.9] — 2026-09-04
 
 ### Fixed

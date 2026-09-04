@@ -420,6 +420,31 @@ class TestRootBendingMoment:
         assert out["estimate_from"] == "lift at this operating point"
         assert structure.notes(out) == []
 
+    def test_the_estimate_says_the_wing_does_not_carry_quite_all_of_it(self):
+        """A second reviewer's objection, measured rather than argued.
+
+        The estimate uses the aircraft's total lift, so on a tailed layout it is
+        high by the tail's share. Integrating each surface's own strips on the two
+        shipped examples: the elevator carries 3.5 % on the 3 m glider at alpha 6
+        and 3.2 % on the 34 m HPA at alpha 7. That is an eighth of the threshold at
+        which a disagreement is reported, so it raises no false alarm - but the
+        printed ratio is biased by about that much and now says so.
+
+        It is not corrected, because splitting the total by the strips' own shares
+        would check the strip table against itself and the whole value of the
+        comparison is that the two sides come from different places.
+        """
+        s = self._strips([0.0, 2804.0, 0.0], [-16.0, 0.0, 16.0])
+        out = structure.root_load(s, mass_kg=89.0, semi_span_m=16.0, lift_N=873.0)
+        assert "the wing carries all of that lift" in out["estimate_assumes"]
+        assert "3.2-3.5 %" in out["estimate_assumes"]
+        assert "canard" in out["estimate_assumes"]
+
+    def test_the_assumption_is_not_stated_when_no_estimate_is_made(self):
+        s = self._strips([0.0, 2804.0, 0.0], [-16.0, 0.0, 16.0])
+        out = structure.root_load(s, mass_kg=None, semi_span_m=16.0)
+        assert "estimate_assumes" not in out
+
     def test_level_flight_is_silent(self):
         s = self._strips([0.0, 2804.0, 0.0], [-16.0, 0.0, 16.0])
         lift = 89.0 * 9.81

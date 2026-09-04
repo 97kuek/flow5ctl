@@ -138,6 +138,11 @@ def root_load(strips: dict[str, Any] | None, *, mass_kg: float | None,
         out["elliptic_estimate_Nm"] = round(estimate, 1)
         out["estimate_from"] = ("lift at this operating point" if lift_N is not None
                                 else "the aircraft's weight, assuming level flight")
+        out["estimate_assumes"] = (
+            "the wing carries all of that lift. On a conventional layout the tail "
+            "takes a few percent of it — measured 3.2-3.5 % on the shipped examples "
+            "— so this estimate is high by about that, and more on a canard."
+        )
         if estimate > 0:
             ratio = peak / estimate
             out["ratio_to_estimate"] = round(ratio, 3)
