@@ -66,12 +66,37 @@ returns confident numbers that are wrong. Most of this document is about the edg
   four decimal places — so always spend the panels on the span. The defaults are now
   40 spanwise, and an analysis says so if a design goes below 25.
 
-  Even converged there is a residual: classical lifting line gives 0.921 for the
-  same AR 10 wing against flow5's 0.984, and the disagreement is concentrated at the
-  tip where the lifting-line assumption is weakest. flow5's answer is the more
-  believable one — it is a Trefftz-plane far-field value, verified in the source —
-  but two methods disagreeing at the tip is why induced drag is good to a few
-  percent rather than exactly.
+- **Induced drag at high aspect ratio — the largest known error in this tool.**
+  Refining the mesh is necessary but not sufficient. Checked against AVL 3.40 and
+  against the one case with an exact answer — an elliptic planar wing has a span
+  efficiency of **1.0 and cannot exceed it** — flow5 comes back *above* the limit,
+  by more and more as the span grows
+  ([log](log/2026-09-04-induced-drag-against-avl.md)):
+
+  | AR | flow5 e (exact answer: 1.000) | **induced drag is** |
+  |---|---|---|
+  | 6 | 1.009 | 0.9 % low |
+  | 10 | 1.024 | 2.4 % low |
+  | 15 | 1.049 | 4.6 % low |
+  | 20 | 1.077 | 7.2 % low |
+  | 25 | 1.109 | 9.8 % low |
+  | 30 | 1.142 | **12.4 % low** |
+  | 40 | 1.211 | **17.4 % low** |
+  | 50 | 1.280 | **21.9 % low** |
+
+  AVL returns 0.997 at AR 10 and 0.996 at AR 40 on the same planforms, and is
+  mesh-independent from 10 panels. Varying flow5's mesh, spanwise distribution,
+  chordwise count and VLM1-against-VLM2 moves its figure by 0.4 %, so it is none of
+  those. **Lift is unaffected** — the two solvers agree within 0.6 % on CL at both
+  aspect ratios — so this is specific to the induced drag.
+
+  **Human-powered aircraft fly at AR 30–45, where induced drag is most of the drag
+  budget.** That is the worst place for this error to be, and it is optimistic: the
+  aircraft has more drag than the model says, on top of everything §1a lists as
+  missing. flow5ctl warns above AR 15 with the figure for your own aspect ratio. It
+  does **not** correct the number — a fudge factor applied to a solver would hide
+  the problem and would be wrong for any case not measured — so treat a high-AR L/D
+  as an upper bound and cross-check against AVL (§9) before committing.
 - **Structural deflection.** A 34 m HPA wing bends several percent of span in flight.
   flow5 analyses the rigid shape you gave it.
 

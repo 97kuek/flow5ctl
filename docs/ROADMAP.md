@@ -176,7 +176,10 @@ were all pulled forward into Phases 1-3. What remained, and is now done:
 - [ ] Fuselages (`<body>`, NURBS verified; flat-panel still to do)
 - [ ] Bundled low-Re airfoil catalogue with checked provenance
 - [ ] Contributed presets (F3B, F3F, F5J, DLG, HPA distance, HPA rally)
-- [ ] Cross-check against AVL for validation
+- [x] Cross-check against AVL for validation — done, and it found the induced-drag
+      bias above ([log](log/2026-09-04-induced-drag-against-avl.md)). Still to do:
+      the same comparison on a multi-surface aircraft, where interference between
+      wing and tail is what AVL would be checking rather than a single wing
 - [x] Japanese documentation for the Birdman Rally community —
       [ja/QUICKSTART.md](ja/QUICKSTART.md), [ja/DESIGN-GUIDE.md](ja/DESIGN-GUIDE.md)
       (a full translation, not a summary — the aerodynamic judgement is the part
@@ -214,6 +217,6 @@ were all pulled forward into Phases 1-3. What remained, and is now done:
 | Agents report unstable/stalled results as valid | Guardrails in the tool plus [DESIGN-GUIDE.md](DESIGN-GUIDE.md); refuse the bad combinations outright |
 | Someone builds a piloted aircraft on an unvalidated result | Stated limits in every report; cross-check guidance; the tool says so |
 | Linux/Windows behave differently | Isolated in `probe/`; **decided 2026-09-04 to offer macOS only** rather than claim a platform nobody has run. `poc/verify_platform.py` closes it in one command when someone does |
-| Induced drag is a few percent uncertain | **Bounded and partly closed.** The impossible span efficiency above 1 was a spanwise mesh artefact; the defaults were raised and the residual quantified ([log](log/2026-09-04-induced-drag-and-the-mesh.md)). What remains is a real disagreement with classical lifting line at the tip, which an independent third method would settle |
+| **flow5's induced drag is low, and more so at high aspect ratio** | **Measured, not closed.** Against AVL 3.40 and against the exact answer for an elliptic planar wing (e = 1.0, which cannot be exceeded), flow5 returns 1.024 at AR 10 and **1.210 at AR 40** — 17 % of the induced drag missing at the aspect ratio human-powered aircraft fly. Not the mesh, the distribution or the method: all of those move it 0.4 %. Lift is unaffected. `analyze` warns above AR 15 with the figure for that aircraft, and the guides carry the table ([log](log/2026-09-04-induced-drag-against-avl.md)). It is reported rather than corrected — a fudge factor on a solver's output would hide it. **The largest known error in the tool for its main users** |
 | Absolute drag disagrees with published aircraft | **Largely explained.** Two of the three reconstructions substitute the unmodified DAE sections because the teams' own modifications are not published, and they come out far too pessimistic. The one aircraft whose airfoil modification *is* published — FX76MP149, stated as a blend of FX76MP160 and FX76MP120 to 14.9 % thickness — reproduces exactly, and once the drag budget is applied its published figure lands inside the band. So the drag machinery is not systematically wrong; the airfoil work is worth about 40 % on L/D and cannot be guessed. n = 1 for the clean case, and it stays a risk until another team publishes theirs |
 | Maintainer bandwidth | Presets and airfoils are data, not code, so the community can contribute without touching the solver layer |

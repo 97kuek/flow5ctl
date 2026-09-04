@@ -65,6 +65,18 @@ The core library, the CLI and the MCP server all work — see
 
 ### Fixed
 
+- **flow5's induced drag is low, and the shortfall grows with aspect ratio.** Found
+  by cross-checking against AVL 3.40 and against the one case with an exact answer:
+  an elliptic planar wing has a span efficiency of 1.0 and cannot exceed it. flow5
+  returns **1.024 at AR 10 and 1.210 at AR 40** — 21 % past a hard physical limit —
+  where AVL returns 0.997 and 0.996 on the same planforms and is mesh-independent
+  from 10 panels. Varying flow5's mesh, spanwise distribution, chordwise count and
+  VLM1-against-VLM2 moves it by 0.4 %, so it is none of those; lift is unaffected,
+  the two solvers agreeing within 0.6 % on CL. Human-powered aircraft fly at AR
+  30–45, where **12–19 % of the induced drag is missing** and induced drag is most
+  of the budget. `analyze` now warns above AR 15 with the figure for that aircraft.
+  It is reported, not corrected: a fudge factor on a solver's output would hide the
+  problem and would be wrong wherever it was not measured.
 - **Span efficiency above 1 was the mesh, not the physics.** A rectangular wing came
   back at 1.008–1.012, impossible for a planar wing, and the design guide carried
   that as evidence that induced drag was only good to ±5 %. Refining the spanwise

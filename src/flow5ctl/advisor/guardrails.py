@@ -10,6 +10,7 @@ when the result would be meaningless.
 """
 from __future__ import annotations
 
+import itertools
 from dataclasses import dataclass, field
 
 from ..errors import DesignError, UnsupportedByFlow5
@@ -179,6 +180,7 @@ def check_geometry(derived: Derived, preset: Preset) -> Check:
                 "aircraft rather than against the band."
             )
 
+    _check_induced_drag_bias(derived, c)
     _check_spanwise_mesh(derived, c)
     _check_extra_surfaces(derived, c)
 
@@ -212,6 +214,63 @@ def check_geometry(derived: Derived, preset: Preset) -> Check:
 #: Below this many spanwise panels per semi-span, induced drag is measurably
 #: optimistic. See docs/log/2026-09-04-induced-drag-and-the-mesh.md.
 MIN_SPANWISE = 25
+
+
+#: Below this the bias is under about 5 % and saying so every time would be noise.
+INDUCED_DRAG_AR_FLOOR = 15.0
+
+#: Measured on elliptic wings, where the exact answer is e = 1.0 and a planar wing
+#: cannot beat it. (aspect ratio, fraction by which flow5's induced drag is low).
+#: docs/log/2026-09-04-induced-drag-against-avl.md
+_INDUCED_BIAS = ((6.0, 0.009), (10.0, 0.024), (15.0, 0.046), (20.0, 0.072),
+                 (25.0, 0.098), (30.0, 0.124), (40.0, 0.174), (50.0, 0.219))
+
+
+def induced_drag_bias(aspect_ratio: float) -> float:
+    """How much of the induced drag flow5 leaves out, as a fraction, at this AR.
+
+    Linear between the measured points and held flat outside them, because
+    extrapolating a fitted curve past AR 50 would be inventing numbers.
+    """
+    pts = _INDUCED_BIAS
+    if aspect_ratio <= pts[0][0]:
+        return pts[0][1]
+    if aspect_ratio >= pts[-1][0]:
+        return pts[-1][1]
+    for (a0, b0), (a1, b1) in itertools.pairwise(pts):
+        if a0 <= aspect_ratio <= a1:
+            return b0 + (b1 - b0) * (aspect_ratio - a0) / (a1 - a0)
+    return pts[-1][1]
+
+
+def _check_induced_drag_bias(derived: Derived, c: Check) -> None:
+    """flow5 under-predicts induced drag, and the shortfall grows with span.
+
+    Measured against AVL and against the one case with an exact answer: an elliptic
+    planar wing has e = 1.0 and cannot exceed it. flow5 returns 1.024 at AR 10 and
+    **1.210 at AR 40** — 21 % past a hard physical limit — while AVL returns 0.997
+    and 0.996 on the same planforms. It is not the mesh, the panel distribution or
+    the method: varying all of those moves it by 0.4 %.
+
+    Human-powered aircraft fly at AR 30-45, where induced drag is most of the drag
+    budget, so this is the largest known bias in the tool for its main users. It is
+    reported rather than corrected: applying a fudge factor to a solver's output
+    would hide the problem and would be wrong for any case not measured here.
+    """
+    ar = derived.aspect_ratio
+    if not ar or ar < INDUCED_DRAG_AR_FLOOR:
+        return
+    bias = induced_drag_bias(ar)
+    c.warn(
+        f"at aspect ratio {ar:.0f}, flow5's induced drag is about {bias:.0%} low. "
+        "Measured on elliptic wings, where the exact answer is a span efficiency of "
+        "1.0 and no planar wing can beat it: flow5 returns 1.21 at AR 40, while AVL "
+        "returns 0.996 on the same wing. Lift is unaffected — the two solvers agree "
+        "within 0.6 % — and it is not the mesh or the method. So the lift-to-drag "
+        "figures from this run are optimistic on top of everything the drag budget "
+        "already lists, and the more so the more of the drag is induced. Cross-check "
+        "against AVL before committing a design."
+    )
 
 
 def _check_extra_surfaces(derived: Derived, c: Check) -> None:

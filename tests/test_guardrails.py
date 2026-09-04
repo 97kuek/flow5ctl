@@ -578,3 +578,55 @@ class TestMoreThanThreeSurfaces:
         assert "more than one lifting wing" in out["cross_check"]
         # the load factor is still a real finding and is still reported
         assert out["load_factor"] == pytest.approx(0.08, abs=0.01)
+
+
+class TestInducedDragBias:
+    """flow5 under-predicts induced drag, and the shortfall grows with span.
+
+    Measured against AVL 3.40 and against the one case with an exact answer: an
+    elliptic planar wing has a span efficiency of 1.0 and cannot exceed it. flow5
+    returns 1.024 at AR 10 and 1.210 at AR 40 - 21 % past a hard physical limit -
+    while AVL returns 0.997 and 0.996 on the same planforms. Varying the mesh, the
+    spanwise distribution, the chordwise count and VLM1 against VLM2 moves it by
+    0.4 %, so it is none of those.
+    """
+
+    def test_the_measured_points_are_reproduced(self):
+        for ar, bias in ((10.0, 0.024), (30.0, 0.124), (40.0, 0.174)):
+            assert guardrails.induced_drag_bias(ar) == pytest.approx(bias)
+
+    def test_it_interpolates_between_them(self):
+        mid = guardrails.induced_drag_bias(35.0)
+        assert 0.124 < mid < 0.174
+        assert mid == pytest.approx((0.124 + 0.174) / 2)
+
+    def test_it_does_not_extrapolate_past_what_was_measured(self):
+        assert guardrails.induced_drag_bias(80.0) == pytest.approx(0.219)
+        assert guardrails.induced_drag_bias(2.0) == pytest.approx(0.009)
+
+    def test_it_grows_with_aspect_ratio(self):
+        ars = [6.0, 10.0, 20.0, 30.0, 40.0, 50.0]
+        biases = [guardrails.induced_drag_bias(a) for a in ars]
+        assert biases == sorted(biases)
+
+    def _derived(self, span: float, chord: float):
+        return geometry.solve(Design.model_validate({
+            "name": "A", "preset": "custom", "requirements": {"cruise_speed": 10.0},
+            "mass": {"components": [{"tag": "b", "mass": 1.0, "at": [0.1, 0.0, 0.0]}]},
+            "airfoils": [{"name": "N", "source": "naca:0012"}],
+            "wing": {"airfoil": "N",
+                     "planform": {"span": span, "root_chord": chord},
+                     "panels": {"chordwise": 9, "spanwise": 40}},
+        }))
+
+    def test_a_high_aspect_ratio_aircraft_is_warned(self):
+        d = self._derived(34.0, 0.85)                     # AR 40
+        text = " ".join(guardrails.check_geometry(d, presets.load("hpa")).warnings)
+        assert "induced drag is about 17%" in text or "about 18%" in text
+        assert "no planar wing can beat it" in text
+        assert "AVL" in text
+
+    def test_a_model_glider_is_not(self):
+        d = self._derived(3.0, 0.25)                      # AR 12
+        text = " ".join(guardrails.check_geometry(d, presets.load("rc-glider")).warnings)
+        assert "induced drag is about" not in text
