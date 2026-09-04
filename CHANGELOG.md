@@ -88,6 +88,13 @@ The core library, the CLI and the MCP server all work — see
   point it is 3 %. Nothing was wrong with the strips. The load factor is now
   reported on its own, and a point more than 15 % from level flight says that the
   bending moment there is not the load a spar is sized from.
+- **`export` could not find an analysis that plainly existed.** `build/` holds the
+  last solver invocation only, so a `trim` or a `sweep` afterwards leaves an earlier
+  analysis' artifacts gone while its results JSON stays. Exporting it then failed
+  with "no analysis called 'cruise'. Available: cg_x_02" — naming a sweep point the
+  user never asked for, and implying their own analysis had never happened. It now
+  prefers a run they named, says when what it exported is just the last thing the
+  solver ran, and explains the overwrite instead of denying the analysis.
 - **`export` defaulted to one of our own by-products.** The reference-height pass
   (`__zref`, which holds the CG at wing height so the CG-height term can be
   separated) and a ground comparison's free-air copy (`__free`) both land in

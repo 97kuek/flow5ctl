@@ -201,7 +201,7 @@ class TestExport:
 
     def test_when_only_by_products_exist_it_says_so_rather_than_picking_one(self, project):
         self._run(project, "cruise__zref")
-        with pytest.raises(DesignError, match="internal by-products"):
+        with pytest.raises(DesignError, match="internal by-product"):
             edit.export(project, "fl5")
 
     def test_an_unknown_name_does_not_offer_the_by_products(self, project):
@@ -211,6 +211,43 @@ class TestExport:
             edit.export(project, "fl5", polar="nope")
         assert "cruise" in str(exc.value)
         assert "__zref" not in str(exc.value)
+
+    def _stored(self, project, name: str) -> None:
+        project.write_result(name, {"status": "ok"})
+
+    def test_a_run_the_user_named_wins_over_a_later_sweep_point(self, project):
+        """`build/` holds the last invocation, and a sweep leaves its own point there.
+
+        Measured over MCP: analyse `cruise`, then sweep cg_x, then export — and the
+        export came back as `cg_x_02`, one point of a study, under a name the user
+        had never chosen.
+        """
+        self._run(project, "cruise")
+        self._stored(project, "cruise")
+        self._run(project, "cg_x_02")
+        assert edit.export(project, "fl5")["from_analysis"] == "cruise"
+
+    def test_exporting_something_the_user_never_named_says_so(self, project):
+        self._run(project, "cg_x_02")
+        out = edit.export(project, "fl5")
+        assert out["from_analysis"] == "cg_x_02"
+        assert any("not an analysis you named" in n for n in out["notes"])
+
+    def test_a_named_analysis_is_exported_without_that_caveat(self, project):
+        self._run(project, "cruise")
+        self._stored(project, "cruise")
+        out = edit.export(project, "fl5")
+        assert not any("not an analysis you named" in n for n in out["notes"])
+
+    def test_an_analysis_whose_build_output_was_overwritten_says_exactly_that(self, project):
+        """The old message said "no analysis called 'cruise'" when it plainly had."""
+        self._stored(project, "cruise")
+        self._run(project, "cg_x_02")
+        with pytest.raises(DesignError) as exc:
+            edit.export(project, "fl5", polar="cruise")
+        text = str(exc.value)
+        assert "was analysed and its results are still here" in text
+        assert "analyze --name cruise" in text
 
 
 def test_a_twin_fin_edit_that_would_overlap_is_refused(rect_design):

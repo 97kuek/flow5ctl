@@ -213,6 +213,27 @@ def _is_internal(name: str) -> bool:
     return name.endswith(INTERNAL_SUFFIXES)
 
 
+def _missing(polar: str, runs: list[Path], asked_for: set[str]) -> str:
+    """Why a named analysis cannot be exported — which is rarely that it never ran.
+
+    `build/` is overwritten by every solver invocation, so a `trim` or a `sweep` run
+    afterwards leaves the earlier analysis' artifacts gone while its results JSON
+    stays. The old message — "no analysis called 'cruise'. Available: cg_x_02" —
+    named a sweep point the user never asked for and implied their own analysis had
+    never happened.
+    """
+    if polar in asked_for:
+        return (
+            f"{polar!r} was analysed and its results are still here, but the solver "
+            "output it would be exported from has been overwritten: `build/` holds "
+            "the last run only, and a `trim` or a `sweep` since then has replaced "
+            f"it. Re-run it (`analyze --name {polar}`) and export straight after."
+        )
+    offered = [p.name for p in runs if not _is_internal(p.name)]
+    return (f"no analysis called {polar!r}. "
+            f"Exportable right now: {', '.join(offered) or 'none'}")
+
+
 def export(project: Project, fmt: str, *, polar: str | None = None,
            out_dir: Path | None = None) -> dict[str, Any]:
     """Copy a build artifact out of `build/` under a predictable name."""
@@ -227,24 +248,25 @@ def export(project: Project, fmt: str, *, polar: str | None = None,
 
     runs = sorted((p for p in build_out.iterdir() if p.is_dir()),
                   key=lambda p: p.stat().st_mtime, reverse=True)
+    # `build/` holds the last solver invocation only - every run overwrites it - so
+    # what can be exported is a much smaller set than what has been analysed. An
+    # analysis the user named and read is in `results/`; a run that is in `build/`
+    # but not in `results/` is one nobody asked for by name: a sweep point, a trim's
+    # internal pass, a ground comparison's free-air copy.
+    asked_for = {q.stem for q in project.results.glob("*.json")}
     if polar is not None:
         chosen = next((p for p in runs if p.name == polar), None)
+        if chosen is None:
+            raise DesignError(_missing(polar, runs, asked_for))
     else:
-        # Never default to one of our own by-products. The reference-height pass
-        # runs the aircraft with the CG at wing height so the CG-height term can be
-        # separated out, and the ground comparison runs a free-air copy; both land
-        # in build/out and both are usually the most recent thing there. Exporting
-        # one of them hands the user a different aircraft than the one they asked
-        # about, under a name that looks close enough to be missed.
-        chosen = next((p for p in runs if not _is_internal(p.name)), None)
-    if chosen is None:
-        offered = [p.name for p in runs if not _is_internal(p.name)]
-        raise DesignError(
-            f"no analysis called {polar!r}. Available: {', '.join(offered) or 'none'}"
-            if polar is not None else
-            "the only analyses on disk are internal by-products of `trim` and "
-            "`analyze --compare-ground`, not runs you asked for. Run `analyze` first."
-        )
+        chosen = (next((p for p in runs if p.name in asked_for), None)
+                  or next((p for p in runs if not _is_internal(p.name)), None))
+        if chosen is None:
+            raise DesignError(
+                "the only solver output on disk is an internal by-product of `trim` "
+                "or `analyze --compare-ground`, not a run you asked for. Run "
+                "`analyze` and export straight after it."
+            )
 
     fmt = fmt.lower()
     if fmt == "fl5":
@@ -288,5 +310,11 @@ def export(project: Project, fmt: str, *, polar: str | None = None,
                  + ([f"{chosen.name} is an internal by-product, not an analysis you "
                      "asked for: a reference-height pass holds the CG at wing height, "
                      "and a ground comparison's free-air copy has ground effect off. "
-                     "You named it, so it was used."] if _is_internal(chosen.name) else []),
+                     "You named it, so it was used."] if _is_internal(chosen.name) else [])
+                 + ([f"{chosen.name} is simply the last thing the solver ran — a sweep "
+                     "point or an intermediate step — not an analysis you named. "
+                     "`build/` keeps only the most recent run, so if you wanted a "
+                     "particular analysis, re-run it and export straight after."]
+                    if not _is_internal(chosen.name) and chosen.name not in asked_for
+                    else []),
     }
