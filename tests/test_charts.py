@@ -190,3 +190,45 @@ class TestEllipticReference:
     def test_a_result_stored_without_re_falls_back_rather_than_guessing(self):
         assert charts._relative_chord({}, [0, 1]) is None
         assert charts._relative_chord({"re": [0.0, 1.0]}, [0, 1]) is None
+
+
+class TestTheSubtitleDescribesEveryCurve:
+    """A comparison chart took its caption from the first result alone.
+
+    Plotting a 12 m/s run against an 8 m/s one was captioned "12 m/s", so the second
+    curve was silently attributed a speed it was not run at - on a chart whose whole
+    purpose is comparison.
+    """
+
+    def _r(self, speed=None, method="interpolated", ground=None, version="7.57"):
+        return {"conditions": {"speed": speed, "viscous_method": method,
+                               "ground_height": ground},
+                "flow5_version": version}
+
+    def test_one_polar_reads_as_before(self):
+        assert charts._subtitle([self._r(speed=12.0)]) == \
+            "12 m/s · interpolated · flow5 7.57"
+
+    def test_two_speeds_are_shown_as_a_range(self):
+        s = charts._subtitle([self._r(speed=12.0), self._r(speed=8.0)])
+        assert "8 m/s–12 m/s" in s
+        assert s.count("m/s") == 2          # not "12 m/s" alone
+
+    def test_a_shared_speed_is_not_turned_into_a_range(self):
+        s = charts._subtitle([self._r(speed=12.0), self._r(speed=12.0)])
+        assert "12 m/s ·" in s and "–" not in s
+
+    def test_mixed_methods_are_both_named(self):
+        """Mixing them invents a fifth of the drag; the caption must not hide it."""
+        s = charts._subtitle([self._r(speed=12.0, method="interpolated"),
+                              self._r(speed=12.0, method="on-the-fly")])
+        assert "interpolated / on-the-fly" in s
+
+    def test_ground_effect_on_one_run_only_shows_up(self):
+        s = charts._subtitle([self._r(speed=8.0), self._r(speed=8.0, ground=2.0)])
+        assert "ground 2 m" in s
+
+    def test_a_missing_speed_is_omitted_not_guessed(self):
+        s = charts._subtitle([self._r(speed=None), self._r(speed=None)])
+        assert "m/s" not in s
+        assert "interpolated" in s

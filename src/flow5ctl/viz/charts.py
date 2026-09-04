@@ -211,16 +211,7 @@ def render(results: list[dict[str, Any]], kind: str, *, theme_name: str = "light
     th = get_theme(theme_name)
     first = results[0]
     design = first.get("design", "")
-    conditions = first.get("conditions", {})
-    speed = conditions.get("speed")
-    visc = conditions.get("viscous_method") or "inviscid"
-    subtitle = " · ".join(filter(None, [
-        f"{speed:g} m/s" if isinstance(speed, int | float) else None,
-        visc,
-        f"ground {conditions['ground_height']:g} m"
-        if conditions.get("ground_height") else None,
-        f"flow5 {first.get('flow5_version', '')}".strip(),
-    ]))
+    subtitle = _subtitle(results)
 
     if kind == "spanwise_lift":
         return _spanwise(design, strips, th, subtitle)
@@ -269,6 +260,43 @@ def render(results: list[dict[str, Any]], kind: str, *, theme_name: str = "light
     return _draw(series, title=f"{design} — {title}", subtitle=subtitle,
                  xlabel=xlabel, ylabel=ylabel, th=th, annotate=annotate,
                  zero_line=(kind == "cm_alpha"))
+
+
+def _subtitle(results: list[dict[str, Any]]) -> str:
+    """The conditions, but only the ones every polar on the chart shares.
+
+    A comparison chart used to take its subtitle from the first result alone, so
+    plotting a 12 m/s run against an 8 m/s one was labelled "12 m/s" and the second
+    curve was silently attributed a speed it was not run at. On a chart whose entire
+    purpose is comparison, that is the caption undoing the comparison.
+
+    Where the runs differ the value is shown as a range, and where the difference is
+    the thing being compared that is exactly what the reader needs to see.
+    """
+    def values(key: str) -> list[Any]:
+        seen = []
+        for r in results:
+            v = (r.get("conditions") or {}).get(key)
+            if v is not None and v not in seen:
+                seen.append(v)
+        return seen
+
+    def span(key: str, fmt: str) -> str | None:
+        vs = [v for v in values(key) if isinstance(v, (int, float))]
+        if not vs:
+            return None
+        return fmt.format(min(vs)) if len(vs) == 1 else \
+            f"{fmt.format(min(vs))}–{fmt.format(max(vs))}"
+
+    methods = values("viscous_method") or ["inviscid"]
+    versions = [v for v in (r.get("flow5_version") for r in results) if v]
+    parts = [
+        span("speed", "{:g} m/s"),
+        " / ".join(str(m) for m in methods),
+        (lambda g: f"ground {g}" if g else None)(span("ground_height", "{:g} m")),
+        f"flow5 {'/'.join(dict.fromkeys(versions))}" if versions else None,
+    ]
+    return " · ".join(p for p in parts if p)
 
 
 def _spanwise(design: str, strips: dict[str, Any] | None, th: Theme,

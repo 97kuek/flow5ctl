@@ -6,6 +6,16 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Fixed
+
+- **A comparison chart captioned every curve with the first one's conditions.** A
+  12 m/s polar plotted against an 8 m/s one was labelled "12 m/s", so the second
+  curve was silently attributed a speed it was not run at — on the chart whose whole
+  purpose is comparison. Conditions that differ are now shown as a range, and a
+  mixture of viscous methods is named rather than hidden, because mixing those
+  invents a fifth of the drag.
+
+
 ## [0.1.5] — 2026-09-04
 
 ### Fixed
