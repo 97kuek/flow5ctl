@@ -38,10 +38,16 @@ limits:
 thresholds:
   aspect_ratio: [20.0, 45.0]
   wing_loading: [2.0, 8.0]           # kg/m^2
-  tail_volume_h: [0.35, 0.80]
+  # Measured from the published specification tables of six Birdman Rally propeller
+  # aircraft (four teams, 2008-2013): 0.320, 0.415, 0.425, 0.430, 0.431, 0.439.
+  # The band used to start at 0.35, which flagged a real aircraft that flew, and to
+  # run to 0.80, which is 1.8x anything observed and never fired.
+  tail_volume_h: [0.28, 0.55]
   # V_v = S_v.l_v / (S_w.b), and b is 30-something metres here, so the coefficient
-  # comes out an order of magnitude below a conventional aircraft's. Daedalus-class
-  # numbers land around 0.008-0.012; a band taken from general aviation would flag
-  # every correctly-sized HPA fin as too small.
-  tail_volume_v: [0.005, 0.020]
+  # comes out an order of magnitude below a conventional aircraft's. A band taken
+  # from general aviation would flag every correctly-sized HPA fin as too small.
+  # Single-fin aircraft from the same six: 0.0123, 0.0135, 0.0137, 0.0138, 0.0155.
+  # The one twin-fin machine totals 0.0264, which is why a twin is told where this
+  # band came from rather than being judged against it.
+  tail_volume_v: [0.008, 0.020]
   reynolds_at_mac: [3.0e5, 1.5e6]
