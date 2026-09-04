@@ -1,6 +1,7 @@
 """A design is a directory (ADR-0003)."""
 from __future__ import annotations
 
+import os
 import pathlib
 
 import pytest
@@ -224,3 +225,123 @@ class TestTheBundledExamples:
             else:
                 raw["name"] = name
                 Design.model_validate(raw)
+
+
+# The MCP server addresses designs by name only, so `resolve_in_workspace` is the
+# boundary between a client's string and this machine's filesystem. It had no test:
+# probing it by hand was the only way to establish where the boundary was, and every
+# early probe passed for the wrong reason — nothing existed at those paths, so the
+# refusal came from the missing-design check rather than from any validation. These
+# create the target first, so a name that escapes would reach a real design.
+@pytest.mark.parametrize(
+    "name",
+    [
+        "../outside",           # traversal
+        "./../outside",         # traversal behind a no-op
+        "a/b",                  # POSIX separator
+        "a\\b",                 # Windows separator
+        "",                     # empty
+        "   ",                  # whitespace only
+        ".",
+        "..",
+        "a\x00b",               # NUL, which the filesystem call would reject anyway
+        "ａ",                    # full-width: outside the ASCII whitelist
+    ],
+)
+def test_a_name_that_is_not_a_name_is_refused(rect_design, workspace, tmp_path, name):
+    from flow5ctl.project.store import resolve_in_workspace
+
+    define.create("Rect", rect_design)  # something must exist for the lookup to reach
+    with pytest.raises(DesignError):
+        resolve_in_workspace(name)
+
+
+def test_an_absolute_path_to_a_real_design_is_refused(rect_design, workspace):
+    from flow5ctl.project.store import resolve_in_workspace
+
+    define.create("Rect", rect_design)
+    root = (workspace / "Rect").resolve()
+    assert (root / "design.yaml").exists()
+    with pytest.raises(DesignError):
+        resolve_in_workspace(str(root))
+
+
+def test_a_symlink_out_of_the_workspace_is_refused(rect_design, workspace, tmp_path):
+    """The name is valid and the target is a real design — only containment refuses."""
+    from flow5ctl.project.store import resolve_in_workspace
+
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "design.yaml").write_text("name: Secret\n", encoding="utf-8")
+    workspace.mkdir(parents=True, exist_ok=True)
+    (workspace / "Linked").symlink_to(outside)
+    with pytest.raises(DesignError, match="outside the workspace"):
+        resolve_in_workspace("Linked")
+
+
+def test_the_cli_resolver_takes_a_path_on_purpose(rect_design, workspace, tmp_path):
+    """`Project.resolve` is the shell's entry point and is documented to accept paths.
+
+    Asserted so that the difference from `resolve_in_workspace` is a decision on the
+    record rather than something a later change could quietly reverse in either
+    direction — narrowing this would break `flow5ctl analyze ../other/design`.
+    """
+    elsewhere = tmp_path / "elsewhere"
+    define.create("Rect", rect_design)
+    (workspace / "Rect").rename(elsewhere)
+    assert Project.resolve(str(elsewhere)).load().name == "Rect"
+
+
+def test_save_leaves_the_old_design_intact_if_the_write_fails(rect_design, workspace):
+    """A truncating write could empty design.yaml — the one file nothing regenerates.
+
+    The failure is injected into `os.replace`, i.e. after the new contents have been
+    written to the temporary file, because that is the only window in which the old
+    implementation lost data. Raising earlier would pass against a plain
+    `write_text` too and would prove nothing.
+    """
+    import unittest.mock
+
+    define.create("Rect", rect_design)
+    project = Project.resolve("Rect")
+    before = project.design_path.read_text(encoding="utf-8")
+    assert before.strip()
+
+    class Boom(Exception):
+        pass
+
+    with (
+        unittest.mock.patch("flow5ctl.project.store.os.replace", side_effect=Boom),
+        pytest.raises(Boom),
+    ):
+        project.save(project.load())
+
+    assert project.design_path.read_text(encoding="utf-8") == before
+    assert [p.name for p in project.root.iterdir() if ".tmp" in p.name] == []
+
+
+def test_a_stale_lock_says_so_and_a_live_one_does_not(rect_design, workspace):
+    """The message used to say "remove it if that is stale" with nothing to judge by."""
+    define.create("Rect", rect_design)
+    project = Project.resolve("Rect")
+    lock = project.root / ".flow5ctl" / "lock"
+    lock.parent.mkdir(parents=True, exist_ok=True)
+
+    lock.write_text(str(os.getpid()), encoding="utf-8")
+    with pytest.raises(Flow5ctlError, match="still running"), project.lock(timeout=0.0):
+        pass
+
+    # A pid that cannot be running: 0 is never a user process, and kill(0, 0) would
+    # signal our own process group, so use a pid we have reaped instead.
+    dead = _a_pid_that_has_exited()
+    lock.write_text(str(dead), encoding="utf-8")
+    with pytest.raises(Flow5ctlError, match="stale"), project.lock(timeout=0.0):
+        pass
+
+
+def _a_pid_that_has_exited() -> int:
+    import subprocess
+
+    p = subprocess.Popen(["true"])
+    p.wait()
+    return p.pid

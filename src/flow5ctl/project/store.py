@@ -28,7 +28,31 @@ STATE_DIR = ".flow5ctl"
 GITIGNORE = """# flow5ctl: everything here is regenerable from design.yaml
 build/
 .flow5ctl/lock
+# Half-written files from an atomic write whose process was killed outright.
+.*.tmp
 """
+
+
+def _write_atomic(path: Path, text: str) -> None:
+    """Write `text` to `path` so that an interrupted run cannot leave it truncated.
+
+    `Path.write_text` opens with O_TRUNC, so a process killed between the truncate
+    and the write leaves an empty or half-written file. For `build/` output that
+    only costs a re-run, but `design.yaml` is the one file in a project that is not
+    regenerable — it is what the person (or the agent) authored. Writing a sibling
+    temporary file and renaming it means the old contents stay intact until the new
+    ones are complete, because rename within a directory is atomic.
+
+    The temporary file carries the pid so two processes cannot collide on it, and is
+    removed if the write itself fails.
+    """
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def workspace_root() -> Path:
@@ -162,9 +186,9 @@ class Project:
 
     def save(self, design: Design) -> None:
         data = design.model_dump(mode="json", by_alias=True, exclude_none=True)
-        self.design_path.write_text(
+        _write_atomic(
+            self.design_path,
             yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=100),
-            encoding="utf-8",
         )
 
     # ---- state ----
@@ -180,13 +204,13 @@ class Project:
         s = self.state()
         s.update(fields)
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
-        self.state_path.write_text(json.dumps(s, indent=2, sort_keys=True), encoding="utf-8")
+        _write_atomic(self.state_path, json.dumps(s, indent=2, sort_keys=True))
         return s
 
     def write_result(self, name: str, payload: dict[str, Any]) -> Path:
         self.results.mkdir(parents=True, exist_ok=True)
         path = self.results / f"{name}.json"
-        path.write_text(json.dumps(payload, indent=2, sort_keys=False), encoding="utf-8")
+        _write_atomic(path, json.dumps(payload, indent=2, sort_keys=False))
         return path
 
     # ---- lock ----
@@ -206,7 +230,7 @@ class Project:
                 if time.monotonic() > deadline:
                     raise Flow5ctlError(
                         f"another flow5ctl run is using {self.root} "
-                        f"(lock: {path}). Remove it if that is stale."
+                        f"(lock: {path}). {_lock_holder(path)}"
                     ) from None
                 time.sleep(0.2)
         try:
@@ -233,6 +257,29 @@ def safe_name(name: str) -> str:
     if name.strip(". ") != name.strip():
         raise DesignError(f"{name!r} is not a valid design name")
     return name
+
+
+def _lock_holder(path: Path) -> str:
+    """Say enough about the lock's owner that a person can decide to remove it.
+
+    The lock is never broken automatically. A stale lock is indistinguishable from a
+    live one except through the pid, and a pid can be reused by an unrelated process
+    between the check and the removal — deleting a live run's lock would let two
+    flow5 invocations write the same `build/`, which is the thing the lock exists to
+    prevent. So the choice stays with the person, and this supplies what the old
+    message asked them to judge without any way of judging it.
+    """
+    try:
+        pid = int(path.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return "Remove it if that is stale."
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return f"Process {pid} no longer exists, so the lock is stale — remove it."
+    except PermissionError:
+        pass  # alive, owned by someone else
+    return f"Held by pid {pid}, which is still running."
 
 
 def resolve_in_workspace(name: str) -> Project:

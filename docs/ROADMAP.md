@@ -106,8 +106,13 @@ build the tool do it too.
 
 - [x] MCP server on stdio — 13 tools, 7 resources, 4 prompts
 - [x] Workspace management for clients with no filesystem: designs are addressed by
-      name, and a name containing a separator or a traversal is rejected rather than
-      resolved
+      name through `resolve_in_workspace`, which accepts only
+      `[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}` and then checks that the resolved directory
+      is still under the workspace — so a separator, a traversal, an absolute path or
+      a symlink pointing out of the workspace is rejected rather than resolved. The
+      CLI's `Project.resolve` is a different function and takes a path on purpose:
+      a person at a shell may say `../other/design`. Anything reached over MCP goes
+      through the former
 - [x] `plot` returning PNG image content — drag polar, lift curve, pitching moment
       with the trim point, drag breakdown, spanwise lift against elliptic; light and
       dark themes separately chosen, palette validated for colour-vision deficiency

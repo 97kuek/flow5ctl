@@ -304,7 +304,7 @@ wheels = [
 
 [[package]]
 name = "flow5ctl"
-version = "0.1.0.dev0"
+version = "0.1.15"
 source = { editable = "." }
 dependencies = [
     { name = "mcp" },
