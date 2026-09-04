@@ -1,6 +1,8 @@
 """A design is a directory (ADR-0003)."""
 from __future__ import annotations
 
+import pathlib
+
 import pytest
 
 from flow5ctl.errors import DesignError, Flow5ctlError
@@ -139,3 +141,37 @@ class TestInvalidDesignFile:
         p = self._project(tmp_path, "- just\n- a list\n")
         with pytest.raises(DesignError, match="should hold a mapping"):
             p.load()
+
+
+class TestTheVersionHasOneSource:
+    """The version was written in two places and they drifted the moment one moved.
+
+    `pyproject.toml` was bumped to 0.1.0 and `__init__.py` still said 0.1.0.dev0, so
+    the wheel was built correctly while `flow5ctl --version`, `doctor` and the
+    `flow5://status` resource all reported a pre-release to anyone who installed it.
+    It is now read back from the installed distribution, so there is nothing to keep
+    in step - and this test says so if that ever changes.
+    """
+
+    def _declared(self) -> str:
+        import tomllib
+        root = pathlib.Path(__file__).resolve().parent.parent
+        data = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+        return data["project"]["version"]
+
+    def test_the_package_reports_what_pyproject_declares(self):
+        import flow5ctl
+        assert flow5ctl.__version__ == self._declared()
+
+    def test_the_cli_reports_the_same(self, capsys):
+        import flow5ctl
+        from flow5ctl.cli import main
+        with pytest.raises(SystemExit):
+            main(["--version"])
+        assert flow5ctl.__version__ in capsys.readouterr().out
+
+    def test_it_is_not_hard_coded_in_the_source(self):
+        """A literal here is exactly how the two drifted."""
+        root = pathlib.Path(__file__).resolve().parent.parent
+        text = (root / "src" / "flow5ctl" / "__init__.py").read_text(encoding="utf-8")
+        assert '__version__ = "' not in text

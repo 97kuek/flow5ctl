@@ -173,6 +173,12 @@ not correct.
   `build/out` and are usually the most recent thing there, so `export` handed back a
   different aircraft than the one asked about, under a name close enough to be
   missed. They are skipped by default, still usable by name, and labelled when used.
+- **The version was declared in two places and they drifted.** `pyproject.toml` was
+  bumped to 0.1.0 while `__init__.py` still said `0.1.0.dev0`, so the wheel was built
+  correctly and `flow5ctl --version`, `doctor` and the `flow5://status` resource all
+  reported a pre-release to anyone who installed it. It is now read back from the
+  installed distribution — one source of truth — and a test fails if a literal ever
+  reappears.
 - **T4 and T8 polars are refused instead of offered.** Both were listed as known
   types and both were marked untested; running them settled it. T8 returns
   *nonsense* rather than an error — asked for α 2→8 in steps of 2 it gave one point,
