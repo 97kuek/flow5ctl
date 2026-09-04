@@ -39,29 +39,30 @@ cells: list[str] = []
 
 def cell(ident: str, value: str, style: str, x: int, y: int, w: int, h: int) -> None:
     cells.append(
-        '        <mxCell id="%s" value="%s" style="%s" vertex="1" parent="1">\n'
-        '          <mxGeometry x="%d" y="%d" width="%d" height="%d" as="geometry" />\n'
-        '        </mxCell>' % (ident, html.escape(value), style, x, y, w, h))
+        f'        <mxCell id="{ident}" value="{html.escape(value)}" '
+        f'style="{style}" vertex="1" parent="1">\n'
+        f'          <mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry" />\n'
+        f'        </mxCell>')
 
 
 def edge(ident: str, src: str, dst: str, style: str = EDGE,
          points: list[tuple[int, int]] | None = None) -> None:
     geo = '          <mxGeometry relative="1" as="geometry" />\n'
     if points:
-        pts = "".join('              <mxPoint x="%d" y="%d" />\n' % (x, y) for x, y in points)
+        pts = "".join(f'              <mxPoint x="{x}" y="{y}" />\n' for x, y in points)
         geo = ('          <mxGeometry relative="1" as="geometry">\n'
                '            <Array as="points">\n' + pts +
                '            </Array>\n'
                '          </mxGeometry>\n')
     cells.append(
-        '        <mxCell id="%s" style="%s" edge="1" parent="1" source="%s" target="%s">\n'
-        % (ident, style, src, dst) + geo + '        </mxCell>')
+        f'        <mxCell id="{ident}" style="{style}" edge="1" parent="1" '
+        f'source="{src}" target="{dst}">\n' + geo + '        </mxCell>')
 
 
 def two_line(name: str, role: str) -> str:
     """モジュール名と、その下に一段小さく役割。"""
-    return ('<b>%s</b><br><font style="font-size:10.5px" color="#6b6b66">%s</font>'
-            % (name, role))
+    return (f'<b>{name}</b>'
+            f'<br><font style="font-size:10.5px" color="#6b6b66">{role}</font>')
 
 
 # ---- 層の帯 ----

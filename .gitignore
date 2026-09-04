@@ -21,6 +21,13 @@ poc/*_run.log
 validation/
 examples/*-real-*.yaml
 
+# Real flow5 project files kept as references for what a practitioner's own model
+# contains — mesh density, surface counts, airfoil choices. Reading one is how the
+# Reynolds ladder default got fixed. They are someone's actual aircraft, so they
+# stay local; what is learned from them goes into docs/ as a finding.
+*.xfl
+*.fl5
+
 # Upstream flow5 source fetched for reference only.
 # flow5 is GPL-3.0 and must never be committed here — see
 # docs/adr/0006-licensing-and-the-gpl-boundary.md
