@@ -6,6 +6,8 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-09-04
+
 ### Fixed — from a second reviewer
 
 - **A stability verdict was given on a number that was not the static margin.** When
