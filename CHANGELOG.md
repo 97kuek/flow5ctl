@@ -4,9 +4,19 @@ All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onward.
 
-## [Unreleased]
+## [0.1.16] — 2026-09-05
 
 ### Fixed
+
+- **`design.yaml` could be truncated by an interrupted write.** `save()` wrote with
+  `Path.write_text`, which opens with `O_TRUNC`, so a process killed between the
+  truncate and the write left the file empty or half-written — and `design.yaml` is
+  the one file in a project that nothing regenerates. Writes go to a sibling
+  temporary file and are renamed into place; `state.json` and `results/*.json` too.
+- **The lock's timeout message asked the reader to judge staleness with nothing to
+  judge by.** It records the holder's pid and never read it back. It now says whether
+  that process still exists. The lock is still never broken automatically, because a
+  pid can be reused between the check and the removal.
 
 - **The parser could drop an operating point in silence.** A row of the wrong width,
   or one carrying a non-numeric field, was skipped — caught only if the file's
