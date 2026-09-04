@@ -805,3 +805,53 @@ class TestWakePlane:
             d = geometry.solve(Design.model_validate(raw))
             text = " ".join(guardrails.check_geometry(d, presets.load(d_preset := raw.get("preset", "custom"))).warnings)
             assert "trailing vortex sheet" not in text, f"{name} ({d_preset})"
+
+
+class TestTheRunnerClassification:
+    """flow5 exits 0 whether it worked, was rejected, or failed every point.
+
+    So the outcome comes from stdout plus the exit code, and a reviewer asked what
+    that classification would call success when it should not.
+    """
+
+    def test_a_success_phrase_inside_an_error_is_not_success(self):
+        """Plain `in` matching would take it. flow5 prints these as whole lines -
+        checked against 40 captured run logs, where every marker found began a line
+        and none appeared only mid-line - so requiring that closes the hole."""
+        from flow5ctl.flow5 import markers
+        quoted = ("Error: expected 'Panel analysis completed successfully' "
+                  "but the run aborted\n")
+        assert markers.seen(quoted, markers.SUCCESS) is None
+        assert markers.diagnose(quoted, 0).outcome is not markers.Outcome.OK
+
+    def test_a_real_success_line_still_reads_as_success(self):
+        from flow5ctl.flow5 import markers
+        real = "Solving the problem...\nPanel analysis completed successfully\n"
+        assert markers.seen(real, markers.SUCCESS) == "Panel analysis completed successfully"
+        assert markers.diagnose(real, 0).outcome is markers.Outcome.OK
+
+    def test_an_indented_marker_is_still_found(self):
+        from flow5ctl.flow5 import markers
+        assert markers.seen("   Panel analysis completed successfully  \n",
+                            markers.SUCCESS) is not None
+
+    def test_an_unresolved_airfoil_is_the_design_s_problem_not_ours(self):
+        """Its own hint blames a section's airfoil reference, and it was flagged as
+        a flow5ctl bug - so the message asked the user to report their own typo."""
+        from flow5ctl.flow5 import markers
+        out = ("Panel analysis completed ... Errors encountered\n"
+               "foils not found ...discarding this plane\n")
+        d = markers.diagnose(out, 0)
+        assert not d.internal
+        assert "first line of its .dat file" in d.hint
+
+    def test_a_crash_is_our_first_suspicion_but_not_asserted_as_ours(self):
+        from flow5ctl.flow5 import markers
+        d = markers.diagnose("", 139)
+        assert d.internal
+        assert "most likely a bug here" in d.hint
+        assert "coincident or overlapping surfaces" in d.hint
+
+    def test_no_output_at_all_is_not_success(self):
+        from flow5ctl.flow5 import markers
+        assert markers.diagnose("", 0).outcome is not markers.Outcome.OK

@@ -6,6 +6,22 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Fixed
+
+- **A success phrase quoted inside an error message read as a completed analysis.**
+  The markers were matched anywhere in stdout. flow5 prints them as lines of their
+  own — checked against 40 captured run logs, where every marker found began a line
+  and none appeared only mid-line — so they are matched at a line start now.
+- **An unresolved airfoil was reported as a bug in flow5ctl**, while its own hint
+  explained that a section references a name flow5 did not load. It is the design's,
+  and the message no longer asks the user to report their own typo.
+- **A non-zero exit was asserted to be our bug.** It usually is — the crash this
+  project knows about is a script shape flow5ctl controls — but a geometry can bring
+  flow5 down too, and being told your design is a bug in the tool sends you to open
+  an issue about it. It now says our bug is most likely, names the three geometry
+  faults worth checking first, and asks for a report after that.
+
+
 ## [0.1.14] — 2026-09-05
 
 ### Added

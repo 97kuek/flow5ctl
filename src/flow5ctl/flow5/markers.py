@@ -64,7 +64,6 @@ _DIAGNOSTICS: tuple[tuple[str, Diagnosis], ...] = (
         "flow5 discarded the plane because an airfoil could not be resolved.",
         "A section references an airfoil name flow5 did not load. Remember that a "
         "foil's name is the first line of its .dat file, not the filename.",
-        internal=True,
     )),
     ("error: reference", Diagnosis(
         Outcome.SOLVER_ERROR,
@@ -98,24 +97,51 @@ _DIAGNOSTICS: tuple[tuple[str, Diagnosis], ...] = (
 )
 
 
+def seen(stdout: str, markers: tuple[str, ...]) -> str | None:
+    """The first marker that begins a line, or None.
+
+    Plain `in` matching would take a marker embedded in a longer sentence, and the
+    ones that mean success are the dangerous case: a phrase quoted inside an error
+    report would read as a completed analysis. flow5 prints all of these as lines of
+    their own — checked against 40 captured run logs, where every marker found
+    appeared at the start of a line and none only mid-line — so requiring that
+    costs nothing and closes the hole.
+    """
+    for line in stdout.splitlines():
+        stripped = line.strip()
+        for marker in markers:
+            if stripped.startswith(marker):
+                return marker
+    return None
+
+
 def diagnose(stdout: str, returncode: int) -> Diagnosis:
     if returncode != 0:
+        # Probably ours, and said as "probably". The crash this project knows about
+        # is a script shape flow5ctl controls, so a non-zero exit is our first
+        # suspicion - but flow5 can also be brought down by a geometry, and telling
+        # a user their own design is a bug in the tool sends them to open an issue
+        # about it. Measured today: a T4 polar was rejected this way and the message
+        # asked for a bug report.
         return Diagnosis(
             Outcome.CRASHED,
             f"flow5 terminated abnormally (exit {returncode}) without completing.",
             "flow5 segfaults when one script contains both a foil analysis and a "
-            "plane analysis; flow5ctl runs them separately, so this should not happen.",
+            "plane analysis, and flow5ctl runs them separately, so this is most "
+            "likely a bug here rather than in your design — but a geometry can also "
+            "bring flow5 down. Worth a look first: coincident or overlapping "
+            "surfaces, a zero or negative chord, a section list that is not "
+            "increasing in y. If none of those apply, please report it.",
             internal=True,
         )
 
-    for marker in SCRIPT_REJECTED:
-        if marker in stdout:
-            return Diagnosis(
-                Outcome.SCRIPT_REJECTED,
-                f"flow5 rejected the generated script ({marker!r}).",
-                "The XML flow5ctl produced is invalid.",
-                internal=True,
-            )
+    if (marker := seen(stdout, SCRIPT_REJECTED)) is not None:
+        return Diagnosis(
+            Outcome.SCRIPT_REJECTED,
+            f"flow5 rejected the generated script ({marker!r}).",
+            "The XML flow5ctl produced is invalid.",
+            internal=True,
+        )
 
     if NO_PLANE_PAIRS in stdout:
         return Diagnosis(
@@ -125,7 +151,7 @@ def diagnose(stdout: str, returncode: int) -> Diagnosis:
             internal=True,
         )
 
-    if any(m in stdout for m in FAILURE):
+    if seen(stdout, FAILURE) is not None:
         for marker, diag in _DIAGNOSTICS:
             if marker in stdout:
                 return diag
@@ -136,10 +162,10 @@ def diagnose(stdout: str, returncode: int) -> Diagnosis:
         )
 
     for marker, diag in _DIAGNOSTICS:
-        if marker in stdout and not any(m in stdout for m in SUCCESS):
+        if marker in stdout and seen(stdout, SUCCESS) is None:
             return diag
 
-    if any(m in stdout for m in SUCCESS):
+    if seen(stdout, SUCCESS) is not None:
         return Diagnosis(Outcome.OK, "flow5 completed successfully.")
 
     return Diagnosis(
