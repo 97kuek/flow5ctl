@@ -158,9 +158,9 @@ Run on [`examples/hpa.yaml`](examples/hpa.yaml), so you can reproduce it:
 
 ```
                       free air   in ground    change
-  best L/D               43.66       50.64   +16.0 %
-  min sink m/s          0.1599      0.1330   -16.8 %
-  CL_alpha /deg        0.10791     0.11129    +3.1 %
+  best L/D               41.18       50.44   +22.5 %
+  min sink m/s          0.1729      0.1337   -22.7 %
+  CL_alpha /deg        0.10748     0.11128    +3.5 %
 ```
 
 ### Solve, don't sweep

@@ -211,7 +211,7 @@ Compute Re at the MAC at cruise before choosing an airfoil. flow5ctl reports it 
 | > 1×10⁶ | Above this community's normal range. |
 
 **Viscous analysis is not optional here.** Measured on the shipped 3 m glider
-(Re 1.5×10⁵ at the MAC) at α = 0°: CD was **0.000332 inviscid against 0.017991
+(Re 1.5×10⁵ at the MAC) at α = 0°: CD was **0.000345 inviscid against 0.018006
 viscous** — the inviscid run left out **98 %** of the drag. Re-run it with
 `analyze --inviscid` and without. flow5ctl defaults `viscous: true`; if you turn it off, say why, and
 never quote an L/D from an inviscid run.
@@ -224,10 +224,10 @@ without `--on-the-fly`:
 
 | α | viscous CD, interpolated | on-the-fly | on-the-fly is |
 |---|---|---|---|
-| 0° | 0.017659 | 0.014258 | 19 % lower |
-| 2° | 0.017238 | 0.013800 | 20 % lower |
-| 4° | 0.018450 | 0.013461 | 27 % lower |
-| 6° | 0.020263 | 0.014584 | 28 % lower |
+| 0° | 0.017661 | 0.014258 | 19 % lower |
+| 2° | 0.017235 | 0.013789 | 20 % lower |
+| 4° | 0.018443 | 0.013402 | 27 % lower |
+| 6° | 0.020248 | 0.014571 | 28 % lower |
 
 Total CD is 19 % lower throughout. **Which one is right is not known here** — the
 interpolated mesh smooths across the gaps where XFoil did not converge, and
@@ -314,10 +314,10 @@ Results depend on the mesh. Before believing a number, know that it has converge
 
   | wing panels | total | L/D at α = 6° | L/D at α = 0° |
   |---|---|---|---|
-  | 9 × 20 | 612 | 50.03 | 24.93 |
-  | 13 × 40 (the preset) | 1292 | 50.22 | 26.05 |
-  | 17 × 60 | 2292 | 50.18 | 26.66 |
-  | 21 × 90 | 4032 | 50.17 | **27.03** |
+  | 9 × 20 | 612 | 49.86 | 24.91 |
+  | 13 × 40 (the preset) | 1292 | 50.04 | 26.03 |
+  | 17 × 60 | 2292 | 50.00 | 26.64 |
+  | 21 × 90 | 4032 | 49.99 | **27.02** |
 
   **Near best L/D the coarsest mesh is already converged** — 0.3 % across a
   six-fold refinement. **The low-CL end is not**: α = 0° moves 8.4 % over the same
@@ -354,12 +354,12 @@ are needed for fuselages.
 
   | cg_x (m) | best L/D | **L/D at trim** | static margin | trim α |
   |---|---|---|---|---|
-  | 0.040 | 23.668 | 7.72 | +24.7 % | 0.25° |
-  | 0.055 | 23.668 | 11.22 | +16.9 % | 0.87° |
-  | 0.070 | 23.668 | 17.78 | +9.0 % | 2.41° |
-  | 0.090 | 23.668 | — | **−1.4 %** | — |
+  | 0.040 | 23.25 | 7.72 | +24.7 % | 0.25° |
+  | 0.055 | 23.25 | 11.20 | +16.9 % | 0.87° |
+  | 0.070 | 23.25 | 17.67 | +9.0 % | 2.43° |
+  | 0.090 | 23.25 | — | **−1.4 %** | — |
 
-  Best L/D is the **same number to five figures** at every CG, while the L/D the
+  Best L/D is the **same number to four figures** at every CG, while the L/D the
   aircraft actually flies at more than doubles. At 90 mm it is unstable and there is
   no trim point at all, which is why the last row is empty. Compare CG positions on
   `ld_at_trim`; comparing on best L/D will tell you the CG does not matter.
@@ -386,13 +386,14 @@ reproduce them with `analyze --compare-ground`:
 
 | example | height | best L/D | minimum sink |
 |---|---|---|---|
-| [`examples/hpa.yaml`](../examples/hpa.yaml), 34 m | 2.0 m | 43.66 → 50.64 (**+16.0 %**) | 0.1599 → 0.1330 (−16.8 %) |
-| [`examples/rc-glider.yaml`](../examples/rc-glider.yaml), 3 m | 0.30 m | 23.67 → 27.27 (**+15.2 %**) | 0.1991 → 0.1646 (−17.3 %) |
+| [`examples/hpa.yaml`](../examples/hpa.yaml), 34 m | 2.0 m | 41.18 → 50.44 (**+22.5 %**) | 0.1729 → 0.1337 (−22.7 %) |
+| [`examples/rc-glider.yaml`](../examples/rc-glider.yaml), 3 m | 0.30 m | 23.25 → 27.24 (**+17.2 %**) | 0.2041 → 0.1648 (−19.3 %) |
 
-Earlier versions of this guide quoted +18 to +20 %, measured before the Reynolds
-ladder was widened to eight rungs per decade and the spanwise panel default raised
-to 40. Both changed the drag, so those figures no longer describe what this tool
-does — which is the reason for preferring numbers a reader can re-run.
+These have moved twice in one release: once when the Reynolds ladder went to eight
+rungs per decade and the spanwise default to 40, and again when the wake went from
+30 chords to 20 spans. Each change moved the drag, so each made the previous figures
+wrong — which is exactly why they are quoted from files in this repository rather
+than from an aircraft nobody else has.
 
 For a Birdman Rally aircraft this is a design driver, not a correction.
 

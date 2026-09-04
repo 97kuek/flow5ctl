@@ -32,6 +32,13 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 - `RELEASING.md` said `git push --tags`, which pushes every unpushed local `v*` tag.
 - `DOMAIN-MODEL.md` still listed 20 spanwise panels for the rc-glider and uav
   presets after the default moved to 40.
+- **Every quoted figure re-measured after the wake fix.** The wake change moved the
+  drag, so the numbers re-measured earlier in this release were wrong again by the
+  end of it — ground effect on the HPA example is **+22.5 %** (was +16.0 % pre-wake,
+  +18–20 % before that), the glider **+17.2 %**, its best L/D **23.25**, the inviscid
+  omission 0.000345 against 0.018006. Three revisions of the same numbers inside one
+  release is the argument for measuring them on files in this repository: each change
+  invalidated the last set, and each set could be re-run.
 - **`poc/case_k_wake.py`** reproduces the wake finding through the frozen harness
   rather than through flow5ctl, because `poc/README.md` promises every measured claim
   in `docs/` can be re-run and the wake tables could not be. Coarser mesh, so the

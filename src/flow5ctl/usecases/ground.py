@@ -7,12 +7,14 @@ reproduce from this repository:
 
 | example | height | best L/D | minimum sink |
 |---|---|---|---|
-| `examples/hpa.yaml`, 34 m | 2.0 m | 43.66 → 50.64 (**+16.0 %**) | 0.1599 → 0.1330 (−16.8 %) |
-| `examples/rc-glider.yaml`, 3 m | 0.30 m | 23.67 → 27.27 (**+15.2 %**) | 0.1991 → 0.1646 (−17.3 %) |
+| `examples/hpa.yaml`, 34 m | 2.0 m | 41.18 → 50.44 (**+22.5 %**) | 0.1729 → 0.1337 (−22.7 %) |
+| `examples/rc-glider.yaml`, 3 m | 0.30 m | 23.25 → 27.24 (**+17.2 %**) | 0.2041 → 0.1648 (−19.3 %) |
 
-Earlier versions of this file quoted +23 %, measured before the Reynolds ladder was
-widened to eight rungs per decade and the spanwise default raised to 40. Both of
-those changed the drag, so the old figure no longer describes what this code does.
+These have moved twice in one release — with the Reynolds ladder and the spanwise
+default, and again when the wake went from 30 chords to 20 spans. Each change moved
+the drag, so each made the previous figures wrong. That is the argument for quoting
+numbers measured on files in this repository: they can be re-run when the next
+default changes.
 
 Comparing the two used to mean running `analyze` twice by hand, remembering to
 change only the one flag, and doing the arithmetic. Getting that wrong is easy and

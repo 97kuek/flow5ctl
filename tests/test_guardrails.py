@@ -77,8 +77,8 @@ class TestAnalysisChecks:
         """The figure has to be one a reader can re-run, not a remembered one.
 
         It used to say 93 % "at Re 2e5", from a wing nobody reading has. Measured on
-        the shipped 3 m glider at alpha 0 with the current defaults: CD 0.000332
-        inviscid against 0.017991 viscous, so 98 % is left out.
+        the shipped 3 m glider at alpha 0 with the current defaults: CD 0.000345
+        inviscid against 0.018006 viscous, so 98 % is left out.
         """
         c = self.check(rect, viscous=False)
         assert any("INVISCID" in w for w in c.warnings)

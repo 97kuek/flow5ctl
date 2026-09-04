@@ -115,7 +115,7 @@ def check_analysis(derived: Derived, preset: Preset, *, polar_type: str,
     if not viscous:
         c.warn(
             "this is an INVISCID run. On the shipped 3 m glider at alpha 0 the drag "
-            "came to 0.000332 inviscid against 0.017991 viscous — the inviscid run left out "
+            "came to 0.000345 inviscid against 0.018006 viscous — the inviscid run left out "
             "98 % of the drag. Do not quote an L/D from it."
         )
     elif on_the_fly:
@@ -142,8 +142,8 @@ def check_analysis(derived: Derived, preset: Preset, *, polar_type: str,
             )
         c.note(
             "ground effect is on. Report the out-of-ground-effect case too — measured "
-            "on the shipped examples with the current defaults, +15.2 % on best L/D "
-            "for the 3 m glider at h = 0.30 m and +16.0 % for the 34 m HPA at "
+            "on the shipped examples with the current defaults, +17.2 % on best L/D "
+            "for the 3 m glider at h = 0.30 m and +22.5 % for the 34 m HPA at "
             "h = 2.0 m. `--compare-ground` gives both from one call."
         )
     elif preset.analysis.get("ground_effect"):
