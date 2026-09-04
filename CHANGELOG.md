@@ -36,6 +36,13 @@ The core library, the CLI and the MCP server all work — see
   as a fixed-lift polar and the metrics are read where Cm crosses zero. On the HPA
   example, moving the CG from 0.36 m to 0.50 m takes trimmed L/D from 41.4 to 49.7
   while the static margin falls from +16.1 % to +0.3 %.
+- **The design guide in Japanese** — `docs/ja/DESIGN-GUIDE.md`, a full translation
+  rather than a summary. It is where every measured limit lives: what the solver can
+  and cannot tell you, why absolute drag misses in either direction, that static
+  margin and pitch stiffness are different quantities, and that no aircraft carrying
+  a person should be committed to build on a potential-flow analysis alone. Leaving
+  that in English for a largely Japanese-speaking community left the safety-relevant
+  half of the documentation unread.
 - **A Japanese getting-started guide** — `docs/ja/QUICKSTART.md`. Written for the
   reader Phase 3's exit criterion names: a Birdman Rally team member who knows
   aerodynamics, has never used a terminal, and does not read English documentation.

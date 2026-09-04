@@ -177,7 +177,10 @@ were all pulled forward into Phases 1-3. What remained, and is now done:
 - [ ] Bundled low-Re airfoil catalogue with checked provenance
 - [ ] Contributed presets (F3B, F3F, F5J, DLG, HPA distance, HPA rally)
 - [ ] Cross-check against AVL for validation
-- [x] Japanese documentation for the Birdman Rally community — [ja/QUICKSTART.md](ja/QUICKSTART.md) and [ARCHITECTURE-ja.md](ARCHITECTURE-ja.md). Still to translate: the design guide, which is where the aerodynamic judgement lives
+- [x] Japanese documentation for the Birdman Rally community —
+      [ja/QUICKSTART.md](ja/QUICKSTART.md), [ja/DESIGN-GUIDE.md](ja/DESIGN-GUIDE.md)
+      (a full translation, not a summary — the aerodynamic judgement is the part
+      that most needed it) and [ARCHITECTURE-ja.md](ARCHITECTURE-ja.md)
 
 ## Out of scope because flow5 cannot do it through this interface
 

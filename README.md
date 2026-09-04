@@ -261,6 +261,7 @@ same picture is in [docs/ARCHITECTURE-ja.md](docs/ARCHITECTURE-ja.md).
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers, data flow, why one core with two front-ends |
 | [docs/ARCHITECTURE-ja.md](docs/ARCHITECTURE-ja.md) | 日本語の全体像。アーキテクチャ図つき |
 | [docs/ja/QUICKSTART.md](docs/ja/QUICKSTART.md) | 日本語のはじめかた。ターミナル未経験者向け |
+| [docs/ja/DESIGN-GUIDE.md](docs/ja/DESIGN-GUIDE.md) | 日本語の設計ガイド（DESIGN-GUIDE.md の全訳） |
 | [docs/DOMAIN-MODEL.md](docs/DOMAIN-MODEL.md) | Vocabulary and the `design.yaml` schema |
 | [docs/MCP.md](docs/MCP.md) | Setting up Claude Desktop, and how to read what comes back |
 | [docs/MCP-TOOLS.md](docs/MCP-TOOLS.md) | The tool surface exposed to agents |

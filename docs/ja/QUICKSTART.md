@@ -168,6 +168,7 @@ flow5 が計算するのは**翼と尾翼の抗力だけ**です。人力機の�
 | 読みもの | 内容 |
 |---|---|
 | [ARCHITECTURE-ja.md](../ARCHITECTURE-ja.md) | 仕組みと、将来の展望（A2A 構成の話） |
-| [DESIGN-GUIDE.md](../DESIGN-GUIDE.md) | 空力の判断基準（英語） |
+| [DESIGN-GUIDE.md（日本語版）](DESIGN-GUIDE.md) | **空力の判断基準。数字を信じてよい範囲がすべて書いてあります** |
+| [DESIGN-GUIDE.md](../DESIGN-GUIDE.md) | 同じものの英語版（MCP に配られるのはこちら） |
 | [MCP.md](../MCP.md) | Claude Desktop 連携の詳細（英語） |
 | [FLOW5-INTERFACE.md](../FLOW5-INTERFACE.md) | flow5 の挙動を実測した記録（英語） |
