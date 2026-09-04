@@ -92,6 +92,13 @@ of 200 % CPU. Interpolation ran the same aircraft — five polar types — in **
 The two methods also **disagree by 10–25 %** on viscous drag, so they must never be
 mixed within a comparison.
 
+> Re-measured 2026-09-04 on `examples/rc-glider.yaml`: the disagreement is **19–28 %**
+> and on-the-fly is consistently the lower of the two. That aircraft also runs
+> on-the-fly to completion on all five points — 8× slower — so "unusable on
+> multi-surface aircraft" is too strong as a general statement; it failed on the
+> aircraft tested here. The figures above are left as what was measured on the day.
+> See [DESIGN-GUIDE §3](../DESIGN-GUIDE.md).
+
 ### 7. Output parsing is a correctness risk, not a chore
 
 Seven distinct traps, each producing a plausible wrong number rather than an error:

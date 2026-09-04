@@ -122,10 +122,13 @@ def check_analysis(derived: Derived, preset: Preset, *, polar_type: str,
     elif on_the_fly:
         if len(derived.surfaces) > 1:
             c.warn(
-                "on-the-fly XFoil is unreliable on multi-surface aircraft — measured on "
-                "a 3-surface glider it failed to converge on the elevator and discarded "
-                "every operating point. The interpolated method is the default for a "
-                "reason."
+                "on-the-fly XFoil can fail outright on a multi-surface aircraft: on one "
+                "3-surface glider it reported Cl = 3.23 on the elevator, discarded every "
+                "operating point, and had not finished after two minutes. It does not "
+                "always — the shipped 3 m glider runs all five points — but it is 8x "
+                "slower there (6.5 s against 0.8 s) and gives 19-28 % less viscous drag "
+                "than the interpolated method, so the two must never be mixed inside one "
+                "comparison. Check that every operating point you asked for came back."
             )
         c.note("viscous drag from on-the-fly XFoil; do not compare against interpolated runs.")
     else:

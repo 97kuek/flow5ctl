@@ -250,9 +250,16 @@ on-the-fly computes at the exact condition but fails more often. What is certain
 that mixing them inside a comparison invents a fifth of the drag that is not in the
 aircraft.
 
-Interpolation is the default: on-the-fly failed to converge on the elevator of a
-3-surface glider and discarded every operating point, while interpolation ran five
-polar types on the same aircraft in 1.3 s.
+Interpolation is the default because on-the-fly **can** fail outright on a
+multi-surface aircraft: on the PoC's 3-surface glider it reported strip values like
+`Cl = 3.23` on the elevator, discarded **every** operating point, and had not
+finished after two minutes
+([finding 6](log/2026-09-03-poc-verification.md)). That is not universal — on
+[`examples/rc-glider.yaml`](../examples/rc-glider.yaml), also three surfaces, it runs
+all five points fine. It is **8× slower** there, though: 6.5 s against 0.8 s.
+
+So: on-the-fly is worth trying on a single wing, is a risk on a multi-surface
+aircraft, and is never worth mixing with the other method inside one comparison.
 
 `ncrit` encodes freestream turbulence: 9 is standard, 11–12 for very clean air,
 4–6 for turbulent conditions. It should change low-Re drag substantially. Pick one,

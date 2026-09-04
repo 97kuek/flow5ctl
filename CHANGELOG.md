@@ -189,6 +189,7 @@ not correct.
   | interpolated vs on-the-fly XFoil | 10–25 % | **19–28 %**, and on-the-fly is consistently the lower of the two |
   | the CG-height term | "29 points" on a reconstruction | **+13.5 points** on `hpa.yaml` (margin +8.7 %, stiffness +22.2 %); 29 kept as the top of the range seen, marked as not reproducible from this repo |
   | a too-narrow Reynolds mesh | "1 of 6 points" | still the cause, but **the run is now refused** with the range that was reached; derived it gives 6 of 6 |
+  | on-the-fly XFoil on a multi-surface aircraft | "unreliable … discarded every operating point" | **it can fail that way and does not always** — the shipped 3-surface glider runs all five points, 8× slower (6.5 s against 0.8 s) |
 - **The version was declared in two places and they drifted.** `pyproject.toml` was
   bumped to 0.1.0 while `__init__.py` still said `0.1.0.dev0`, so the wheel was built
   correctly and `flow5ctl --version`, `doctor` and the `flow5://status` resource all
