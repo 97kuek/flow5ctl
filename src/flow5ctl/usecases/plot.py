@@ -52,7 +52,13 @@ def _strip_table(result: dict[str, Any]) -> dict[str, Any] | None:
         if not ys or not cls:
             continue
         if any(math.isfinite(v) and v != 0.0 for v in cls):
-            return {wing: {"y": ys, "cl": cls,
+            # Re rides along because the chord distribution is recoverable from it:
+            # within one operating point the freestream is uniform, so Re is exactly
+            # proportional to the local chord. Measured on the 34 m example, taper
+            # 0.45: the Re ratio root to tip came out 2.21 against a taper ratio of
+            # 2.22. The elliptic reference needs the chord and flow5's strip table
+            # does not carry one.
+            return {wing: {"y": ys, "cl": cls, "re": cols.get("Re"),
                            "source": stored.get("source", ""),
                            "alpha": stored.get("alpha")}}
     return None

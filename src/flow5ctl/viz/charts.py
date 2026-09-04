@@ -294,10 +294,8 @@ def _spanwise(design: str, strips: dict[str, Any] | None, th: Theme,
         raise DesignError("the strip table has no usable rows")
 
     half = max(abs(y) for y in ys)
-    # elliptic loading scaled to the same total lift, so the comparison is fair
-    ell_raw = [math.sqrt(max(0.0, 1.0 - (y / half) ** 2)) for y in ys]
-    scale = (sum(cls) / sum(ell_raw)) if sum(ell_raw) else 1.0
-    elliptic = Series("elliptic (same lift)", ys, [v * scale for v in ell_raw])
+    chord = _relative_chord(table, keep)
+    elliptic = _elliptic_reference(ys, cls, chord, half)
 
     # A lift distribution is read at one angle of attack and is a different curve at
     # every other one, so the angle belongs on the chart. It used to be absent, while
@@ -314,6 +312,59 @@ def _spanwise(design: str, strips: dict[str, Any] | None, th: Theme,
         xlabel="span position  y (m)", ylabel="local Cl",
         th=th, reference=elliptic, width=7.6, height=4.2,
     )
+
+
+def _relative_chord(table: dict[str, Any], keep: list[int]) -> list[float] | None:
+    """The chord distribution, up to a constant, from the strip Reynolds numbers.
+
+    flow5's strip table has no chord column, but within one operating point the
+    freestream is uniform, so Re is exactly proportional to the local chord.
+    Measured on the 34 m example at taper 0.45: root-to-tip Re ratio 2.21 against a
+    taper ratio of 2.22.
+    """
+    re = table.get("re")
+    if not re:
+        return None
+    vals = [re[i] for i in keep]
+    if len(vals) != len(keep) or not all(isinstance(v, (int, float)) for v in vals):
+        return None
+    hi = max(vals)
+    if hi <= 0 or min(vals) <= 0:
+        return None
+    return [v / hi for v in vals]
+
+
+def _integrate(ys: list[float], vs: list[float]) -> float:
+    return sum((vs[i] + vs[i - 1]) / 2.0 * (ys[i] - ys[i - 1]) for i in range(1, len(ys)))
+
+
+def _elliptic_reference(ys: list[float], cls: list[float],
+                        chord: list[float] | None, half: float) -> Series:
+    """The elliptic comparison, drawn in the same quantity as the measured curve.
+
+    **Elliptic means the loading is elliptic, not the local Cl.** Loading is Cl·c, so
+    on a tapered wing the local Cl that produces an elliptic load *rises* towards the
+    tip rather than falling like sqrt(1 - eta^2). Drawing sqrt(1 - eta^2) against
+    local Cl compares two different quantities, and on the 34 m example — taper 0.45
+    — it made a wing whose loading is close to elliptic look far below it. The scale
+    used to be fitted on the sum of Cl, which is the total lift only if the chord and
+    the strip widths are constant; neither is true on a tapered wing with cosine
+    spacing.
+
+    With no chord available (a result stored before Re was kept) this falls back to
+    the old shape, and says so in the label rather than pretending.
+    """
+    shape = [math.sqrt(max(0.0, 1.0 - (y / half) ** 2)) for y in ys]
+    if chord is None:
+        total = sum(shape)
+        scale = (sum(cls) / total) if total else 1.0
+        return Series("elliptic (approximate)", ys, [v * scale for v in shape])
+
+    lift = _integrate(ys, [cls[i] * chord[i] for i in range(len(ys))])
+    ref = _integrate(ys, shape)
+    scale = (lift / ref) if ref else 1.0
+    return Series("elliptic loading (same lift)", ys,
+                  [scale * shape[i] / chord[i] for i in range(len(ys))])
 
 
 def write(path: Path, data: bytes) -> Path:

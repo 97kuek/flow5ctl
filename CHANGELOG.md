@@ -88,6 +88,16 @@ The core library, the CLI and the MCP server all work — see
   point it is 3 %. Nothing was wrong with the strips. The load factor is now
   reported on its own, and a point more than 15 % from level flight says that the
   bending moment there is not the load a spar is sized from.
+- **The spanwise chart compared the local Cl against an elliptic Cl.** Elliptic
+  means the *loading* is elliptic, and loading is Cl × chord, so on a tapered wing
+  the local Cl that produces an elliptic load rises towards the tip rather than
+  falling like √(1−η²). Drawing √(1−η²) against local Cl compares two different
+  quantities, and on the 34 m example at taper 0.45 it made a wing whose loading is
+  close to elliptic look far below it. The scale was also fitted on the sum of Cl,
+  which is the total lift only when the chord and the strip widths are constant.
+  flow5's strip table has no chord column, but Re is exactly proportional to it
+  within one operating point — measured 2.21 against a taper ratio of 2.22 — so the
+  reference is now built from that. A rectangular wing's chart is unchanged.
 - **`--compare-ground` did not work on a human-powered aircraft**, which is the
   only class it was built for. It looked for the ground height in the preset's
   `analysis` block, and no preset has ever put one there — they set it in

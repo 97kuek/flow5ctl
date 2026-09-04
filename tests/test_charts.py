@@ -118,3 +118,75 @@ class TestSpanwise:
         with pytest.raises(DesignError, match="no usable rows"):
             charts.render([result], "spanwise_lift",
                           strips={"Main Wing": {"y": [], "cl": []}})
+
+
+class TestEllipticReference:
+    """Elliptic means the LOADING is elliptic, not the local Cl.
+
+    Loading is Cl x chord, so on a tapered wing the local Cl that produces an
+    elliptic load rises towards the tip rather than falling like sqrt(1 - eta^2).
+    The chart drew sqrt(1 - eta^2) against local Cl, which compares two different
+    quantities: on the 34 m example at taper 0.45 it made a wing whose loading is
+    close to elliptic look far below it.
+    """
+
+    N = 41
+
+    def _span(self):
+        return [-1.0 + 2.0 * i / (self.N - 1) for i in range(self.N)]
+
+    def _shape(self, ys):
+        import math
+        return [math.sqrt(max(0.0, 1.0 - y * y)) for y in ys]
+
+    def _spread(self, a, b):
+        r = [a[i] / b[i] for i in range(len(a)) if b[i] > 1e-6]
+        return max(r) - min(r)
+
+    def test_a_rectangular_wing_is_unchanged(self):
+        """With a constant chord the two readings coincide, so nothing moves."""
+        ys = self._span()
+        cls = [1.0 - 0.3 * y * y for y in ys]
+        ref = charts._elliptic_reference(ys, cls, [1.0] * self.N, 1.0)
+        assert self._spread(ref.y, self._shape(ys)) < 1e-12
+
+    def test_on_a_tapered_wing_the_loading_is_elliptic_and_the_cl_is_not(self):
+        ys = self._span()
+        cls = [1.0 - 0.3 * y * y for y in ys]
+        chord = [1.0 - 0.55 * abs(y) for y in ys]          # taper 0.45
+        ref = charts._elliptic_reference(ys, cls, chord, 1.0)
+        shape = self._shape(ys)
+        loading = [ref.y[i] * chord[i] for i in range(self.N)]
+        assert self._spread(loading, shape) < 1e-12         # the load is elliptic
+        assert self._spread(ref.y, shape) > 0.5             # the Cl curve is not
+
+    def test_it_carries_the_same_total_lift_as_the_measured_curve(self):
+        """The old scaling matched the sum of Cl, which is the lift only when the
+        chord and the strip widths are constant. Neither is, on a tapered wing with
+        cosine spacing."""
+        ys = self._span()
+        cls = [1.0 - 0.3 * y * y for y in ys]
+        chord = [1.0 - 0.55 * abs(y) for y in ys]
+        ref = charts._elliptic_reference(ys, cls, chord, 1.0)
+        measured = charts._integrate(ys, [cls[i] * chord[i] for i in range(self.N)])
+        drawn = charts._integrate(ys, [ref.y[i] * chord[i] for i in range(self.N)])
+        assert drawn == pytest.approx(measured, rel=1e-9)
+
+    def test_without_a_chord_it_says_the_reference_is_approximate(self):
+        ys = self._span()
+        cls = [1.0 - 0.3 * y * y for y in ys]
+        assert charts._elliptic_reference(ys, cls, None, 1.0).label.endswith("(approximate)")
+        assert charts._elliptic_reference(ys, cls, chord=[1.0] * self.N,
+                                          half=1.0).label == "elliptic loading (same lift)"
+
+    def test_the_chord_comes_from_the_strip_reynolds_numbers(self):
+        """flow5's strip table has no chord column, but within one operating point
+        the freestream is uniform so Re is exactly proportional to the local chord.
+        Measured on the 34 m example at taper 0.45: Re ratio 2.21, taper ratio 2.22.
+        """
+        table = {"re": [200.0, 300.0, 400.0]}
+        assert charts._relative_chord(table, [0, 1, 2]) == pytest.approx([0.5, 0.75, 1.0])
+
+    def test_a_result_stored_without_re_falls_back_rather_than_guessing(self):
+        assert charts._relative_chord({}, [0, 1]) is None
+        assert charts._relative_chord({"re": [0.0, 1.0]}, [0, 1]) is None
