@@ -10,12 +10,13 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic import ValidationError
 
 from ..errors import DesignError
 from ..flow5 import airfoils as foil_io
 from ..geometry.planform import resolve_sections
 from ..model.design import Airfoil, Design
-from ..project.store import Project
+from ..project.store import Project, explain_validation
 from ..units import to_si_length
 from .define import describe
 
@@ -69,8 +70,16 @@ def set_fields(project: Project, assignments: list[str]) -> dict[str, Any]:
             raise DesignError(f"{path!r} is not a settable path")
         applied.append(f"{path} = {value!r}")
 
-    # validation happens here, before anything is written
-    updated = Design.model_validate(data)
+    # validation happens here, before anything is written. A rejected edit is a
+    # normal event - the same explainer the loader uses turns it into a sentence
+    # rather than a Pydantic traceback.
+    try:
+        updated = Design.model_validate(data)
+    except ValidationError as exc:
+        raise DesignError(explain_validation(
+            exc, project.design_path,
+            lead="that edit would not leave a valid design, so nothing was written:",
+        )) from exc
     project.save(updated)
     out = describe(project)
     out["applied"] = applied

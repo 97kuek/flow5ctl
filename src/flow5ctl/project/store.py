@@ -36,7 +36,7 @@ def workspace_root() -> Path:
     return Path(os.environ.get("FLOW5CTL_WORKSPACE", Path.home() / "flow5ctl")).expanduser()
 
 
-def _explain_validation(exc: ValidationError, path: Path) -> str:
+def explain_validation(exc: ValidationError, path: Path, lead: str = "") -> str:
     """Turn a Pydantic error into the sentence a person needs to fix the file."""
     lines: list[str] = []
     for err in exc.errors()[:6]:
@@ -51,7 +51,8 @@ def _explain_validation(exc: ValidationError, path: Path) -> str:
     more = len(exc.errors()) - len(lines)
     if more > 0:
         lines.append(f"  … and {more} more")
-    return f"{path} does not describe a valid design:\n" + "\n".join(lines)
+    head = lead or f"{path} does not describe a valid design:"
+    return head + "\n" + "\n".join(lines)
 
 
 @dataclass(slots=True)
@@ -157,7 +158,7 @@ class Project:
         try:
             return Design.model_validate(raw)
         except ValidationError as exc:
-            raise DesignError(_explain_validation(exc, self.design_path)) from exc
+            raise DesignError(explain_validation(exc, self.design_path)) from exc
 
     def save(self, design: Design) -> None:
         data = design.model_dump(mode="json", by_alias=True, exclude_none=True)

@@ -60,10 +60,15 @@ class TestSet:
             edit.set_fields(project, ["wing.wingspan=3.0"])
 
     def test_an_invalid_value_is_rejected_before_writing(self, project):
-        from pydantic import ValidationError
+        """A rejected edit is a normal event, so it reads as a sentence.
+
+        This used to surface Pydantic's own ValidationError, docs URL and all.
+        """
         original = project.design_path.read_text(encoding="utf-8")
-        with pytest.raises(ValidationError):
+        with pytest.raises(DesignError) as e:
             edit.set_fields(project, ["wing.planform.taper=5.0"])   # taper must be <= 1
+        assert "would not leave a valid design" in str(e.value)
+        assert "pydantic" not in str(e.value).lower()
         assert project.design_path.read_text(encoding="utf-8") == original
 
     def test_a_malformed_assignment_is_refused(self, project):
@@ -163,3 +168,20 @@ class TestExport:
         (project.build / "out" / "x").mkdir(parents=True)
         with pytest.raises(DesignError, match="fl5, stl, csv or xml"):
             edit.export(project, "dxf")
+
+
+def test_a_twin_fin_edit_that_would_overlap_is_refused(rect_design):
+    """count: 2 with the fin on the centreline would build two coincident surfaces."""
+    d = dict(rect_design)
+    d["tail"] = {"fin": {"airfoil": d["wing"]["airfoil"],
+                         "position": [3.0, 0.8, 0.2],
+                         "planform": {"span": 0.4, "root_chord": 0.2}}}
+    define.create("Twin", d)
+    project = Project.resolve("Twin")
+
+    edit.set_fields(project, ["tail.fin.count=2"])
+    assert project.load().tail.fin.count == 2
+
+    with pytest.raises(DesignError, match="half-spacing"):
+        edit.set_fields(project, ["tail.fin.position=[3.0, 0.0, 0.2]"])
+    assert project.load().tail.fin.position[1] == pytest.approx(0.8)
