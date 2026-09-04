@@ -9,12 +9,14 @@ import copy
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
 from ..advisor import guardrails
 from ..errors import DesignError
 from ..geometry import derived as geometry
 from ..model import presets
 from ..model.design import Design
-from ..project.store import Project, workspace_root
+from ..project.store import Project, explain_validation, workspace_root
 
 
 def _deep_merge(base: dict, patch: dict) -> dict:
@@ -92,7 +94,13 @@ def describe(project: Project) -> dict[str, Any]:
 def create(name: str, raw: dict[str, Any], *, root: Path | None = None,
            exist_ok: bool = False) -> dict[str, Any]:
     data, applied = apply_preset({**raw, "name": name})
-    design = Design.model_validate(data)
+    try:
+        design = Design.model_validate(data)
+    except ValidationError as exc:
+        raise DesignError(explain_validation(
+            exc, Path(root) if root else workspace_root() / name / "design.yaml",
+            lead=f"the design for {name!r} is not valid, so nothing was written:",
+        )) from exc
     target = Path(root) if root else workspace_root() / name
     project = Project.create(target, design, exist_ok=exist_ok)
     out = describe(project)
@@ -104,7 +112,17 @@ def update(project: Project, patch: dict[str, Any]) -> dict[str, Any]:
     current = project.load().model_dump(mode="json", by_alias=True, exclude_none=True)
     merged = _deep_merge(current, patch)
     data, applied = apply_preset(merged)
-    design = Design.model_validate(data)
+    try:
+        design = Design.model_validate(data)
+    except ValidationError as exc:
+        # A Pydantic error is not a Flow5ctlError, so the MCP layer turned it into
+        # "Error executing tool update_design" with no reason attached. The CLI's
+        # `set` already explained itself; the Claude Desktop path did not, which is
+        # the one where the caller has nothing else to go on.
+        raise DesignError(explain_validation(
+            exc, project.design_path,
+            lead="that edit would not leave a valid design, so nothing was written:",
+        )) from exc
     project.save(design)
     out = describe(project)
     out["defaults_applied"] = applied

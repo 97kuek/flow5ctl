@@ -6,6 +6,16 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Fixed
+
+- **Over MCP, a rejected edit said only "Error executing tool update_design".**
+  `define.update` and `define.create` called `Design.model_validate` bare, and a
+  pydantic error is not a `Flow5ctlError`, so the MCP layer's translation did not
+  catch it and the client got the tool's name and nothing else. It now names the
+  field or the limit, the way the CLI's `set` already did — and the Claude Desktop
+  path is the one where the caller has nothing else to go on.
+
+
 ## [0.1.8] — 2026-09-04
 
 ### Fixed

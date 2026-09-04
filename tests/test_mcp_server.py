@@ -264,3 +264,59 @@ class TestTheGuidesShipInTheWheel:
         inc = cfg["tool"]["hatch"]["build"]["targets"]["wheel"]["force-include"]
         assert inc["docs/DESIGN-GUIDE.md"] == "flow5ctl/guides/DESIGN-GUIDE.md"
         assert inc["docs/ja/DESIGN-GUIDE.md"] == "flow5ctl/guides/DESIGN-GUIDE.ja.md"
+
+
+class TestEditsThatFailExplainThemselves:
+    """Over MCP, a rejected edit used to say only "Error executing tool".
+
+    `define.update` and `define.create` called `Design.model_validate` bare. A
+    pydantic error is not a `Flow5ctlError`, so the MCP layer's translation did not
+    catch it and the client got the tool's name and nothing else. The CLI's `set`
+    already explained itself; the Claude Desktop path is the one where the caller
+    has nothing else to go on.
+    """
+
+    @pytest.fixture
+    def project(self, tmp_path, monkeypatch, rect_design):
+        monkeypatch.setenv("FLOW5CTL_WORKSPACE", str(tmp_path / "ws"))
+        from flow5ctl.project.store import Project
+        from flow5ctl.usecases import define
+        define.create("R", rect_design)
+        return Project.resolve("R")
+
+    def test_an_unknown_field_names_the_field(self, project):
+        from flow5ctl.errors import DesignError
+        from flow5ctl.usecases import define
+        with pytest.raises(DesignError) as exc:
+            define.update(project, {"wing": {"planform": {"nope": 1}}})
+        assert "wing.planform.nope is not a field flow5ctl knows" in str(exc.value)
+        assert "nothing was written" in str(exc.value)
+
+    def test_a_rejected_value_says_what_the_limit_is(self, project):
+        from flow5ctl.errors import DesignError
+        from flow5ctl.usecases import define
+        with pytest.raises(DesignError, match="less than or equal to 1"):
+            define.update(project, {"wing": {"planform": {"taper": 5.0}}})
+
+    def test_nothing_is_written_when_it_fails(self, project):
+        from flow5ctl.errors import DesignError
+        from flow5ctl.usecases import define
+        before = project.design_path.read_text(encoding="utf-8")
+        with pytest.raises(DesignError):
+            define.update(project, {"wing": {"planform": {"taper": 5.0}}})
+        assert project.design_path.read_text(encoding="utf-8") == before
+
+    def test_a_valid_edit_still_works(self, project):
+        from flow5ctl.usecases import define
+        out = define.update(project, {"wing": {"planform": {"taper": 0.6}}})
+        assert out["changed"] == ["wing.planform.taper"]
+
+    def test_create_explains_itself_too(self, tmp_path, monkeypatch, rect_design):
+        monkeypatch.setenv("FLOW5CTL_WORKSPACE", str(tmp_path / "ws2"))
+        from flow5ctl.errors import DesignError
+        from flow5ctl.usecases import define
+        raw = dict(rect_design)
+        raw["wing"] = dict(raw["wing"], planform={"span": 2.0, "root_chord": 0.2,
+                                                  "taper": 9.0})
+        with pytest.raises(DesignError, match="is not valid, so nothing was written"):
+            define.create("Bad", raw)
