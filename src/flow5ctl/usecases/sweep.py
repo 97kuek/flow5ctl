@@ -245,9 +245,16 @@ def _apply_trimmed(req: SweepRequest, design: Design) -> str | None:
     return (
         "trimmed sweep: every point is a fixed-lift (T2) polar, so the speed is "
         "solved at each alpha to carry the aircraft's weight, and the metrics are "
-        "read where Cm crosses zero. These are level, trimmed numbers and they are "
-        "not comparable with a fixed-speed sweep's best L/D, which is the best point "
-        "of a polar the aircraft is not flying."
+        "read where Cm crosses zero. Three qualifications, because this is an "
+        "estimate of the trimmed condition and not a solve of it. The elevator sits "
+        "at whatever incidence the design gives it — nothing solves for the "
+        "incidence that puts Cm at zero, which is what `trim --target pitch` is "
+        "for. The crossing is interpolated between the alpha points you asked for, "
+        "so a coarse step coarsens it. And the mass is held fixed, so a sweep over "
+        "geometry does not carry the mass change that geometry would really bring. "
+        "Within that, these are level numbers, and they are not comparable with a "
+        "fixed-speed sweep's best L/D — which is the best point of a polar the "
+        "aircraft is not flying."
     )
 
 
@@ -260,6 +267,11 @@ def sweep(project: Project, req: SweepRequest, *,
     design = project.load()
     base_raw = design.model_dump(mode="json", by_alias=True, exclude_none=True)
     is_analysis_param = req.parameter in ANALYSIS_PARAMS
+    # A copy, because `_apply_trimmed` rewrites the polar type and the metrics. No
+    # caller in this repository reuses its request - the CLI, the MCP server and a
+    # study re-run each build a fresh one - but a caller that did would find T2 and
+    # the trimmed metrics still set on it, silently, after turning `trimmed` off.
+    req = copy.deepcopy(req)
     trimmed_note = _apply_trimmed(req, design)
 
     rows: list[dict[str, Any]] = []

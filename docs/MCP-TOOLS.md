@@ -267,8 +267,14 @@ best point of a flight condition the aircraft never reaches.
 
 With `trimmed`, each point runs as a **fixed-lift (T2) polar** — flow5 solves the
 speed at every α so that lift equals weight — and the metrics are read at the α where
-Cm crosses zero. That row is the aircraft actually flying: level, trimmed, at its own
-weight. It overrides `type`, switches the default metrics to
+Cm crosses zero.
+
+It is an **estimate** of the trimmed condition rather than a solve of it, and the
+three qualifications matter: the elevator sits at whatever incidence the design gives
+it (nothing solves for the incidence that zeroes Cm — that is `trim --target
+pitch`), the crossing is interpolated between the α points you asked for, and the
+mass is held, so a sweep over geometry does not carry the mass change that geometry
+would really bring. It overrides `type`, switches the default metrics to
 `ld_at_trim, trim_alpha, cl_at_trim, min_sink, static_margin`, and needs an elevator
 to trim against.
 

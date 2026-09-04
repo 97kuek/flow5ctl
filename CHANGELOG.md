@@ -6,6 +6,18 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Changed
+
+- **`sweep --trimmed` no longer calls its result "level, trimmed numbers" flatly.**
+  A reviewer judged the claim slightly stronger than the logic: it is an estimate of
+  the trimmed condition, not a solve of it. The elevator sits where the design puts
+  it, the Cm crossing is interpolated between the α points asked for, and the mass
+  is held while the geometry changes. All three are now said.
+- `sweep` copies the request before rewriting its polar type and metrics. No caller
+  here reuses one, but a caller that did would have found T2 and the trimmed metrics
+  still set after turning `trimmed` off.
+
+
 ## [0.1.12] — 2026-09-05
 
 ### Fixed

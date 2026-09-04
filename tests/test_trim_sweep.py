@@ -450,6 +450,37 @@ class TestTrimmedSweeps:
         assert req.analysis.polar_type == "T1"
         assert req.metrics == sweep_uc.DEFAULT_METRICS
 
+    def test_the_note_says_what_it_is_not(self, rect_design):
+        """A second reviewer: "level, trimmed numbers" was stronger than the logic.
+
+        It is an estimate of the trimmed condition, not a solve of it - the elevator
+        sits where the design puts it, the Cm crossing is interpolated between the
+        alpha points asked for, and the mass is held while the geometry changes.
+        """
+        req = sweep_uc.SweepRequest(parameter="cg_x", values=[0.04, 0.06],
+                                    trimmed=True)
+        note = sweep_uc._apply_trimmed(req, self._tailed(rect_design))
+        assert "nothing solves for the incidence" in note
+        assert "interpolated between the alpha points" in note
+        assert "mass is held fixed" in note
+        assert "trim --target pitch" in note
+
+    def test_the_caller_s_request_is_not_rewritten(self, project):
+        """`_apply_trimmed` changes the polar type and the metrics in place.
+
+        No caller here reuses its request, but one that did would find T2 and the
+        trimmed metrics still set after turning `trimmed` off. `sweep` copies.
+        """
+        req = sweep_uc.SweepRequest(parameter="cg_x", values=[0.04, 0.06],
+                                    analysis=analyze.Request(polar_type="T1"),
+                                    trimmed=True)
+        import contextlib
+        # the solver may be absent or refuse; the copy is what is being checked
+        with contextlib.suppress(Exception):
+            sweep_uc.sweep(project, req)
+        assert req.analysis.polar_type == "T1"
+        assert req.metrics == sweep_uc.DEFAULT_METRICS
+
     def test_a_study_file_can_ask_for_it(self, tmp_path):
         path = tmp_path / "t.yaml"
         path.write_text("name: t\nvary:\n  parameter: cg_x\n  values: [0.04, 0.06]\n"
