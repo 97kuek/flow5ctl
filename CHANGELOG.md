@@ -8,6 +8,14 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ### Fixed
 
+- **The drag reconstruction's conclusion changed with the wake.** DESIGN-GUIDE §1a
+  said the one aircraft whose airfoil modification is published "falls inside the
+  band". Re-run: modelled L/D 38.8 → **36.66**, band 27.7–32.4 → **26.2–30.6**, and
+  the published 31.9 now sits **4 % above** it rather than inside. The airfoil
+  finding is unaffected and stronger for being stated plainly — reproducing the
+  section closes **94 %** of the gap, from 72 % above the band to 4 % — but "the
+  modelled drag is not systematically wrong" is no longer supported, and it was
+  agreement measured with a wake that flattered the model by about 6 %.
 - **Every measurement taken under the old wake, re-taken under the new one.** The
   wake-plane check and the spanwise-mesh study were both run with flow5's 30-chord
   default, which this release replaced — a change that invalidated the conditions

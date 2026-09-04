@@ -125,16 +125,25 @@ a realistic 19–23. **Compare a published aircraft's figure against that band**
 against the modelled number.
 
 > **Use this band, not the raw number, when comparing against a published aircraft.**
-> Three reconstructions make the point. Two of them substitute the unmodified DAE
-> sections, because the teams' own modifications to them are not published, and both
-> come out far below what their published thrust implies. The third uses FX76MP149,
-> which its team *did* publish as a blend of FX76MP160 and FX76MP120 to 14.9 %
-> thickness — reproducible exactly — and its published figure of 31.9 falls inside
-> the band this gives (27.7–32.4) from a modelled 38.8.
+> Reconstructions of two human-powered aircraft, with the wake and mesh this tool now
+> uses:
 >
-> Two things follow. The modelled drag is not systematically wrong. And a team's own
-> airfoil work is worth roughly 40 % on lift-to-drag, so **substituting the parent
-> section for a modified one is not a small approximation** — say so when you do it.
+> | aircraft | airfoil | modelled | realistic band | published | published is |
+> |---|---|---|---|---|---|
+> | 來 Ray | DAE 改 — **parent substituted**, the team's modification is not published | 27.83 | 19.9–23.2 | 39.9 | **72 % above the band** |
+> | WASA 2013 | FX76MP149 — the team **published** it as FX76MP160 + FX76MP120 blended to 14.9 % thickness, so it is reproduced exactly | 36.66 | 26.2–30.6 | 31.9 | 4 % above the band |
+>
+> **Reproducing the airfoil closes 94 % of the gap.** A team's own airfoil work is
+> worth roughly 40 % on lift-to-drag, so **substituting the parent section for a
+> modified one is not a small approximation** — say so when you do it.
+>
+> The 4 % that remains is in the direction of the real aircraft doing better than
+> the model plus the budget predicts, and one aircraft cannot say whether that is the
+> band being pessimistic, the reconstruction, or the published figure. **Do not read
+> this as the modelled drag being unbiased.** An earlier version of this guide did,
+> from the same comparison run with a wake short enough to flatter the model by about
+> 6 % ([why](log/2026-09-04-the-wake-was-too-short.md)); the published figure landed
+> inside the band then, and it is the sort of agreement that is easy to want.
 
 ## 2. Choosing the analysis type
 
