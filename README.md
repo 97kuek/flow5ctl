@@ -134,7 +134,7 @@ wing:
 ```
 
 ```bash
-flow5ctl init Glider --file examples/rc-glider.yaml
+flow5ctl init Glider --example rc-glider     # or --file path/to/your.yaml
 flow5ctl analyze Glider --type T1 --speed 12 --alpha=-2,8,2
 ```
 
@@ -208,7 +208,7 @@ the column is blind to the parameter you varied.
 Studies are files, so a question survives a design change:
 
 ```bash
-flow5ctl sweep Glider --study examples/cg-sweep.yaml
+flow5ctl sweep Glider --study cg-sweep
 ```
 
 > Released: `pip install flow5ctl` or `uvx --from "flow5ctl[plot]" flow5ctl` —

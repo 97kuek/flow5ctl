@@ -6,6 +6,16 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Added
+
+- **The examples ship in the wheel, and `init --example rc-glider` reads them.** The
+  README opened with `init --file examples/rc-glider.yaml` — a path that exists only
+  in a checkout, so the documentation's first command failed for everyone who ran
+  `pip install flow5ctl`. `sweep --study cg-sweep` resolves the same way. A test
+  validates every shipped example against the model, because a broken example is
+  documentation that fails on first contact.
+
+
 ## [0.1.3] — 2026-09-04
 
 ### Added

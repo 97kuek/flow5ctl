@@ -53,6 +53,11 @@ packages = ["src/flow5ctl"]
 [tool.hatch.build.targets.wheel.force-include]
 "docs/DESIGN-GUIDE.md" = "flow5ctl/guides/DESIGN-GUIDE.md"
 "docs/ja/DESIGN-GUIDE.md" = "flow5ctl/guides/DESIGN-GUIDE.ja.md"
+# The README's first command is `init --file examples/rc-glider.yaml`, which fails
+# for anyone who installed rather than cloned. `--example rc-glider` reads these.
+"examples/rc-glider.yaml" = "flow5ctl/examples/rc-glider.yaml"
+"examples/hpa.yaml" = "flow5ctl/examples/hpa.yaml"
+"examples/cg-sweep.yaml" = "flow5ctl/examples/cg-sweep.yaml"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

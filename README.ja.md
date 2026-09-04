@@ -1,10 +1,8 @@
 # flow5ctl
 
-**[flow5](https://flow5.tech) を使った、AI駆動の機体設計。**
+- **[flow5](https://flow5.tech) を使った、AI駆動の機体設計**
 
-`flow5ctl` は、Claude Desktop / Claude Code / Codex などの AI エージェントが
-flow5 のヘッドレス解析エンジンを操作して、低レイノルズ数領域の機体を設計・解析
-できるようにするツールです。
+- `flow5ctl` は、Claude Desktop / Claude Code / Codex などの AI エージェントがflow5 のヘッドレス解析エンジンを操作して、低レイノルズ数領域の機体を設計・解析できるようにするツール
 
 1つの Python パッケージに、2つのフロントエンドが載っています。
 
@@ -129,7 +127,7 @@ wing:
 ```
 
 ```bash
-flow5ctl init Glider --file examples/rc-glider.yaml
+flow5ctl init Glider --example rc-glider     # または --file 自分の.yaml
 flow5ctl analyze Glider --type T1 --speed 12 --alpha=-2,8,2
 ```
 
@@ -171,7 +169,7 @@ flow5ctl sweep Glider --parameter cg_x --values 0.04:0.09:6 \
 スタディはファイルなので、設計変更後も同じ問いを再実行できます：
 
 ```bash
-flow5ctl sweep Glider --study examples/cg-sweep.yaml
+flow5ctl sweep Glider --study cg-sweep
 ```
 
 > `pipx install flow5ctl` と PyPI リリースは 0.1.0 で提供予定です。

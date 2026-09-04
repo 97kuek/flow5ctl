@@ -266,9 +266,48 @@ def _writable(path: Path) -> bool:
         return False
 
 
+def example_path(name: str) -> Path:
+    """A bundled example by name, from the wheel or from the source tree.
+
+    The README opens with `init --file examples/rc-glider.yaml`, which works only
+    from a checkout - so the first command in the documentation failed for everyone
+    who installed the package instead. They ship in the wheel now, and `--example`
+    reads them by name from wherever they are.
+    """
+    from importlib import resources
+
+    stem = name.removesuffix(".yaml")
+    try:
+        f = resources.files("flow5ctl") / "examples" / f"{stem}.yaml"
+        if f.is_file():
+            return Path(str(f))
+    except (FileNotFoundError, ModuleNotFoundError, OSError, TypeError):
+        pass
+    local = Path(__file__).parent.parent.parent / "examples" / f"{stem}.yaml"
+    if local.is_file():
+        return local
+    raise Flow5ctlError(
+        f"no bundled example called {stem!r}. Available: {', '.join(examples())}"
+    )
+
+
+def examples() -> list[str]:
+    from importlib import resources
+
+    try:
+        d = resources.files("flow5ctl") / "examples"
+        return sorted(f.name.removesuffix(".yaml") for f in d.iterdir()
+                      if f.name.endswith(".yaml"))
+    except (FileNotFoundError, ModuleNotFoundError, OSError, TypeError):
+        local = Path(__file__).parent.parent.parent / "examples"
+        return sorted(f.stem for f in local.glob("*.yaml")) if local.is_dir() else []
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     import yaml
-    raw = yaml.safe_load(Path(args.file).read_text(encoding="utf-8")) if args.file else {}
+    src = Path(args.file) if args.file else (
+        example_path(args.example) if getattr(args, "example", None) else None)
+    raw = yaml.safe_load(src.read_text(encoding="utf-8")) if src else {}
     raw = raw or {}
     if args.preset:
         raw["preset"] = args.preset
@@ -457,7 +496,11 @@ def cmd_trim(args: argparse.Namespace) -> int:
 def cmd_sweep(args: argparse.Namespace) -> int:
     project = Project.resolve(args.design)
     if args.study:
-        req = sweep_uc.load_study(Path(args.study))
+        # `--study examples/cg-sweep.yaml` is what the README says, and it is a path
+        # that only exists in a checkout. Fall back to the bundled copy by name.
+        path = Path(args.study)
+        req = sweep_uc.load_study(path if path.is_file()
+                                  else example_path(path.stem))
     else:
         if not args.parameter or not args.values:
             raise Flow5ctlError(
@@ -575,6 +618,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("name")
     p.add_argument("--preset", choices=presets.available())
     p.add_argument("--file", metavar="YAML", help="design fields to start from")
+    p.add_argument("--example", metavar="NAME",
+                   help="a bundled example: rc-glider, hpa (works without a checkout)")
     p.add_argument("--path", metavar="DIR", help="create here instead of the workspace")
     p.add_argument("--force", action="store_true", help="overwrite an existing design")
     p.set_defaults(func=cmd_init)
@@ -669,7 +714,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = add("sweep", help="vary one parameter and compare")
     p.add_argument("design", nargs="?")
-    p.add_argument("--study", metavar="YAML", help="a saved study file")
+    p.add_argument("--study", metavar="YAML",
+                   help="a saved study file, or a bundled one by name (cg-sweep)")
     p.add_argument("--parameter", metavar="PATH",
                    help="a design path (wing.planform.taper) or cg_x / speed / mass")
     p.add_argument("--values", metavar="SPEC", help="0.3,0.4,0.5 or from:to:steps")

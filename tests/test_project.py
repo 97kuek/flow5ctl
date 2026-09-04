@@ -175,3 +175,52 @@ class TestTheVersionHasOneSource:
         root = pathlib.Path(__file__).resolve().parent.parent
         text = (root / "src" / "flow5ctl" / "__init__.py").read_text(encoding="utf-8")
         assert '__version__ = "' not in text
+
+
+class TestTheBundledExamples:
+    """The README's first command must work for someone who installed, not cloned.
+
+    It said `init --file examples/rc-glider.yaml`, a path that exists only in a
+    checkout, so the documentation's opening line failed for every user who ran
+    `pip install flow5ctl`.
+    """
+
+    def test_they_are_force_included_into_the_wheel(self):
+        import tomllib
+        root = pathlib.Path(__file__).resolve().parent.parent
+        cfg = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+        inc = cfg["tool"]["hatch"]["build"]["targets"]["wheel"]["force-include"]
+        for name in ("rc-glider", "hpa", "cg-sweep"):
+            assert inc[f"examples/{name}.yaml"] == f"flow5ctl/examples/{name}.yaml"
+
+    def test_one_can_be_found_by_name(self):
+        from flow5ctl.cli import example_path
+        p = example_path("rc-glider")
+        assert p.is_file()
+        assert "3 m F5J-style glider" in p.read_text(encoding="utf-8")
+
+    def test_the_yaml_suffix_is_optional(self):
+        from flow5ctl.cli import example_path
+        assert example_path("rc-glider.yaml") == example_path("rc-glider")
+
+    def test_an_unknown_name_lists_what_there_is(self):
+        from flow5ctl.cli import example_path
+        from flow5ctl.errors import Flow5ctlError
+        with pytest.raises(Flow5ctlError, match="rc-glider"):
+            example_path("nope")
+
+    def test_every_shipped_example_is_a_valid_design_or_study(self):
+        """A broken example is documentation that fails on first contact."""
+        import yaml
+
+        from flow5ctl.cli import example_path, examples
+        from flow5ctl.model.design import Design
+        names = examples()
+        assert {"rc-glider", "hpa", "cg-sweep"} <= set(names)
+        for name in names:
+            raw = yaml.safe_load(example_path(name).read_text(encoding="utf-8"))
+            if raw.get("schema", "").startswith("flow5ctl/study"):
+                assert raw.get("vary", {}).get("parameter"), name
+            else:
+                raw["name"] = name
+                Design.model_validate(raw)
