@@ -8,6 +8,14 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ### Fixed
 
+- **The "wing only" note said stability could not be assessed, and then the tool
+  assessed it.** For a wing alone the neutral point *is* its aerodynamic centre and
+  comes out right — measured on the shipped glider with the tail removed,
+  x_np = 0.04747 m against a quarter chord of 0.04763, so
+  `trim --target static-margin` answers correctly. What a wing alone cannot do is
+  reach Cm = 0, because a cambered section's pitching moment has no surface to
+  balance it. The note now says that instead, and the quarter-chord result is pinned
+  as a physics check.
 - **A spanwise loading chart silently dropped every polar but the first.** The strip
   table is read from one result, so asking for two produced one aircraft's loading
   under a subtitle naming both runs' conditions. It refuses now, like

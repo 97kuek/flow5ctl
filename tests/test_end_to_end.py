@@ -303,3 +303,34 @@ def test_no_stability_verdict_without_a_classical_margin(install, rect_design,
     # and none of stability.py's verdicts appear
     assert "diverges in pitch" not in text
     assert "asks for" not in text
+
+
+def test_a_wing_alone_puts_its_neutral_point_at_the_quarter_chord(install, rect_design,
+                                                                  workspace):
+    """The physics check a tailless design makes available for free.
+
+    For a wing on its own the neutral point is its aerodynamic centre, which thin
+    aerofoil theory puts at the quarter chord. Measured on the shipped 3 m glider
+    with the tail removed: x_np = 0.04747 m against a quarter chord of 0.04763 -
+    0.3 %. It is also why the "wing only" note says the static margin is still
+    meaningful and only the trim point is not.
+    """
+    import pathlib as _p
+
+    import yaml
+
+    from flow5ctl.usecases import trim as trim_uc
+    root = _p.Path(__file__).resolve().parent.parent
+    raw = yaml.safe_load((root / "examples" / "rc-glider.yaml").read_text())
+    raw.pop("tail", None)
+    define.create("WingAlone", raw)
+    project = Project.resolve("WingAlone")
+
+    out = trim_uc.trim(project, trim_uc.TrimRequest(
+        target="static_margin", value=0.10, speed=12.0, alpha=(-4.0, 10.0, 1.0)))
+    mac = out["geometry"]["reference_chord"] if "reference_chord" in out.get(
+        "geometry", {}) else 0.1905
+    np_x = out["solved"]["neutral_point_x"]
+    assert np_x == pytest.approx(mac / 4.0, rel=0.02)
+    assert any("neutral point and static margin are still" in n
+               for n in out.get("notes", []))

@@ -211,7 +211,19 @@ def check_geometry(derived: Derived, preset: Preset) -> Check:
     _check_extra_surfaces(derived, c)
 
     if derived.tail_volume_h is None and len(derived.surfaces) == 1:
-        c.note("wing only — no tail, so pitch trim and stability cannot be assessed.")
+        # Not "stability cannot be assessed": the neutral point of a wing alone is
+        # its aerodynamic centre and comes out right - measured on the shipped 3 m
+        # glider with the tail removed, x_np = 0.04747 m against a quarter-chord of
+        # 0.04763, so `trim --target static-margin` answers correctly. What a wing
+        # alone cannot do is reach Cm = 0, because a cambered section has Cm0 < 0
+        # and there is no surface to balance it with.
+        c.note(
+            "wing only — no tail. The neutral point and static margin are still "
+            "meaningful (for a wing alone the neutral point is its aerodynamic "
+            "centre, near the quarter chord), but there is nothing to trim against: "
+            "a cambered section's pitching moment has no surface to balance it, so "
+            "no Cm = 0 point exists and `trim` targets that need one will not find it."
+        )
 
     _check_coincident_surfaces(derived, c)
 
