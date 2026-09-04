@@ -32,7 +32,7 @@ Both are thin adapters over one core, so neither can drift ahead of the other.
 > records what was found on the way, including a reproducible flow5 crash and seven
 > ways its output misleads a naive reader; re-run any of it from [`poc/`](poc).
 
-日本語版 README: [README.ja.md](README.ja.md)
+日本語版 README: [README.ja.md](README.ja.md) ／ はじめかた: [docs/ja/QUICKSTART.md](docs/ja/QUICKSTART.md)
 
 ---
 
@@ -260,6 +260,7 @@ same picture is in [docs/ARCHITECTURE-ja.md](docs/ARCHITECTURE-ja.md).
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers, data flow, why one core with two front-ends |
 | [docs/ARCHITECTURE-ja.md](docs/ARCHITECTURE-ja.md) | 日本語の全体像。アーキテクチャ図つき |
+| [docs/ja/QUICKSTART.md](docs/ja/QUICKSTART.md) | 日本語のはじめかた。ターミナル未経験者向け |
 | [docs/DOMAIN-MODEL.md](docs/DOMAIN-MODEL.md) | Vocabulary and the `design.yaml` schema |
 | [docs/MCP.md](docs/MCP.md) | Setting up Claude Desktop, and how to read what comes back |
 | [docs/MCP-TOOLS.md](docs/MCP-TOOLS.md) | The tool surface exposed to agents |

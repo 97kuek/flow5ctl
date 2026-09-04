@@ -24,6 +24,14 @@ The core library, the CLI and the MCP server all work — see
 - **Wing root bending moment**, with a closed-form cross-check beside it. The strip
   table already carried the number a spar is sized from and it was being discarded.
 
+- **A Japanese getting-started guide** — `docs/ja/QUICKSTART.md`. Written for the
+  reader Phase 3's exit criterion names: a Birdman Rally team member who knows
+  aerodynamics, has never used a terminal, and does not read English documentation.
+  It covers preparation, the first analysis, what every reported number means, and
+  what each warning is telling them to do about it.
+- **Tag-triggered publishing to PyPI** through trusted publishing, with the release
+  procedure in `docs/RELEASING.md`.
+
 ### Changed
 
 - **The 2D polar Reynolds ladder is eight rungs per decade, not three.** Viscous

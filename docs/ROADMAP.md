@@ -125,6 +125,17 @@ experience designs a wing in Claude Desktop and opens the result in the flow5 GU
 Everything needed for it is built and tested; what remains is putting it in front of
 someone who did not build it.
 
+Two things stood between the built software and that test, and both are now done:
+
+- **A way to install it that does not require `git clone`.** Publishing is set up
+  and documented ([RELEASING.md](RELEASING.md)); the tag is the owner's to push once
+  the PyPI trusted publisher is registered.
+- **A Japanese guide written for that reader.**
+  [ja/QUICKSTART.md](ja/QUICKSTART.md) — preparation, the first analysis, what each
+  number means, and what each warning is telling you to do. The English docs assume
+  the reader already knows what a static margin is and reads English; the exit
+  criterion's reader is neither.
+
 ## Phase 4 — The rest of the design questions
 
 `trim`, `sweep`, T7 mode reporting, spanwise loading plots and multi-design comparison
@@ -158,7 +169,7 @@ were all pulled forward into Phases 1-3. What is left:
 - [ ] Bundled low-Re airfoil catalogue with checked provenance
 - [ ] Contributed presets (F3B, F3F, F5J, DLG, HPA distance, HPA rally)
 - [ ] Cross-check against AVL for validation
-- [ ] Japanese documentation for the Birdman Rally community
+- [x] Japanese documentation for the Birdman Rally community — [ja/QUICKSTART.md](ja/QUICKSTART.md) and [ARCHITECTURE-ja.md](ARCHITECTURE-ja.md). Still to translate: the design guide, which is where the aerodynamic judgement lives
 
 ## Out of scope because flow5 cannot do it through this interface
 

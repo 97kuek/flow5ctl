@@ -96,6 +96,10 @@ flow5 を [flow5.tech](https://flow5.tech) からインストールし、Claude 
 設計の保存場所や flow5 が特殊な場所にある場合の指定方法は
 [docs/MCP.md](docs/MCP.md) にあります。
 
+**ターミナルを使ったことがない方は、[docs/ja/QUICKSTART.md](docs/ja/QUICKSTART.md)
+から読んでください。** 準備から最初の解析、返ってきた数字と警告の読み方までを
+日本語でまとめています。鳥人間コンテストのチーム向けです。
+
 ## クイックスタート — コマンドライン
 
 先に flow5 を [flow5.tech](https://flow5.tech) からインストールしてください。
@@ -214,6 +218,8 @@ YAML がソース、XML はビルド成果物です。
 
 | ドキュメント | 内容 |
 |---|---|
+| [docs/ja/QUICKSTART.md](docs/ja/QUICKSTART.md) | **日本語のはじめかた。ターミナル未経験者向け、数字と警告の読み方つき** |
+| [docs/ARCHITECTURE-ja.md](docs/ARCHITECTURE-ja.md) | 日本語の全体像。アーキテクチャ図つき |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | レイヤ構成、データフロー、なぜ1コア2フロントエンドなのか |
 | [docs/DOMAIN-MODEL.md](docs/DOMAIN-MODEL.md) | 用語と `design.yaml` スキーマ |
 | [docs/MCP.md](docs/MCP.md) | Claude Desktop の設定と、返ってくる情報の読み方 |
