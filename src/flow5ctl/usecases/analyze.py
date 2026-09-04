@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -446,7 +447,9 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
             **payload,
             "columns": polar.columns,
             "rows": polar.rows,
-            "strips": _strip_data(ws, req.name, design.name),
+            "strips": _strip_data(ws, req.name, design.name,
+                                  at_alpha=summary.best_ld.alpha if summary.best_ld
+                                  else summary.trim_alpha),
         })
         payload["data"] = str(stored.relative_to(project.root))
         project.update_state(
@@ -485,7 +488,22 @@ def _explain_failure(run, ws: Workspace, req: Request,
 _STRIP_COLUMNS = ("y(m)", "Re", "Cl", "Cd_i", "Cd_v", "Bending.mom")
 
 
-def _strip_data(ws: Workspace, polar_name: str, plane: str) -> dict[str, Any] | None:
+#: `-2_00°_ 7_60m_s.csv` — flow5 pads the angle with a space, so a filename sort puts
+#: every negative angle AFTER every positive one ('-' is 0x2D, ' ' is 0x20).
+_OPPOINT_ALPHA = re.compile(r"^\s*(-?\d+)_(\d+)°")
+
+
+def _oppoint_alpha(path: Path) -> float | None:
+    m = _OPPOINT_ALPHA.match(path.name)
+    if not m:
+        return None
+    whole, frac = m.group(1), m.group(2)
+    value = float(f"{whole}.{frac}")
+    return value
+
+
+def _strip_data(ws: Workspace, polar_name: str, plane: str,
+                at_alpha: float | None = None) -> dict[str, Any] | None:
     """Copy the spanwise strip table into the durable result.
 
     `build/` is cleared by the next analysis, so anything a chart needs later has to
@@ -494,6 +512,14 @@ def _strip_data(ws: Workspace, polar_name: str, plane: str) -> dict[str, Any] | 
     The operating-point file is matched on the polar name written INSIDE it: flow5
     duplicates these files into every polar's directory and fills them with another
     polar's contents (FLOW5-INTERFACE.md section 5.1).
+
+    **Which operating point matters.** A spanwise lift distribution and a spar load
+    are read at one angle of attack, and it has to be the one the rest of the report
+    is about - `at_alpha` is normally where best L/D falls. This used to take the
+    middle file by filename, which is not the middle angle: flow5 pads the angle with
+    a space, so a sweep of -2..8 sorts as 0, 2, 4, 6, 8, -2 and the "middle" was 6°.
+    Every spanwise plot was drawn at an angle nobody chose, six degrees from the
+    operating point on that example, with nothing in the output saying so.
     """
     root = ws.project_dir(polar_name) / plane / polar_name
     if not root.is_dir():
@@ -501,8 +527,19 @@ def _strip_data(ws: Workspace, polar_name: str, plane: str) -> dict[str, Any] | 
     files = [p for p in sorted(root.glob("*.csv")) if owning_polar(p) == polar_name]
     if not files:
         return None
-    chosen = files[len(files) // 2]          # representative, not an extreme
-    out: dict[str, Any] = {"source": chosen.name, "surfaces": {}}
+
+    alphas = [(_oppoint_alpha(f), f) for f in files]
+    known = [(a, f) for a, f in alphas if a is not None]
+    if known and at_alpha is not None:
+        chosen = min(known, key=lambda af: abs(af[0] - at_alpha))[1]
+    elif known:
+        known.sort()
+        chosen = known[len(known) // 2][1]    # the middle ANGLE, not the middle name
+    else:
+        chosen = files[len(files) // 2]
+    out: dict[str, Any] = {"source": chosen.name,
+                           "alpha": _oppoint_alpha(chosen),
+                           "surfaces": {}}
     for wing, table in parse_strips(chosen).items():
         keep = {c: table.columns.index(c) for c in _STRIP_COLUMNS if c in table.columns}
         if "y(m)" not in keep or "Cl" not in keep:

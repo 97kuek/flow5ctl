@@ -5,13 +5,14 @@ The pure-maths parts are tested without flow5; the solver paths are marked.
 from __future__ import annotations
 
 import math
+from pathlib import Path
 from typing import ClassVar
 
 import pytest
 
 from flow5ctl.errors import DesignError, SolverError
 from flow5ctl.project.store import Project
-from flow5ctl.usecases import define
+from flow5ctl.usecases import analyze, define
 from flow5ctl.usecases import sweep as sweep_uc
 from flow5ctl.usecases import trim as trim_uc
 
@@ -304,3 +305,32 @@ class TestSweepAgainstFlow5:
                              viscous=False),
             metrics=("static_margin",)))
         assert (project.root / out["data"]).is_file()
+
+
+class TestStripOperatingPoint:
+    """A spanwise distribution has to be read at the angle the report is about.
+
+    flow5 pads the angle in an operating-point filename with a space, so a sweep of
+    -2..8 sorts as ' 0_00', ' 2_00', ' 4_00', ' 6_00', ' 8_00', '-2_00' - every
+    negative angle after every positive one. Taking the middle FILE therefore took
+    6.0 degrees out of that sweep, six degrees from where best L/D fell, and nothing
+    in the output said which angle had been used.
+    """
+
+    def test_the_angle_is_read_out_of_the_filename(self):
+        for name, want in ((" 0_00°_ 7_60m_s.csv", 0.0),
+                           (" 6_00°_ 7_60m_s.csv", 6.0),
+                           ("-2_00°_ 7_60m_s.csv", -2.0),
+                           ("-2_50°_ 8_00m_s.csv", -2.5)):
+            assert analyze._oppoint_alpha(Path(name)) == pytest.approx(want)
+
+    def test_an_unparseable_name_is_not_guessed_at(self):
+        assert analyze._oppoint_alpha(Path("summary.csv")) is None
+
+    def test_a_filename_sort_puts_the_negative_angles_last(self):
+        """The bug in one line - this ordering is why the middle file was 6 degrees."""
+        names = sorted([" 0_00°_x.csv", " 2_00°_x.csv", " 4_00°_x.csv",
+                        " 6_00°_x.csv", " 8_00°_x.csv", "-2_00°_x.csv"])
+        assert names[len(names) // 2] == " 6_00°_x.csv"
+        by_angle = sorted(analyze._oppoint_alpha(Path(n)) for n in names)
+        assert by_angle[len(by_angle) // 2] == 4.0   # the middle ANGLE
