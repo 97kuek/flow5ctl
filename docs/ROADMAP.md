@@ -125,16 +125,30 @@ experience designs a wing in Claude Desktop and opens the result in the flow5 GU
 Everything needed for it is built and tested; what remains is putting it in front of
 someone who did not build it.
 
-Two things stood between the built software and that test, and both are now done:
+Everything that stood between the built software and that test is now done, and the
+path has been walked end to end from a PyPI install with no checkout:
 
-- **A way to install it that does not require `git clone`.** Done — 0.1.0 is on
+- **A way to install it that does not require `git clone`** —
   [PyPI](https://pypi.org/project/flow5ctl/), so the Claude Desktop config is one
   line and the reader needs no shell beyond installing `uv` once.
-- **A Japanese guide written for that reader.**
-  [ja/QUICKSTART.md](ja/QUICKSTART.md) — preparation, the first analysis, what each
-  number means, and what each warning is telling you to do. The English docs assume
-  the reader already knows what a static margin is and reads English; the exit
-  criterion's reader is neither.
+- **A Japanese guide written for that reader** —
+  [ja/QUICKSTART.md](ja/QUICKSTART.md), and the design guide itself is now served
+  over MCP as `flow5://guide/design.ja`. Until 0.1.3 an installed client was handed
+  a 981-character summary of it, which is to say the reader this criterion names was
+  the one not getting it.
+- **Documentation whose commands work when installed** — until 0.1.4 the README's
+  opening line pointed at `examples/`, a path that exists only in a checkout.
+
+Rehearsed on 0.1.4 over real MCP stdio, from a clean `pip install` outside any
+checkout: `doctor` found flow5 7.57, a 30 m human-powered aircraft was created from
+natural-language fields alone, and `analyze` with `compare_ground` returned L/D
+38.68 free-air against 46.53 in ground effect (**+20.3 %**) with five substantive
+warnings — tail volume outside the band, XFoil convergence gaps, the CG-height term
+at +13.9 %, a static margin of +4.7 % against the 5–15 % the design asked for, and
+the drag budget.
+
+**What remains is the person.** The path works; it has not yet been walked by
+someone who did not build it.
 
 ## Phase 4 — The rest of the design questions ✅ done 2026-09-04
 
