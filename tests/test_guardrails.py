@@ -326,36 +326,6 @@ class TestDragBudget:
         assert "Published estimates" in text
 
 
-class TestTheTwoOptimisticErrorsStack:
-    """The drag budget's band assumes the modelled drag is sound. It is not.
-
-    The band comes from published whole-aircraft budgets measured against a modelled
-    drag that was taken as correct. At high aspect ratio the modelled drag is itself
-    optimistic because flow5's induced drag is low, and two errors in the same
-    direction have to be said to stack - otherwise the reader subtracts one of them
-    and believes they are done.
-    """
-
-    def test_a_high_aspect_ratio_run_says_they_stack(self):
-        text = dragbudget.warning("hpa", 50.64, induced_bias=0.174)
-        assert "does not include the 17% of the induced drag" in text
-        assert "the two stack" in text
-        assert "upper bound too" in text
-
-    def test_the_band_itself_is_not_quietly_moved(self):
-        """Folding a second correction into the band would invent a number."""
-        plain = dragbudget.warning("hpa", 50.64)
-        with_bias = dragbudget.warning("hpa", 50.64, induced_bias=0.174)
-        assert plain.split("Compare a")[0] == with_bias.split("Compare a")[0]
-
-    def test_a_small_bias_is_not_worth_a_sentence(self):
-        assert dragbudget.warning("hpa", 50.64, induced_bias=0.02) == \
-               dragbudget.warning("hpa", 50.64)
-
-    def test_no_bias_given_reads_as_before(self):
-        assert "the two stack" not in dragbudget.warning("rc-glider", 24.0)
-
-
 class TestRootBendingMoment:
     """The strip table already carries the number a spar is sized from.
 
@@ -644,56 +614,56 @@ class TestMoreThanThreeSurfaces:
         assert out["load_factor"] == pytest.approx(0.08, abs=0.01)
 
 
-class TestInducedDragBias:
-    """flow5 under-predicts induced drag, and the shortfall grows with span.
+class TestTheWakeIsSetInSpans:
+    """flow5's default wake is 30 x MAC, which is 30/AR spans - short on a slender
+    wing, and the induced drag comes out low as a result.
 
-    Measured against AVL 3.40 and against the one case with an exact answer: an
-    elliptic planar wing has a span efficiency of 1.0 and cannot exceed it. flow5
-    returns 1.024 at AR 10 and 1.210 at AR 40 - 21 % past a hard physical limit -
-    while AVL returns 0.997 and 0.996 on the same planforms. Varying the mesh, the
-    spanwise distribution, the chordwise count and VLM1 against VLM2 moves it by
-    0.4 %, so it is none of those.
+    This was published as "flow5's induced drag is low, increasingly with aspect
+    ratio" in 0.1.0. It was not: the error depends on the wake length in spans and
+    not on aspect ratio at all. Measured on elliptic wings, where the exact answer
+    is a span efficiency of 1.0 and no planar wing can beat it:
+
+    | wake (spans) | AR 10 | AR 20 | AR 30 | AR 40 | AR 50 |
+    |---|---|---|---|---|---|
+    | 0.75 | 1.2238 | 1.2154 | 1.2126 | 1.2103 | 1.2095 |
+    | 3    | 1.0240 | 1.0238 | 1.0229 | 1.0217 | 1.0214 |
+    | 10   | 1.0039 | 1.0038 | 1.0030 | 1.0019 | 1.0016 |
+    | 30   | 1.0020 | 1.0019 | 1.0011 | 1.0000 | 0.9997 |
     """
 
-    def test_the_measured_points_are_reproduced(self):
-        for ar, bias in ((10.0, 0.024), (30.0, 0.124), (40.0, 0.174)):
-            assert guardrails.induced_drag_bias(ar) == pytest.approx(bias)
-
-    def test_it_interpolates_between_them(self):
-        mid = guardrails.induced_drag_bias(35.0)
-        assert 0.124 < mid < 0.174
-        assert mid == pytest.approx((0.124 + 0.174) / 2)
-
-    def test_it_does_not_extrapolate_past_what_was_measured(self):
-        assert guardrails.induced_drag_bias(80.0) == pytest.approx(0.219)
-        assert guardrails.induced_drag_bias(2.0) == pytest.approx(0.009)
-
-    def test_it_grows_with_aspect_ratio(self):
-        ars = [6.0, 10.0, 20.0, 30.0, 40.0, 50.0]
-        biases = [guardrails.induced_drag_bias(a) for a in ars]
-        assert biases == sorted(biases)
-
-    def _derived(self, span: float, chord: float):
-        return geometry.solve(Design.model_validate({
-            "name": "A", "preset": "custom", "requirements": {"cruise_speed": 10.0},
+    def _xml(self, span: float, chord: float, wake_spans: float | None = None) -> str:
+        from flow5ctl.flow5 import xmlgen
+        d = geometry.solve(Design.model_validate({
+            "name": "W", "preset": "custom", "requirements": {"cruise_speed": 10.0},
             "mass": {"components": [{"tag": "b", "mass": 1.0, "at": [0.1, 0.0, 0.0]}]},
             "airfoils": [{"name": "N", "source": "naca:0012"}],
-            "wing": {"airfoil": "N",
-                     "planform": {"span": span, "root_chord": chord},
-                     "panels": {"chordwise": 9, "spanwise": 40}},
+            "wing": {"airfoil": "N", "planform": {"span": span, "root_chord": chord}},
         }))
+        kw = {} if wake_spans is None else {"wake_spans": wake_spans}
+        spec = xmlgen.AnalysisSpec(name="p", speed=10.0, **kw)
+        return xmlgen.polar_xml(spec, "W", d)
 
-    def test_a_high_aspect_ratio_aircraft_is_warned(self):
-        d = self._derived(34.0, 0.85)                     # AR 40
-        text = " ".join(guardrails.check_geometry(d, presets.load("hpa")).warnings)
-        assert "induced drag is about 17%" in text or "about 18%" in text
-        assert "no planar wing can beat it" in text
-        assert "AVL" in text
+    def _length_factor(self, xml: str) -> float:
+        import re
+        return float(re.search(r"<LengthFactor>([\d.]+)</LengthFactor>", xml).group(1))
 
-    def test_a_model_glider_is_not(self):
-        d = self._derived(3.0, 0.25)                      # AR 12
-        text = " ".join(guardrails.check_geometry(d, presets.load("rc-glider")).warnings)
-        assert "induced drag is about" not in text
+    def test_a_wake_block_is_emitted_at_all(self):
+        """flow5 defaults to 30 x MAC if we say nothing, which is the trap."""
+        xml = self._xml(34.0, 0.85)
+        assert "<Wake>" in xml and "<FlatPanelWake>true</FlatPanelWake>" in xml
+
+    def test_the_length_scales_with_aspect_ratio(self):
+        """LengthFactor is in MAC units, so spans x AR keeps the physical wake fixed."""
+        assert self._length_factor(self._xml(34.0, 0.85)) == pytest.approx(20 * 40, rel=1e-3)
+        assert self._length_factor(self._xml(2.0, 0.2)) == pytest.approx(20 * 10, rel=1e-3)
+
+    def test_it_is_never_shorter_than_flow5_s_own_default(self):
+        """A stubby wing must not end up with less wake than doing nothing gave."""
+        assert self._length_factor(self._xml(1.0, 1.0)) >= 30.0
+
+    def test_the_caller_can_ask_for_more(self):
+        assert self._length_factor(self._xml(34.0, 0.85, wake_spans=30.0)) == \
+            pytest.approx(30 * 40, rel=1e-3)
 
 
 class TestWakePlane:

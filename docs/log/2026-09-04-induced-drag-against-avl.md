@@ -1,5 +1,53 @@
 # 2026-09-04 — flow5's induced drag against AVL, and against an exact answer
 
+> ## ⚠ The conclusion below is WRONG, and it was released in 0.1.0
+>
+> This log concluded that flow5's induced drag is systematically low by an amount
+> that grows with aspect ratio. **It is not.** A second reviewer pointed out the
+> confound the same day: flow5's wake is **30 × MAC** by default, and every run here
+> left it there. A wake measured in chords is `30 / AR` **spans**, so it shortens as
+> the wing gets slender — 3 spans at AR 10, 0.75 at AR 40 — and that is what the
+> "aspect ratio dependence" actually was.
+>
+> Varying only the wake length, on the same AR 40 elliptic wing:
+>
+> | wake | span efficiency (exact: 1.0) |
+> |---|---|
+> | 30 × MAC (flow5's default) | 1.2103 |
+> | 100 × MAC | 1.0305 |
+> | 300 × MAC | 1.0035 |
+> | 1000 × MAC | **1.0001** |
+>
+> And holding the wake at a fixed number of **spans**, the aspect-ratio dependence
+> disappears entirely:
+>
+> | wake (spans) | AR 10 | AR 20 | AR 30 | AR 40 | AR 50 |
+> |---|---|---|---|---|---|
+> | 0.75 | 1.2238 | 1.2154 | 1.2126 | 1.2103 | 1.2095 |
+> | 3 | 1.0240 | 1.0238 | 1.0229 | 1.0217 | 1.0214 |
+> | 10 | 1.0039 | 1.0038 | 1.0030 | 1.0019 | 1.0016 |
+> | 30 | 1.0020 | 1.0019 | 1.0011 | 1.0000 | 0.9997 |
+>
+> **The error depends on the wake in spans and not on aspect ratio at all.** flow5's
+> induced drag is right; the default wake is too short for a slender wing, and this
+> tool was not setting it.
+>
+> Fixed in 0.1.1: flow5ctl now writes a `<Wake>` block with the length in **spans**
+> (20 by default), which brings the elliptic wings to within **0.23 %** of the exact
+> answer at every aspect ratio from 10 to 50. See
+> [the wake log](2026-09-04-the-wake-was-too-short.md).
+>
+> **What went wrong in the reasoning.** The controls varied mesh, spanwise
+> distribution, chordwise count and VLM1-against-VLM2, and all of them moved the
+> answer by 0.4 %. That felt exhaustive and was not: the aspect-ratio sweep held the
+> span at 34 m and varied the chord, so the wake — fixed in chords — was the one
+> thing changing along with AR, and it was the only input never varied. AVL agreeing
+> with the exact answer made flow5 look like the odd one out, when what differed was
+> a solver setting this tool had left at its default.
+>
+> The measurements below are left as they were recorded.
+
+
 **Question:** the [mesh investigation](2026-09-04-induced-drag-and-the-mesh.md) left a
 residual. flow5's span efficiency for a rectangular AR 10 wing extrapolated to 0.984
 where classical lifting line gives 0.921, and the disagreement was concentrated at the

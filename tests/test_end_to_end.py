@@ -39,7 +39,14 @@ def test_probe_reads_the_version_from_the_program(install):
 
 
 def test_inviscid_rectangular_wing_reproduces_the_poc(install, rect_design, workspace):
-    """PoC case A: CL_alpha 0.08525 /deg, static margin -0.59 % MAC, 520 panels."""
+    """PoC case A: CL_alpha 0.08525 /deg, static margin -0.59 % MAC, 520 panels.
+
+    CL_alpha is 0.08516 here rather than the PoC's 0.08525 - 0.1 % - because the
+    wake is now carried 20 spans downstream instead of flow5's default 30 chords.
+    That the lift barely moves while the induced drag changes by tens of percent is
+    the same split seen everywhere else in the wake investigation, and it is why the
+    PoC's lift figure still stands as a cross-check.
+    """
     define.create("Rect", rect_design)
     project = Project.resolve("Rect")
     out = analyze_uc.analyze(project, analyze_uc.Request(
@@ -50,7 +57,7 @@ def test_inviscid_rectangular_wing_reproduces_the_poc(install, rect_design, work
     assert out["panels"] == 520
 
     s = out["summary"]
-    assert s["cl_alpha_per_deg"] == pytest.approx(0.08525, rel=1e-3)
+    assert s["cl_alpha_per_deg"] == pytest.approx(0.08516, rel=1e-3)
     assert s["neutral_point_x"] == pytest.approx(0.05, abs=1e-3)
     assert s["static_margin"] == pytest.approx(-0.0059, abs=5e-4)
 

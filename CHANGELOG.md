@@ -6,6 +6,41 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-09-04
+
+### Fixed
+
+- **Retracted: "flow5's induced drag is low, and the shortfall grows with aspect
+  ratio."** 0.1.0 shipped that in the README, both design guides, the roadmap's risk
+  table and a runtime warning above AR 15. **It was wrong.** flow5 carries its wake a
+  fixed number of *chords* downstream — 30 × MAC by default — which is `30 / AR`
+  **spans**, and this tool never wrote a `<Wake>` element, so every measurement left
+  it there. A sweep that held the span at 34 m and varied the chord therefore varied
+  the wake along with the aspect ratio, and the trend that produced was reported as a
+  property of the solver.
+
+  Varying only the wake on the same AR 40 elliptic wing, where the exact span
+  efficiency is 1.0: **1.2103** at 30 × MAC, 1.0305 at 100, 1.0035 at 300,
+  **1.0001** at 1000. Holding the wake at a fixed number of *spans*, the
+  aspect-ratio dependence disappears completely — 0.75 spans gives 1.21 at every AR
+  from 10 to 50, and 30 spans gives 1.000.
+
+  **flow5's induced drag is sound.** The default wake is too short for a slender
+  wing and we were not setting it.
+- **The wake is now written in spans, not chords** — `AnalysisSpec.wake_spans`,
+  default 20, emitted as `LengthFactor = spans × AR`. Elliptic wings come out within
+  **0.23 %** of exact at every aspect ratio from 10 to 50, against 2.4–28 % before,
+  and within 0.2 % of AVL. It costs a handful of wake panels and touches no mesh.
+
+  What it moves: `examples/hpa.yaml` best L/D free-air **43.66 → 41.18**, in ground
+  effect 50.64 → 50.44, so the ground-effect gain goes +16.0 % → **+22.5 %**;
+  `examples/rc-glider.yaml` 23.67 → **23.25**; the PoC rectangular wing's CL_α
+  0.08525 → 0.08516. Lift moves 0.1 % while induced drag moves by tens of percent,
+  which is the signature of the whole thing.
+- The AR-keyed induced-drag warning and the "two optimistic errors stack" sentence in
+  the drag budget are removed, along with their tests.
+
+
 ## [0.1.0] — 2026-09-04
 
 First release. The core library, the CLI and the MCP server all work — see

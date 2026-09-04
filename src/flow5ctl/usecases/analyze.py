@@ -453,10 +453,7 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
     warnings.extend(structure.notes(root_load))
 
     if summary.best_ld is not None:
-        bias = (guardrails.induced_drag_bias(derived.aspect_ratio)
-                if derived.aspect_ratio
-                and derived.aspect_ratio >= guardrails.INDUCED_DRAG_AR_FLOOR else None)
-        note = dragbudget.warning(preset.name, summary.best_ld.value, bias)
+        note = dragbudget.warning(preset.name, summary.best_ld.value)
         if note:
             warnings.append(note)
 

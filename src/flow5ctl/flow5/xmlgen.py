@@ -196,6 +196,28 @@ class AnalysisSpec:
     inertia: tuple[float, float, float, float] | None = None
     """(Ixx, Iyy, Izz, Ixz). Written with Use_plane_inertia=false so flow5 honours it."""
     thin_surfaces: bool = True
+    wake_spans: float = 20.0
+    """How far the wake is carried downstream, in **spans**.
+
+    flow5's own default is 30 x MAC, and that is the trap. A wake measured in chords
+    is `30 / AR` spans, so it shortens as the wing gets slender: 3 spans at AR 10,
+    0.75 at AR 40. The trailing vortices have not straightened out that close behind
+    the wing, the downwash is under-resolved, and the induced drag comes out low.
+
+    Measured on elliptic wings, where the exact answer is a span efficiency of 1.0
+    and no planar wing can beat it. **The error depends on the wake in spans and not
+    on aspect ratio at all** — which is what identifies the cause:
+
+    | wake (spans) | AR 10 | AR 20 | AR 30 | AR 40 | AR 50 |
+    |---|---|---|---|---|---|
+    | 0.75 | 1.2238 | 1.2154 | 1.2126 | 1.2103 | 1.2095 |
+    | 3 | 1.0240 | 1.0238 | 1.0229 | 1.0217 | 1.0214 |
+    | 10 | 1.0039 | 1.0038 | 1.0030 | 1.0019 | 1.0016 |
+    | 30 | 1.0020 | 1.0019 | 1.0011 | 1.0000 | 0.9997 |
+
+    20 spans is the default here: within 0.3 % of the exact answer at every aspect
+    ratio tested, and the cost is a handful of wake panels rather than a finer mesh.
+    """
 
     def flow5_type(self) -> str:
         try:
@@ -204,6 +226,17 @@ class AnalysisSpec:
             raise InternalError(
                 f"unknown polar type {self.polar_type!r}; known: {sorted(POLAR_TYPES)}"
             ) from None
+
+
+def _aspect_ratio(derived: Derived) -> float:
+    """Reference aspect ratio, floored so a stubby wing cannot shorten the wake.
+
+    `LengthFactor` is in MAC units and the wake we want is in spans, so the factor is
+    `spans x AR`. A very low aspect ratio would make that smaller than flow5's own
+    default, which is not the direction this is meant to move anything.
+    """
+    ar = getattr(derived, "aspect_ratio", None) or 0.0
+    return max(float(ar), 1.5)
 
 
 def polar_xml(spec: AnalysisSpec, plane_name: str, derived: Derived) -> str:
@@ -228,6 +261,14 @@ def polar_xml(spec: AnalysisSpec, plane_name: str, derived: Derived) -> str:
         _tag("Type", spec.flow5_type(), 4),
         _tag("Method", spec.method.upper(), 4),
         _tag("Thin_Surfaces", "true" if spec.thin_surfaces else "false", 4),
+        # A wake in spans, not chords. See AnalysisSpec.wake_spans: flow5's 30 x MAC
+        # default is 30/AR spans and under-reads induced drag on a slender wing.
+        "    <Wake>",
+        _tag("FlatPanelWake", "true", 6),
+        _tag("NX", 5, 6),
+        _tag("ProgressionFactor", "1.100", 6),
+        _tag("LengthFactor", f"{spec.wake_spans * _aspect_ratio(derived):.3f}", 6),
+        "    </Wake>",
         "    <Reference_Dimensions>",
         # ADR-0005: never PLANFORM or PROJECTED — they yield zeros in script mode
         _tag("Reference_Dimensions", "CUSTOM", 6),

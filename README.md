@@ -286,17 +286,14 @@ Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) · Working with AI agents in th
 
 ## Known limitations
 
-- **flow5's induced drag is low, and the shortfall grows with aspect ratio.** This is
-  the largest known error in the tool, and it is worst exactly where this project's
-  main users fly. Checked against AVL 3.40 and against the one case with an exact
-  answer — an elliptic planar wing has a span efficiency of 1.0 and cannot exceed it
-  — flow5 returns **1.024 at AR 10 and 1.210 at AR 40**, where AVL returns 0.997 and
-  0.996. Human-powered aircraft at AR 30–45 are missing **12–19 % of their induced
-  drag**, which is most of their drag budget. It is not the mesh, the panel
-  distribution or the method; lift is unaffected. `analyze` warns above AR 15 with
-  the figure for that aircraft, and does not correct the number — a fudge factor on
-  a solver's output would hide the problem.
-  [The measurements](docs/log/2026-09-04-induced-drag-against-avl.md).
+- **Induced drag depends on the wake length, and flow5's default is too short for a
+  slender wing.** flow5 carries its wake 30 × MAC downstream, which is `30 / AR`
+  spans — 0.75 spans at AR 40 — and the induced drag comes out low as a result.
+  flow5ctl sets the wake in **spans** instead (20 by default), which brings an
+  elliptic wing to within 0.23 % of its exact span efficiency of 1.0 at every aspect
+  ratio from 10 to 50, and matches AVL to 0.2 %. **0.1.0 shipped this the other way
+  round**, as a claim that flow5's induced drag is systematically wrong; it is not,
+  and [the correction is recorded](docs/log/2026-09-04-the-wake-was-too-short.md).
 - **Flaps and control surfaces are not supported, and cannot be.** flow5 has no flap
   or hinge elements in its plane XML — a flap belongs to flow5's Foil object, which a
   `.dat` file cannot carry, and planes loaded from a GUI-made project cannot be paired

@@ -47,8 +47,8 @@ returns confident numbers that are wrong. Most of this document is about the edg
   one model, say what is missing from the model, and put a comparison beside it. A
   comparison between two designs run identically — same airfoil, same ncrit, same
   method — cancels most of this and is what the tool is actually good at.
-- **Induced drag to better than a few percent** — and **not at all on a coarse
-  span**. A rectangular wing came back with a span efficiency of 1.008–1.012, which
+- **Induced drag to better than a few percent** — it depends on both the spanwise
+  mesh and the wake length, and **not at all on a coarse span**. A rectangular wing came back with a span efficiency of 1.008–1.012, which
   is impossible for a planar wing. That turned out to be the mesh, not the physics:
   refine the spanwise panels and it falls monotonically below 1. Measured at AR 10
   and again at AR 40, varying only the panel count
@@ -66,44 +66,29 @@ returns confident numbers that are wrong. Most of this document is about the edg
   four decimal places — so always spend the panels on the span. The defaults are now
   40 spanwise, and an analysis says so if a design goes below 25.
 
-- **Induced drag at high aspect ratio — the largest known error in this tool.**
-  Refining the mesh is necessary but not sufficient. Checked against AVL 3.40 and
-  against the one case with an exact answer — an elliptic planar wing has a span
-  efficiency of **1.0 and cannot exceed it** — flow5 comes back *above* the limit,
-  by more and more as the span grows
-  ([log](log/2026-09-04-induced-drag-against-avl.md)):
+- **Induced drag, and the wake length it depends on.** flow5 carries its wake a
+  fixed number of *chords* downstream — 30 × MAC by default — which is `30 / AR`
+  **spans**, so it shortens as the wing gets slender: 3 spans at AR 10, 0.75 at
+  AR 40. The trailing vortices have not straightened out that close behind the wing
+  and the induced drag comes out low. Measured on elliptic wings, where the exact
+  span efficiency is 1.0 and no planar wing can beat it
+  ([log](log/2026-09-04-the-wake-was-too-short.md)):
 
-  | AR | flow5 e (exact answer: 1.000) | **induced drag is** |
-  |---|---|---|
-  | 6 | 1.009 | 0.9 % low |
-  | 10 | 1.024 | 2.4 % low |
-  | 15 | 1.049 | 4.6 % low |
-  | 20 | 1.077 | 7.2 % low |
-  | 25 | 1.109 | 9.8 % low |
-  | 30 | 1.142 | **12.4 % low** |
-  | 40 | 1.211 | **17.4 % low** |
-  | 50 | 1.280 | **21.9 % low** |
+  | wake (spans) | AR 10 | AR 20 | AR 30 | AR 40 | AR 50 |
+  |---|---|---|---|---|---|
+  | 0.75 | 1.2238 | 1.2154 | 1.2126 | 1.2103 | 1.2095 |
+  | 3 | 1.0240 | 1.0238 | 1.0229 | 1.0217 | 1.0214 |
+  | 10 | 1.0039 | 1.0038 | 1.0030 | 1.0019 | 1.0016 |
+  | 30 | 1.0020 | 1.0019 | 1.0011 | 1.0000 | 0.9997 |
 
-  AVL returns 0.997 at AR 10 and 0.996 at AR 40 on the same planforms, and is
-  mesh-independent from 10 panels. Varying flow5's mesh, spanwise distribution,
-  chordwise count and VLM1-against-VLM2 moves its figure by 0.4 %, so it is none of
-  those. **Lift is unaffected** — the two solvers agree within 0.6 % on CL at both
-  aspect ratios — so this is specific to the induced drag.
+  **Read across a row:** the error is set by the wake in spans and does not depend on
+  aspect ratio. flow5ctl writes the wake in spans (20 by default), which lands within
+  **0.23 %** of exact everywhere above, and within 0.2 % of AVL. flow5's induced drag
+  is sound; the default wake is not, for this class of wing.
 
-  **Changing method is not a workaround.** On the same AR 40 wing, flow5's panel
-  methods land 21 % on the *other* side of the limit — QUADS 0.783, TRIUNIFORM
-  0.793, TRILINEAR 0.787, all mesh-converged, against the vortex lattice's 1.211.
-  At AR 10 the panel method is at least admissible (QUADS 0.980, below the limit)
-  where the VLM is not (1.023). A large gap between a VLM run and a QUADS run is a
-  useful smell test; averaging them is not a method.
-
-  **Human-powered aircraft fly at AR 30–45, where induced drag is most of the drag
-  budget.** That is the worst place for this error to be, and it is optimistic: the
-  aircraft has more drag than the model says, on top of everything §1a lists as
-  missing. flow5ctl warns above AR 15 with the figure for your own aspect ratio. It
-  does **not** correct the number — a fudge factor applied to a solver would hide
-  the problem and would be wrong for any case not measured — so treat a high-AR L/D
-  as an upper bound and cross-check against AVL (§9) before committing.
+  0.1.0 published the opposite — that flow5's induced drag is systematically low and
+  increasingly so with span — from exactly the data in the table above, read along
+  the diagonal that flow5's default traces. **If you read that version, discard it.**
 - **Structural deflection.** A 34 m HPA wing bends several percent of span in flight.
   flow5 analyses the rigid shape you gave it.
 
