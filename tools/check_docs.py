@@ -35,6 +35,15 @@ def tracked() -> list[pathlib.Path]:
     return [ROOT / p for p in dict.fromkeys(out.split("\0")) if p]
 
 
+#: README.md carries absolute URLs because PyPI renders it on the project page and
+#: does not rewrite relative ones — 34 links pointed at nowhere for anyone arriving
+#: from there. They still have to resolve, so links back at this repository are
+#: mapped to paths and checked like any other.
+REPO = "https://github.com/97kuek/flow5ctl"
+RAW = "https://raw.githubusercontent.com/97kuek/flow5ctl/main"
+_SELF = (f"{REPO}/blob/main/", f"{REPO}/tree/main/", f"{RAW}/")
+
+
 def check_links(files: list[pathlib.Path]) -> None:
     link = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
     n = 0
@@ -43,15 +52,21 @@ def check_links(files: list[pathlib.Path]) -> None:
             continue
         for m in link.finditer(f.read_text(encoding="utf-8")):
             href = m.group(1)
-            if href.startswith(("http://", "https://", "#", "mailto:")):
-                continue
+            base = f.parent
+            for prefix in _SELF:
+                if href.startswith(prefix):
+                    href, base = href[len(prefix):], ROOT
+                    break
+            else:
+                if href.startswith(("http://", "https://", "#", "mailto:")):
+                    continue
             target = href.split("#")[0]
             if not target:
                 continue
             n += 1
-            if not (f.parent / target).resolve().exists():
-                FAIL.append(f"broken link  {f.relative_to(ROOT)} -> {href}")
-    print(f"  checked {n} relative links")
+            if not (base / target).resolve().exists():
+                FAIL.append(f"broken link  {f.relative_to(ROOT)} -> {m.group(1)}")
+    print(f"  checked {n} links, relative and back into this repo")
 
 
 def check_no_upstream_source(files: list[pathlib.Path]) -> None:

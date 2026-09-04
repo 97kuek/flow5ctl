@@ -8,6 +8,11 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ### Fixed
 
+- **34 broken links on the PyPI project page.** PyPI renders `README.md` and does
+  not rewrite relative links, so every `docs/…` and `examples/` reference on the page
+  a new user lands on pointed at nowhere — including the design guide and the
+  quickstart. They are absolute now, and `tools/check_docs.py` maps URLs back into
+  this repository so they are still validated rather than silently exempted.
 - **Messages that told the user to read a file they do not have.** Three refusals
   and warnings cited `docs/FLOW5-INTERFACE.md` and `docs/adr/0010-…`, which is a dead
   end for anyone who ran `pip install` rather than cloning. They carry URLs now.
