@@ -122,18 +122,34 @@ def budget(preset_name: str, modelled_ld: float | None) -> dict | None:
     }
 
 
-def warning(preset_name: str, modelled_ld: float | None) -> str | None:
-    """One sentence for the analysis output, or None when there is nothing to say."""
+def warning(preset_name: str, modelled_ld: float | None,
+            induced_bias: float | None = None) -> str | None:
+    """One sentence for the analysis output, or None when there is nothing to say.
+
+    `induced_bias` is the fraction of the induced drag flow5 leaves out at this
+    aircraft's aspect ratio. It is **not** folded into the band, because the band
+    comes from published whole-aircraft budgets measured against a modelled drag
+    that was assumed sound. Two optimistic errors that stack have to be said to
+    stack, or the reader subtracts one of them and thinks they are done.
+    """
     b = budget(preset_name, modelled_ld)
     if b is None:
         return None
     lo, hi = b["realistic_best_LD"]["low"], b["realistic_best_LD"]["high"]
     frac = b["missing_fraction"]
     names = ", ".join(i["item"] for i in b["items"][:3])
+    stacked = ""
+    if induced_bias and induced_bias >= 0.05:
+        stacked = (
+            f" That band does not include the {induced_bias:.0%} of the induced drag "
+            "flow5 leaves out at this aspect ratio, which is a separate error in the "
+            "same direction: the two stack, so treat the band as an upper bound too."
+        )
     return (
         f"this L/D of {b['modelled_best_LD']} is for the lifting surfaces only. "
         f"{names} and the rest are not in the model and flow5 cannot put them there. "
         f"Published estimates for this class put them at {frac['low']:.0%}-{frac['high']:.0%} "
         f"of the modelled drag, which would give a realistic {lo}-{hi}. Compare a "
         "published aircraft's figure against that band, not against the number above."
+        + stacked
     )

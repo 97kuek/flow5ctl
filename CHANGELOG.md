@@ -75,6 +75,12 @@ not correct.
 
 ### Fixed
 
+- **The drag budget's band now says it does not include the induced-drag bias.**
+  The band comes from published whole-aircraft budgets measured against a modelled
+  drag that was taken as sound; at high aspect ratio the modelled drag is itself
+  optimistic. Two errors in the same direction have to be said to stack, or the
+  reader subtracts one and believes they are done. The band is not quietly moved —
+  folding a second correction into it would invent a number.
 - **A tail level with the wing halves the induced drag, silently.** The wing's
   trailing vortices leave at its own height and run downstream, so a horizontal
   surface at exactly that height has its control points on the vortex sheet. flow5

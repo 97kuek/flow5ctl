@@ -292,6 +292,36 @@ class TestDragBudget:
         assert "Published estimates" in text
 
 
+class TestTheTwoOptimisticErrorsStack:
+    """The drag budget's band assumes the modelled drag is sound. It is not.
+
+    The band comes from published whole-aircraft budgets measured against a modelled
+    drag that was taken as correct. At high aspect ratio the modelled drag is itself
+    optimistic because flow5's induced drag is low, and two errors in the same
+    direction have to be said to stack - otherwise the reader subtracts one of them
+    and believes they are done.
+    """
+
+    def test_a_high_aspect_ratio_run_says_they_stack(self):
+        text = dragbudget.warning("hpa", 50.64, induced_bias=0.174)
+        assert "does not include the 17% of the induced drag" in text
+        assert "the two stack" in text
+        assert "upper bound too" in text
+
+    def test_the_band_itself_is_not_quietly_moved(self):
+        """Folding a second correction into the band would invent a number."""
+        plain = dragbudget.warning("hpa", 50.64)
+        with_bias = dragbudget.warning("hpa", 50.64, induced_bias=0.174)
+        assert plain.split("Compare a")[0] == with_bias.split("Compare a")[0]
+
+    def test_a_small_bias_is_not_worth_a_sentence(self):
+        assert dragbudget.warning("hpa", 50.64, induced_bias=0.02) == \
+               dragbudget.warning("hpa", 50.64)
+
+    def test_no_bias_given_reads_as_before(self):
+        assert "the two stack" not in dragbudget.warning("rc-glider", 24.0)
+
+
 class TestRootBendingMoment:
     """The strip table already carries the number a spar is sized from.
 
