@@ -6,6 +6,8 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+## [0.1.10] — 2026-09-04
+
 ### Changed
 
 - **The bending cross-check now says the wing does not carry quite all the lift.** A
