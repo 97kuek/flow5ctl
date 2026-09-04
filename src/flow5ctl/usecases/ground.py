@@ -35,18 +35,7 @@ def compare(project: Project, req: analyze_uc.Request, *, height: float | None =
     runs — everything else, including the polar name, comes from one Request.
     """
     design = project.load()
-    if height is None:
-        height = req.ground_height
-    if height is None:
-        from ..model import presets
-        height = presets.load(design.preset).analysis.get("ground_height")
-    if height is None:
-        raise DesignError(
-            "no ground height to compare against. Pass --ground-height, or use a "
-            "preset that sets one (hpa does)."
-        )
-    if height <= 0:
-        raise DesignError(f"ground height must be positive, not {height}")
+    height = resolve_height(design, req, height)
 
     free_req = replace_ground(req, effect=False, height=None, suffix="__free")
     near_req = replace_ground(req, effect=True, height=height, suffix=None)
@@ -86,6 +75,38 @@ def compare(project: Project, req: analyze_uc.Request, *, height: float | None =
         ],
         "data": near.get("data"),
     }
+
+
+def resolve_height(design: Any, req: analyze_uc.Request,
+                   height: float | None = None) -> float:
+    """Where the ground height comes from — the same places `analyze` looks.
+
+    This used to check only the preset's `analysis` block, and no preset has ever
+    put a ground height there: they put it in `defaults.requirements`, from which it
+    lands on the design as `requirements.ground_effect_height`. So the one feature
+    built for human-powered aircraft refused to run on a human-powered aircraft, and
+    told the user to "use a preset that sets one (hpa does)" about a design that was
+    already using exactly that preset.
+    """
+    from ..model import presets
+
+    if height is None:
+        height = req.ground_height
+    if height is None:
+        height = design.requirements.ground_effect_height
+    if height is None:
+        preset = presets.load(design.preset)
+        height = (preset.analysis.get("ground_height")
+                  or (preset.defaults.get("requirements") or {}).get("ground_effect_height"))
+    if height is None:
+        raise DesignError(
+            "no ground height to compare against. Pass --ground-height, or set "
+            "`requirements.ground_effect_height` in the design (the hpa preset does "
+            "it for you)."
+        )
+    if height <= 0:
+        raise DesignError(f"ground height must be positive, not {height}")
+    return float(height)
 
 
 def replace_ground(req: analyze_uc.Request, *, effect: bool, height: float | None,

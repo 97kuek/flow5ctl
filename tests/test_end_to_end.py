@@ -240,3 +240,25 @@ class TestCgHeightSeparation:
         s = out["summary"]
         assert s["pitch_stiffness_margin"] == pytest.approx(s["static_margin"])
         assert not (project.build / "out" / "t__zref").exists()
+
+
+def test_a_sideslip_polar_reports_no_root_bending_moment(install, rect_design, workspace):
+    """Alpha is held and beta swept, so there is no longitudinal operating point.
+
+    It used to report one anyway - 1,186 N.m against a 3,680 N.m estimate on an HPA,
+    the strips being read at whichever beta sorted to the middle. That reads as a
+    structural finding and is not one, and the summary already refuses to report
+    anything else longitudinal from a T5 run.
+    """
+    raw = dict(rect_design)
+    raw["tail"] = {"type": "conventional", "fin": {
+        "name": "Fin", "airfoil": "NACA0012", "position": [0.7, 0.0, 0.03],
+        "planform": {"span": 0.2, "root_chord": 0.1}}}
+    define.create("Side", raw)
+    out = analyze_uc.analyze(Project.resolve("Side"), analyze_uc.Request(
+        name="t5", polar_type="T5", speed=15.0, alpha=(-4.0, 4.0, 2.0), viscous=False,
+    ))
+    assert out["summary"]["sideslip_sweep"] is True
+    assert out["structure"] is None
+    assert any("no root bending moment from a sideslip polar" in n
+               for n in out["notes"])

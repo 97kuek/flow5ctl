@@ -430,13 +430,26 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
         design=design.name,
     ))
 
-    root_load = structure.root_load(
+    # A sideslip polar holds alpha and sweeps beta, so there is no operating point
+    # in the longitudinal sense and nothing to read a wing loading at. The summary
+    # already refuses to report anything longitudinal from one; the root bending
+    # moment is a loading quantity and belongs in the same refusal. It came back at
+    # 1,186 N.m against a 3,680 N.m estimate on an HPA - the strips being read at
+    # whichever beta sorted to the middle - which reads as a structural finding and
+    # is not one.
+    root_load = None if summary.sideslip_sweep else structure.root_load(
         strips_data,
         mass_kg=derived.mass.total,
         semi_span_m=derived.reference_span / 2.0 if derived.reference_span else None,
         lift_N=_lift_at(summary, derived, speed),
         shared_lift=any(s.wing.role == "other" for s in derived.surfaces),
     )
+    if summary.sideslip_sweep:
+        notes.append(
+            "no root bending moment from a sideslip polar: alpha is held and beta is "
+            "swept, so there is no longitudinal operating point to read a wing "
+            "loading at. Run T1, T2 or T7 for that."
+        )
     warnings.extend(structure.notes(root_load))
 
     if summary.best_ld is not None:

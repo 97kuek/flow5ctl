@@ -365,6 +365,43 @@ class TestGroundEffectComparison:
     def test_a_missing_or_zero_baseline_gives_no_percentage(self):
         assert ground._pct(None, 31.4) is None
         assert ground._pct(28.8, None) is None
+
+    def _design(self, rect_design, preset="custom", height=None) -> Design:
+        raw = dict(rect_design)
+        raw["preset"] = preset
+        raw["requirements"] = dict(raw.get("requirements") or {})
+        if height is not None:
+            raw["requirements"]["ground_effect_height"] = height
+        return Design.model_validate(raw)
+
+    def test_the_design_s_own_height_is_found(self, rect_design):
+        """The bug: this was never consulted, so the feature built for HPAs refused
+        to run on an HPA and blamed the preset the design was already using."""
+        d = self._design(rect_design, height=2.0)
+        assert ground.resolve_height(d, analyze.Request()) == pytest.approx(2.0)
+
+    def test_the_hpa_preset_supplies_one_when_the_design_does_not(self, rect_design):
+        d = self._design(rect_design, preset="hpa")
+        assert ground.resolve_height(d, analyze.Request()) == pytest.approx(1.5)
+
+    def test_an_explicit_height_wins_over_both(self, rect_design):
+        d = self._design(rect_design, preset="hpa", height=2.0)
+        assert ground.resolve_height(d, analyze.Request(), 0.8) == pytest.approx(0.8)
+
+    def test_the_request_wins_over_the_design(self, rect_design):
+        d = self._design(rect_design, height=2.0)
+        req = analyze.Request(ground_height=3.0)
+        assert ground.resolve_height(d, req) == pytest.approx(3.0)
+
+    def test_with_nowhere_to_get_one_it_says_where_to_put_it(self, rect_design):
+        d = self._design(rect_design)
+        with pytest.raises(DesignError, match="requirements.ground_effect_height"):
+            ground.resolve_height(d, analyze.Request())
+
+    def test_a_height_at_or_below_the_surface_is_refused(self, rect_design):
+        d = self._design(rect_design)
+        with pytest.raises(DesignError, match="must be positive"):
+            ground.resolve_height(d, analyze.Request(), 0.0)
         assert ground._pct(0.0, 31.4) is None
 
 

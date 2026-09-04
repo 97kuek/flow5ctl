@@ -88,6 +88,21 @@ The core library, the CLI and the MCP server all work — see
   point it is 3 %. Nothing was wrong with the strips. The load factor is now
   reported on its own, and a point more than 15 % from level flight says that the
   bending moment there is not the load a spar is sized from.
+- **`--compare-ground` did not work on a human-powered aircraft**, which is the
+  only class it was built for. It looked for the ground height in the preset's
+  `analysis` block, and no preset has ever put one there — they set it in
+  `defaults.requirements`, from which it lands on the design as
+  `requirements.ground_effect_height`, where every other code path reads it. So the
+  feature refused to run and told the user to "use a preset that sets one (hpa
+  does)" about a design that was already using that preset. Measured after the fix
+  on the HPA example at h = 2.0 m: **+16.0 % best L/D, −16.8 % minimum sink.**
+- **A sideslip polar reported a root bending moment.** Alpha is held and beta swept,
+  so there is no longitudinal operating point and nothing to read a wing loading at;
+  the strips were being taken at whichever beta sorted to the middle, giving
+  1,186 N·m against a 3,680 N·m estimate on an HPA. That reads as a structural
+  finding and is not one. The summary already refused to report anything else
+  longitudinal from a T5 run; this now joins it, with a note saying which polar
+  types to use instead.
 - **Best L/D did not report the speed it happens at.** `min_sink` carried it and
   `best_LD` did not, so on a fixed-lift or glide polar — where flow5 solves the
   speed at every alpha — the **best glide speed** was computed and thrown away. It
