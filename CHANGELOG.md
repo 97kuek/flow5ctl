@@ -6,6 +6,14 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Fixed
+
+- **`open` refused by naming `export`.** It reuses the export path and inherited its
+  wording, so running `open` before any analysis said "there is nothing to export" —
+  an operation the user had not asked for. It says what it needs and what produces
+  it: flow5 writes the `.fl5` as a side effect of an analysis.
+
+
 ## [0.1.10] — 2026-09-04
 
 ### Changed

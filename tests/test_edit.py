@@ -366,3 +366,25 @@ class TestAirfoilAddTakesTheDesignPositionally:
         a.naca = "2409"
         with pytest.raises(Flow5ctlError, match="given twice"):
             cmd_airfoil(a)
+
+
+class TestOpenNamesTheRightOperation:
+    """`open` reuses `export`, and inherited its wording with it.
+
+    Running `open` before any analysis said "nothing has been analysed yet, so there
+    is nothing to **export**" - naming an operation the user did not ask for, which
+    sends them to look at the wrong thing.
+    """
+
+    def test_it_says_open_not_export(self, project):
+        from flow5ctl.usecases import gui
+        with pytest.raises(DesignError) as exc:
+            gui.open_in_flow5(project, launch=False)
+        text = str(exc.value)
+        assert "nothing to open" in text
+        assert "nothing to export" not in text
+
+    def test_it_says_what_produces_the_file(self, project):
+        from flow5ctl.usecases import gui
+        with pytest.raises(DesignError, match="run `analyze` first"):
+            gui.open_in_flow5(project, launch=False)

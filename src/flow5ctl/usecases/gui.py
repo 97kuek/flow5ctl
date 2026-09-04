@@ -21,7 +21,17 @@ from .edit import export
 
 def open_in_flow5(project: Project, *, polar: str | None = None,
                   flow5: str | None = None, launch: bool = True) -> dict[str, Any]:
-    exported = export(project, "fl5", polar=polar)
+    try:
+        exported = export(project, "fl5", polar=polar)
+    except DesignError as exc:
+        # `export`'s wording is about exporting, and the user typed `open`. Naming
+        # the wrong operation in a refusal sends them to look at the wrong thing.
+        raise DesignError(
+            f"there is no flow5 project to open yet: {exc}".replace(
+                "there is nothing to export.", "there is nothing to open.")
+            + (" flow5 writes the `.fl5` as a side effect of an analysis, so run "
+               "`analyze` first and then open it.")
+        ) from exc
     path = Path(exported["path"])
     install = probe_mod.probe(flow5)
 
