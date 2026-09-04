@@ -30,7 +30,10 @@ installing anything permanently. The `[plot]` extra pulls in matplotlib, which o
 `plot` needs — everything else works without it, and `plot` says so clearly if it is
 missing.
 
-Until flow5ctl is on PyPI, point `--from` at a checkout instead:
+That is all it takes — flow5ctl is on
+[PyPI](https://pypi.org/project/flow5ctl/) and `uvx` fetches it. To run a checkout
+instead, for development or to try an unreleased change, point `--from` at the
+directory:
 
 ```json
 {

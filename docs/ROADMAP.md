@@ -127,9 +127,9 @@ someone who did not build it.
 
 Two things stood between the built software and that test, and both are now done:
 
-- **A way to install it that does not require `git clone`.** Publishing is set up
-  and documented ([RELEASING.md](RELEASING.md)); the tag is the owner's to push once
-  the PyPI trusted publisher is registered.
+- **A way to install it that does not require `git clone`.** Done — 0.1.0 is on
+  [PyPI](https://pypi.org/project/flow5ctl/), so the Claude Desktop config is one
+  line and the reader needs no shell beyond installing `uv` once.
 - **A Japanese guide written for that reader.**
   [ja/QUICKSTART.md](ja/QUICKSTART.md) — preparation, the first analysis, what each
   number means, and what each warning is telling you to do. The English docs assume

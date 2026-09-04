@@ -211,7 +211,8 @@ Studies are files, so a question survives a design change:
 flow5ctl sweep Glider --study examples/cg-sweep.yaml
 ```
 
-> `pipx install flow5ctl` and a PyPI release land with 0.1.0.
+> Released: `pip install flow5ctl` or `uvx --from "flow5ctl[plot]" flow5ctl` —
+> [pypi.org/project/flow5ctl](https://pypi.org/project/flow5ctl/). macOS only.
 
 Claude Desktop — add to your MCP config:
 
