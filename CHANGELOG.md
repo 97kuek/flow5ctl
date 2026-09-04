@@ -24,6 +24,11 @@ The core library, the CLI and the MCP server all work — see
 - **Wing root bending moment**, with a closed-form cross-check beside it. The strip
   table already carried the number a spar is sized from and it was being discarded.
 
+- **More than three lifting surfaces** — `extra_surfaces` in `design.yaml`. A
+  tandem, a biplane and a canard-plus-tail could not be expressed at all; the schema
+  was fixed at wing, elevator and fin while flow5 itself has no cap. Verified end to
+  end on a tandem. Tail volume and the bending moment's closed-form cross-check both
+  stop applying on such a layout, and the report says so instead of quoting them.
 - **`sweep --trimmed`** — solve the flight condition at every point instead of
   reporting a polar. A fixed-speed sweep holds the speed and sweeps alpha, so at
   almost every point the lift does not equal the weight and the moment is not zero;

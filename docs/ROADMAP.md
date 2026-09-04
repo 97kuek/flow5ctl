@@ -161,12 +161,15 @@ were all pulled forward into Phases 1-3. What is left:
       (elliptic loading puts the load centroid at 4s/3π). Measured on a 32 m
       aircraft: 2,772 N·m against an estimate of 2,964, which is the right side of
       elliptic for a constant-chord inner panel with washout
-- [ ] **More than three lifting surfaces.** The schema is fixed at wing, elevator
-      and fin. A real user's flow5 project kept as a reference (`26-el3.xfl`) has a
-      `Second Wing` as well, so a tandem or biplane layout cannot be expressed today.
-      flow5 itself has no cap — `xmlplanereader.cpp` calls `addWing()` once per
-      `<wing>` element — and the twin-fin work already proved extra surfaces solve
-      correctly, so this is a schema change rather than an adapter one
+- [x] **More than three lifting surfaces** — `extra_surfaces` in `design.yaml`. A
+      tandem, a biplane and a canard-plus-tail could not be expressed at all. The
+      adapter needed no change: `xmlplanereader.cpp:127` calls `addWing()` once per
+      `<wing>` element and dispatches on nothing else, and `OTHERWING` was already in
+      the type map. Verified end to end on a tandem — two lifting wings and a fin,
+      1372 panels, solved. Two derived numbers stop applying on such a layout and say
+      so rather than misleading: tail volume, which assumes one wing and one tail, and
+      the root bending moment's closed-form cross-check, which assumes the wing
+      carries all the lift (it reported 1.49x on the tandem with nothing wrong)
 
 ## Phase 5 — Community
 

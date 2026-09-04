@@ -3,6 +3,7 @@ of declining it."""
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from flow5ctl.advisor import dragbudget, guardrails, stability, structure
 from flow5ctl.errors import DesignError, UnsupportedByFlow5
@@ -481,3 +482,84 @@ class TestSpanwiseMesh:
         })
         assert d.wing.panels.spanwise == 40
         assert d.wing.panels.spanwise >= guardrails.MIN_SPANWISE
+
+
+class TestMoreThanThreeSurfaces:
+    """A tandem, a biplane and a canard-plus-tail need a fourth lifting surface.
+
+    The schema was fixed at wing, elevator and fin, so none of them could be
+    expressed. flow5 has no such cap - its plane reader calls addWing() once per
+    <wing> element and dispatches on nothing else - and the twin-fin work already
+    proved extra surfaces solve correctly.
+    """
+
+    def _tandem(self, **extra) -> dict:
+        surface = {"name": "Rear Wing", "airfoil": "NACA0012",
+                   "position": [1.3, 0.0, 0.1],
+                   "planform": {"span": 1.8, "root_chord": 0.18}}
+        surface.update(extra)
+        return {
+            "name": "T", "preset": "custom", "requirements": {"cruise_speed": 15.0},
+            "mass": {"components": [{"tag": "b", "mass": 1.0, "at": [0.4, 0.0, 0.0]}]},
+            "airfoils": [{"name": "NACA0012", "source": "naca:0012"}],
+            "wing": {"name": "Front Wing", "airfoil": "NACA0012",
+                     "planform": {"span": 2.0, "root_chord": 0.2}},
+            "extra_surfaces": [surface],
+        }
+
+    def test_a_fourth_surface_is_accepted_and_carried_through(self):
+        d = Design.model_validate(self._tandem())
+        assert [w.name for w in d.surfaces()] == ["Front Wing", "Rear Wing"]
+        assert d.extra_surfaces[0].role == "other"
+        assert d.extra_surfaces[0].symmetric is True
+
+    def test_it_reaches_the_geometry_and_the_panel_count(self):
+        d = geometry.solve(Design.model_validate(self._tandem()))
+        assert len(d.surfaces) == 2
+        assert d.panel_count == sum(s.geom.panel_count for s in d.surfaces)
+        # coefficients stay referenced to the main wing, as flow5 does
+        assert d.reference_span == pytest.approx(2.0)
+
+    def test_an_unnamed_surface_is_refused(self):
+        raw = self._tandem()
+        del raw["extra_surfaces"][0]["name"]
+        with pytest.raises(ValidationError, match="needs a `name`"):
+            Design.model_validate(raw)
+
+    def test_a_duplicate_name_is_refused(self):
+        raw = self._tandem()
+        raw["extra_surfaces"][0]["name"] = "Front Wing"
+        with pytest.raises(ValidationError, match="both called"):
+            Design.model_validate(raw)
+
+    def test_a_pair_on_the_centreline_is_refused(self):
+        raw = self._tandem(count=2)
+        with pytest.raises(ValidationError, match="half-spacing"):
+            Design.model_validate(raw)
+
+    def test_tail_volume_is_flagged_as_the_wrong_measure(self):
+        raw = self._tandem()
+        raw["tail"] = {"type": "conventional", "fin": {
+            "name": "Fin", "airfoil": "NACA0012", "position": [1.45, 0.0, 0.12],
+            "planform": {"span": 0.25, "root_chord": 0.15}}}
+        d = geometry.solve(Design.model_validate(raw))
+        text = " ".join(guardrails.check_geometry(d, presets.load("custom")).notes)
+        assert "Rear Wing" in text
+        assert "one wing and one tail" in text
+
+    def test_the_elliptic_cross_check_is_withheld_when_lift_is_shared(self):
+        """Measured on the tandem: the check reported 1.49x and nothing was wrong.
+
+        The closed form assumes the wing carries all the lift. On a tandem it
+        carries an unknown share of it, so the estimate is against the wrong number.
+        """
+        s = {"alpha": 0.0, "surfaces": {"Main": {"y(m)": [-1.0, 0.0, 1.0],
+                                                 "Bending.mom": [0.0, 1.0, 0.0]}}}
+        out = structure.root_load(s, mass_kg=4.0, semi_span_m=1.0, lift_N=3.2,
+                                  shared_lift=True)
+        assert out["root_bending_moment_Nm"] == pytest.approx(1.0)
+        assert "elliptic_estimate_Nm" not in out
+        assert "ratio_to_estimate" not in out
+        assert "more than one lifting wing" in out["cross_check"]
+        # the load factor is still a real finding and is still reported
+        assert out["load_factor"] == pytest.approx(0.08, abs=0.01)

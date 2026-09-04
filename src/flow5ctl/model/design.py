@@ -218,6 +218,21 @@ class Design(Base):
     airfoils: list[Airfoil] = Field(default_factory=list)
     wing: Wing
     tail: Tail = Field(default_factory=Tail)
+    extra_surfaces: list[Wing] = Field(default_factory=list)
+    """Lifting surfaces beyond the wing, elevator and fin.
+
+    A tandem, a biplane and a canard-plus-tail all need a fourth surface, and until
+    this existed they could not be expressed at all. flow5 has no cap — its plane
+    reader calls `addWing()` once per `<wing>` element and dispatches on nothing
+    else (`xmlplanereader.cpp:127`) — and the twin-fin work already proved that
+    extra surfaces solve correctly, so this is a schema limit rather than a solver
+    one. A real user's project kept as a reference has a `Second Wing` in exactly
+    this position.
+
+    Each needs a `name`, because results are keyed by surface name and two unnamed
+    surfaces would collide silently in the strip table. Coefficients stay referenced
+    to the main wing's area, span and MAC, which is flow5's own convention.
+    """
     fuselage: Fuselage = Field(default_factory=Fuselage)
 
     @model_validator(mode="after")
@@ -228,11 +243,38 @@ class Design(Base):
         for w in (self.tail.elevator, self.tail.fin):
             if w is not None and w.symmetric is None:
                 w.symmetric = w.role != "fin"
+        self._check_extra_surfaces()
         return self
+
+    def _check_extra_surfaces(self) -> None:
+        named = [w.name for w in (self.wing, self.tail.elevator, self.tail.fin)
+                 if w is not None and w.name]
+        for w in self.extra_surfaces:
+            if not w.name:
+                raise ValueError(
+                    "every surface in `extra_surfaces` needs a `name`: results are "
+                    "keyed by surface name, and two unnamed surfaces would overwrite "
+                    "each other in the strip table without any error"
+                )
+            if w.name in named:
+                raise ValueError(
+                    f"two surfaces are both called {w.name!r}. Surface names must be "
+                    "unique or the results cannot be told apart"
+                )
+            named.append(w.name)
+            w.role = "other"
+            if w.symmetric is None:
+                w.symmetric = True
+            if w.count == 2 and w.position[1] == 0.0:
+                raise ValueError(
+                    f"{w.name!r} has count: 2, so the y in its `position` is the "
+                    "half-spacing and cannot be zero — the pair is placed at ±y"
+                )
 
     def surfaces(self) -> list[Wing]:
         """Every lifting surface, main wing first."""
-        return [w for w in (self.wing, self.tail.elevator, self.tail.fin) if w is not None]
+        return [w for w in (self.wing, self.tail.elevator, self.tail.fin) if w is not None
+                ] + list(self.extra_surfaces)
 
     def airfoil_names(self) -> set[str]:
         return {a.name for a in self.airfoils}

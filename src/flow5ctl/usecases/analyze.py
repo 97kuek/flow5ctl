@@ -435,6 +435,7 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
         mass_kg=derived.mass.total,
         semi_span_m=derived.reference_span / 2.0 if derived.reference_span else None,
         lift_N=_lift_at(summary, derived, speed),
+        shared_lift=any(s.wing.role == "other" for s in derived.surfaces),
     )
     warnings.extend(structure.notes(root_load))
 

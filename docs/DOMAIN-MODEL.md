@@ -109,6 +109,13 @@ tail:
     panels: {chordwise: 7, spanwise: 8}
     count: 1                  # 2 for a twin fin; y above is then the half-spacing
 
+extra_surfaces:               # optional; a tandem, biplane or canard-plus-tail
+  - name: Second Wing         # required, and unique across every surface
+    position: [4.2, 0.0, 0.4]
+    airfoil: DAE-31
+    planform: {span: 24.0, root_chord: 0.85, taper: 0.6}
+    panels: {chordwise: 11, spanwise: 30}
+
 fuselage:
   type: none                  # none | pod | frames   (Phase 3)
 ```
@@ -128,6 +135,19 @@ fuselage:
   the vertical tail volume and the panel budget. Only a fin may be doubled, and two
   fins on the centreline are refused because they would be coincident.
   ([FLOW5-INTERFACE.md §3.0a](FLOW5-INTERFACE.md))
+- **`extra_surfaces` carries any lifting surface beyond the three named ones.** A
+  tandem, a biplane and a canard-plus-tail all need a fourth, and until it existed
+  they could not be expressed at all. flow5 has no cap — its plane reader calls
+  `addWing()` once per `<wing>` element and dispatches on nothing else
+  (`xmlplanereader.cpp:127`) — so this was a schema limit, not a solver one. Each
+  needs a **unique `name`**, because results are keyed by surface name and two
+  unnamed surfaces would overwrite each other in the strip table with no error.
+  Coefficients stay referenced to the main wing's area, span and MAC, which is
+  flow5's own convention. Two consequences the tool reports rather than hides:
+  **tail volume stops being the right measure** (both coefficients assume one wing
+  and one tail, and every published band was fitted to that), and **the root
+  bending moment loses its closed-form cross-check**, because the estimate assumes
+  the wing carries all the lift and on a tandem it carries an unknown share.
 - **Everything not given takes a preset default**, and every applied default is
   reported back to the agent in the `define_plane` response. Silent defaults are
   how designs go wrong.

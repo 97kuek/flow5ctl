@@ -15,6 +15,12 @@ distribution puts the centroid at 4s/(3π) ≈ 0.424 s. So
 
     M_root ≈ (L / 2) · 0.424 · s
 
+**One lifting wing only.** The closed form assumes the wing carries all the lift.
+On a tandem, a canard or a biplane it carries some unknown fraction of it, so the
+comparison is against the wrong number — measured on a tandem test case, the check
+reported 1.49x and nothing was wrong. When the design has a surface beyond the wing,
+elevator and fin, the estimate is withheld and the reason is given in its place.
+
 **The lift is the operating point's, not the weight.** This is the whole trap. A
 fixed-speed (T1) polar does not fly the aeroplane — it holds the speed and sweeps
 alpha, so almost every point on it is out of balance. Measured on the shipped 3 m
@@ -60,7 +66,7 @@ def _finite(values: list[float]) -> list[float]:
 
 def root_load(strips: dict[str, Any] | None, *, mass_kg: float | None,
               semi_span_m: float | None, lift_N: float | None = None,
-              g: float = 9.81) -> dict[str, Any] | None:
+              shared_lift: bool = False, g: float = 9.81) -> dict[str, Any] | None:
     """Root bending moment from the strip table, with a sanity estimate beside it.
 
     `lift_N` is the lift the polar reports at this operating point. Pass it whenever
@@ -108,6 +114,16 @@ def root_load(strips: dict[str, Any] | None, *, mass_kg: float | None,
                 "fixed-lift (T2) polar, which flies every point at the aircraft's own "
                 "weight."
             )
+
+    if shared_lift:
+        out["cross_check"] = (
+            "not available: this aircraft has more than one lifting wing, so the "
+            "main wing carries an unknown share of the total lift and the "
+            "closed-form estimate — which assumes the wing carries all of it — "
+            "would be compared against the wrong number. The measured moment above "
+            "still stands."
+        )
+        return out
 
     reference = lift_N if lift_N is not None else weight
     if reference and semi_span_m and semi_span_m > 0:

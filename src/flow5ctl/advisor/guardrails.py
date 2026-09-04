@@ -180,6 +180,7 @@ def check_geometry(derived: Derived, preset: Preset) -> Check:
             )
 
     _check_spanwise_mesh(derived, c)
+    _check_extra_surfaces(derived, c)
 
     if derived.tail_volume_h is None and len(derived.surfaces) == 1:
         c.note("wing only — no tail, so pitch trim and stability cannot be assessed.")
@@ -211,6 +212,31 @@ def check_geometry(derived: Derived, preset: Preset) -> Check:
 #: Below this many spanwise panels per semi-span, induced drag is measurably
 #: optimistic. See docs/log/2026-09-04-induced-drag-and-the-mesh.md.
 MIN_SPANWISE = 25
+
+
+def _check_extra_surfaces(derived: Derived, c: Check) -> None:
+    """Tail volume is a two-surface idea, and a fourth surface breaks it.
+
+    Both tail volume coefficients are area x lever arm over the main wing's area and
+    a reference length, and every published band for them was fitted to aircraft
+    with one lifting wing and one tail. On a tandem or a canard the lift is shared
+    between two surfaces and the bands are simply not about that aircraft, so the
+    number is still computed - it is what flow5's geometry gives - but it is not
+    something to size against.
+    """
+    extra = [s for s in derived.surfaces if s.wing.role == "other"]
+    if not extra:
+        return
+    names = ", ".join(s.wing.name or "unnamed" for s in extra)
+    if derived.tail_volume_h is not None or derived.tail_volume_v is not None:
+        c.note(
+            f"this design has a lifting surface beyond the wing, elevator and fin "
+            f"({names}). The tail volumes above are still computed from the elevator "
+            "and fin alone, and the bands they are compared against were fitted to "
+            "aircraft with one wing and one tail. On a tandem or a canard they are "
+            "not the right measure of pitch or yaw authority — check the trimmed "
+            "condition and the static margin instead."
+        )
 
 
 def _check_spanwise_mesh(derived: Derived, c: Check) -> None:
