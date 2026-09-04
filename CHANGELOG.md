@@ -6,6 +6,8 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+## [0.1.9] — 2026-09-04
+
 ### Fixed
 
 - **Over MCP, a rejected edit said only "Error executing tool update_design".**
