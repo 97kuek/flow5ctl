@@ -369,6 +369,21 @@ class TestRootBendingMoment:
         assert "not the level-flight load" in text
         assert structure.notes(out) == [text]
 
+    def test_a_fixed_lift_polar_comes_out_at_exactly_one(self):
+        """Measured end to end on the 34 m HPA example, T2, at best L/D.
+
+        A fixed-lift polar solves the speed at every alpha so that lift equals
+        weight, so the load factor has to be 1.00 by construction. It came out at
+        1020.2 N of lift against 104 kg - 1020.2 N of weight, which checks the whole
+        chain at once: the polar's speed column, CL, the reference area and the
+        density all agreeing.
+        """
+        s = self._strips([0.0, 3492.4, 0.0], [-17.0, 0.033, 17.0])
+        out = structure.root_load(s, mass_kg=104.0, semi_span_m=17.0, lift_N=1020.2)
+        assert out["load_factor"] == pytest.approx(1.0, abs=0.005)
+        assert out["estimate_from"] == "lift at this operating point"
+        assert structure.notes(out) == []
+
     def test_level_flight_is_silent(self):
         s = self._strips([0.0, 2804.0, 0.0], [-16.0, 0.0, 16.0])
         lift = 89.0 * 9.81

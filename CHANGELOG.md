@@ -88,6 +88,15 @@ The core library, the CLI and the MCP server all work — see
   point it is 3 %. Nothing was wrong with the strips. The load factor is now
   reported on its own, and a point more than 15 % from level flight says that the
   bending moment there is not the load a spar is sized from.
+- **Best L/D did not report the speed it happens at.** `min_sink` carried it and
+  `best_LD` did not, so on a fixed-lift or glide polar — where flow5 solves the
+  speed at every alpha — the **best glide speed** was computed and thrown away. It
+  is also what tells the structural cross-check how much lift the wing was carrying:
+  without it a T2 run compared its bending moment against the weight "assuming level
+  flight" when the polar had already guaranteed exactly that. With it, the HPA
+  example's T2 run reports a load factor of **1.00** — 1020.2 N of lift against
+  1020.2 N of weight — which checks the polar's speed column, CL, the reference area
+  and the density all at once.
 - **`export` could not find an analysis that plainly existed.** `build/` holds the
   last solver invocation only, so a `trim` or a `sweep` afterwards leaves an earlier
   analysis' artifacts gone while its results JSON stays. Exporting it then failed

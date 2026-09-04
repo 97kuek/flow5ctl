@@ -84,7 +84,10 @@ def _pretty(p: dict[str, Any]) -> None:
         line("alpha at CL=0", s.get("alpha_zero_lift"))
         if s.get("best_LD"):
             b = s["best_LD"]
-            line("best L/D", f"{b['value']} at α {b['alpha']}° (CL {b['cl']})")
+            line("best L/D", f"{b['value']} at α {b['alpha']}° (CL {b['cl']})"
+                             # on a fixed-lift or glide polar this is the best
+                             # glide speed, which is what a pilot actually flies
+                             + (f", {b['speed']} m/s" if b.get("speed") else ""))
         if s.get("min_sink"):
             m = s["min_sink"]
             line("min sink", f"{m['value']} m/s at α {m['alpha']}°"

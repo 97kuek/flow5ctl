@@ -33,6 +33,20 @@ class TestRectangularWing:
         assert s.best_ld.alpha == pytest.approx(2.0)
         assert s.best_ld.cl == pytest.approx(0.17146, rel=1e-3)
 
+    def test_best_ld_carries_the_speed_it_occurs_at(self, s, fixtures):
+        """min_sink carried the speed and best_ld did not.
+
+        On a fixed-lift or glide polar the speed is solved per point, so this is the
+        best glide speed — the number a pilot actually flies. It is also what tells
+        the structural cross-check how much lift the wing was carrying: without it a
+        T2 run compared its bending moment against the weight "assuming level
+        flight" when the polar had already guaranteed exactly that.
+        """
+        speeds = parse_polar(fixtures / "polar_t1_rectwing.csv").column("V")
+        assert s.best_ld.speed is not None
+        assert s.best_ld.speed in speeds
+        assert s.as_dict()["best_LD"]["speed"] == pytest.approx(s.best_ld.speed)
+
     def test_no_spurious_warnings(self, s):
         assert s.warnings == []
 

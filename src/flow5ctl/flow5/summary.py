@@ -359,6 +359,14 @@ def summarise(polar: Polar, *, mac: float | None = None, cg_x: float | None = No
             if polar.has("CL/CD"):
                 s.ld_at_trim = _at(alpha, polar.column("CL/CD"), s.trim_alpha)
 
+    # The speed matters as much as the angle on any polar that solves for it. On a
+    # fixed-lift or glide polar this is the best glide speed, which is the number a
+    # glider pilot actually flies, and it is what tells the structural cross-check
+    # how much lift the wing was carrying at this point. min_sink carried it and
+    # best_ld did not, so a T2 run reported its bending moment against the weight
+    # "assuming level flight" when the polar had already guaranteed it.
+    speeds = polar.column("V") if polar.has("V") else [None] * len(alpha)
+
     if polar.has("CL/CD"):
         ld = polar.column("CL/CD")
         best = max(
@@ -366,11 +374,10 @@ def summarise(polar: Polar, *, mac: float | None = None, cg_x: float | None = No
             key=lambda i: ld[i], default=None,
         )
         if best is not None:
-            s.best_ld = Extremum(ld[best], alpha[best], cl[best], cd[best])
+            s.best_ld = Extremum(ld[best], alpha[best], cl[best], cd[best], speeds[best])
 
     if polar.has("Vz"):
         vz = polar.column("Vz")
-        speeds = polar.column("V") if polar.has("V") else [None] * len(vz)
         sinking = [
             i for i in range(len(vz))
             if math.isfinite(vz[i]) and vz[i] > 0 and cl[i] > 1e-4
