@@ -749,6 +749,33 @@ class TestWakePlane:
         assert "trailing vortex sheet" in text
         assert "main sits" in text or "Main sits" in text
 
+    def test_a_tail_clear_of_the_wingtip_is_not_accused(self):
+        """A second reviewer's false positive, and the cheap gate that removes it.
+
+        Both surfaces were collapsed to a mean height with no look at spanwise
+        reach, so a tail lying wholly beyond the upstream wing's tip was warned
+        whenever its mean height matched - despite never crossing that wing's sheet.
+        """
+        d = geometry.solve(Design.model_validate({
+            "name": "W", "preset": "custom", "requirements": {"cruise_speed": 15.0},
+            "mass": {"components": [{"tag": "b", "mass": 1.0, "at": [0.05, 0.0, 0.0]},
+                                    {"tag": "l", "mass": 0.2, "at": [0.05, -1.0, 0.0]},
+                                    {"tag": "r", "mass": 0.2, "at": [0.05, 1.0, 0.0]}]},
+            "airfoils": [{"name": "N", "source": "naca:0012"}],
+            "wing": {"airfoil": "N", "planform": {"span": 3.0, "root_chord": 0.25}},
+            # 0.4 m span centred 4 m out: entirely outboard of a 3 m wing's tip
+            "extra_surfaces": [{"name": "Outboard", "position": [1.2, 4.0, 0.0],
+                                "airfoil": "N",
+                                "planform": {"span": 0.4, "root_chord": 0.1}}],
+        }))
+        text = " ".join(guardrails.check_geometry(d, presets.load("custom")).warnings)
+        assert "trailing vortex sheet" not in text
+
+    def test_the_message_says_the_threshold_is_a_margin_not_a_boundary(self):
+        text = self._warnings(tail_z=0.0)
+        assert "clearance margin rather than a measured boundary" in text
+        assert "a reason to look, not a finding" in text
+
     def test_offsetting_the_canard_clears_it_too(self):
         assert "trailing vortex sheet" not in self._warnings(tail_z=0.03, tail_x=-0.6)
 

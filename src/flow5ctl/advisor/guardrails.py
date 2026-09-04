@@ -254,8 +254,15 @@ def check_geometry(derived: Derived, preset: Preset) -> Check:
 MIN_SPANWISE = 25
 
 
-#: A downstream surface closer than this to the wing's own plane, as a fraction of
-#: the wing's MAC, sits in its trailing vortex sheet and the induced drag is wrong.
+#: A **heuristic clearance margin**, as a fraction of the main wing's MAC — not a
+#: demonstrated boundary, and a second reviewer was right to say so. Where the sheet
+#: actually is depends on the downstream distance times the wake angle, and the wake
+#: angle depends on the downwash and the angle of attack; none of that is visible
+#: from geometry alone, and with no operating alpha there is an envelope rather than
+#: a location. What is measured is that the error is severe at zero offset and gone
+#: by 8 % of chord on one layout, so a tenth of the MAC is a margin chosen to sit
+#: past that with room. It will accuse a surface that is clear, and it can miss one
+#: that is not; see `_check_wake_plane`.
 WAKE_PLANE_MAC = 0.10
 
 
@@ -288,6 +295,23 @@ def _check_wake_plane(derived: Derived, c: Check) -> None:
 
     Real aircraft rarely sit exactly there, but a design.yaml written as
     `position: [1.2, 0, 0]` does, and that is an easy thing to type.
+
+    **What this check does not know**, from a second reviewer and worth stating
+    because the warning reads more confident than the test is:
+
+    - **Where the sheet is.** It compares a height gap against a fixed fraction of
+      the MAC, so a tail half a metre behind and one ten metres behind are held to
+      the same margin. The real displacement scales with downstream distance times
+      the wake angle, and the wake angle with the downwash and the angle of attack.
+      Geometry alone gives an envelope, not a location.
+    - **Local height.** Each surface is collapsed to one chord-weighted mean height,
+      so an outboard surface sitting in a strongly dihedral panel's *local* wake can
+      pass because the two global means differ. Spanwise overlap is checked, which
+      removes the opposite error — a surface wholly beyond the upstream tip is no
+      longer accused — but the heights compared are still means.
+    - **Incidence and trailing-edge height**, neither of which enters at all.
+
+    So: a warning here is a reason to look, not a finding.
     """
     main = derived.main
     if main is None:
@@ -303,6 +327,17 @@ def _check_wake_plane(derived: Derived, c: Check) -> None:
     def height(s: Surface) -> float:
         return s.position_m[2] + s.geom.mac_z
 
+    def extent(s: Surface) -> tuple[float, float]:
+        """Spanwise reach, so a surface clear of the tip is not accused."""
+        y, span = s.position_m[1], s.geom.span
+        if s.wing.symmetric:
+            return (y - span / 2.0, y + span / 2.0)
+        return (min(y, y + span), max(y, y + span))
+
+    def overlaps(a: Surface, b: Surface) -> bool:
+        (a0, a1), (b0, b1) = extent(a), extent(b)
+        return min(a1, b1) > max(a0, b0)
+
     # Every ordered pair, not just "behind the main wing". A canard is upstream of
     # the main wing's sheet, so the earlier version skipped it - and never asked the
     # reciprocal question, which on a canard layout is the one that matters: the
@@ -312,6 +347,8 @@ def _check_wake_plane(derived: Derived, c: Check) -> None:
         for s in lifting:
             if s is upstream or s.position_m[0] <= upstream.position_m[0]:
                 continue
+            if not overlaps(s, upstream):
+                continue      # nothing of it lies behind the other's span
             gap = abs(height(s) - height(upstream))
             if gap >= WAKE_PLANE_MAC * mac:
                 continue
@@ -326,7 +363,10 @@ def _check_wake_plane(derived: Derived, c: Check) -> None:
                 "span efficiency read 1.81, which is impossible; moving the tail "
                 "2 cm — 8 % of chord — doubled it and brought it to 0.05 % of AVL. "
                 f"Offset {name} vertically by at least a tenth of the MAC, or model "
-                "the height it actually has."
+                "the height it actually has. That tenth is a clearance margin rather "
+                "than a measured boundary — where the sheet really sits depends on "
+                "the downstream distance and the angle of attack, which this check "
+                "does not see — so treat this as a reason to look, not a finding."
             )
 
 

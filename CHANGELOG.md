@@ -8,6 +8,16 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ### Fixed
 
+- **The wake-plane check accused surfaces that were nowhere near the wake, and its
+  threshold claimed more than it had earned.** Both from a second reviewer. It
+  collapsed each surface to a mean height with no look at spanwise reach, so a tail
+  lying wholly beyond the upstream wing's tip was warned whenever its mean height
+  matched. Spanwise overlap is now a gate. And the tenth-of-MAC figure is relabelled
+  as what it is — a clearance margin, not a boundary: the real displacement scales
+  with downstream distance times the wake angle, which depends on the downwash and
+  the angle of attack, none of which the check sees. The warning now says so, and
+  the residual it still cannot catch (an outboard surface in a dihedral panel's
+  *local* wake) is written down rather than left implied.
 - **The wake-plane check never asked the reciprocal question.** It looked for
   surfaces behind the main wing and skipped anything ahead of it — so on a canard
   layout, where the main wing is the surface sitting in the canard's wake, it looked
