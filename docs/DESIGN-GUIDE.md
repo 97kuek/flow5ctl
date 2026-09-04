@@ -186,15 +186,23 @@ against the modelled number.
 > As α rises the force vector tilts, and about a CG hung below the wing its line of
 > action moves — adding a term to −dCm/dCL that the classical static margin does not
 > contain. On a human-powered aircraft, where the pilot sits half a metre under a wing
-> whose dihedral lifts its mean height further, the offset reaches a full MAC and the
-> term reaches **29 percentage points**.
+> whose dihedral lifts its mean height further, the offset reaches most of a MAC and
+> the term is worth tens of percent.
+>
+> Measured on [`examples/hpa.yaml`](../examples/hpa.yaml), which anyone can re-run:
+> the CG sits **0.74 MAC** below the wing's mean height, the classical static margin
+> is **+8.7 %** and the pitch stiffness **+22.2 %** — the CG-height term is
+> **+13.5 percentage points**, more than the margin itself. On a reconstructed 34 m
+> aircraft with the pilot a full MAC below it reached 29 points; that aircraft is not
+> in this repository, so treat 13.5 as the figure you can check and 29 as the top of
+> the range seen.
 >
 > flow5ctl reports both. `static_margin` is the classical figure — the one the 5-15 %
 > band below refers to, the one tail-sizing rules produce, and the one a published
 > 「重心位置 % MAC」 is paired with. `pitch_stiffness_margin` is the whole −dCm/dCL
 > about the real CG. **Compare only the first against any band or published value.**
-> Measured on two reconstructed aircraft, confusing them put conventional designs 12
-> and 29 points outside their own class's range.
+> Confusing them puts a conventional design tens of points outside its own class's
+> range and makes an unflyable one look stable.
 
 > **Lateral stability needs real inertia.** With `Use_plane_inertia=true` flow5
 > ignores any explicit inertia you supply and derives it from the plane's masses. If
