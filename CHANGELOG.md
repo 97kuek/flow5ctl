@@ -6,6 +6,8 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+## [0.1.6] — 2026-09-04
+
 ### Fixed
 
 - **The wake-plane warning still quoted the pre-fix numbers.** It said the span
