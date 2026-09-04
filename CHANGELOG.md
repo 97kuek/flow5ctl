@@ -75,6 +75,14 @@ not correct.
 
 ### Fixed
 
+- **A tail level with the wing halves the induced drag, silently.** The wing's
+  trailing vortices leave at its own height and run downstream, so a horizontal
+  surface at exactly that height has its control points on the vortex sheet. flow5
+  returns a number rather than complaining: measured on an AR 12 wing with a tail
+  1.2 m behind, CD_induced was 0.00483 at zero offset — a span efficiency of 1.93,
+  which is impossible — against 0.00977 two centimetres away, which matches AVL
+  within 3 %. `analyze` now warns when a surface behind the wing is within a tenth
+  of the MAC of the wing's height. Both shipped examples are clear of it.
 - **flow5's induced drag is low, and the shortfall grows with aspect ratio.** Found
   by cross-checking against AVL 3.40 and against the one case with an exact answer:
   an elliptic planar wing has a span efficiency of 1.0 and cannot exceed it. flow5

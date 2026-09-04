@@ -180,6 +180,7 @@ def check_geometry(derived: Derived, preset: Preset) -> Check:
                 "aircraft rather than against the band."
             )
 
+    _check_wake_plane(derived, c)
     _check_induced_drag_bias(derived, c)
     _check_spanwise_mesh(derived, c)
     _check_extra_surfaces(derived, c)
@@ -273,6 +274,66 @@ def _check_induced_drag_bias(derived: Derived, c: Check) -> None:
         "already lists, and the more so the more of the drag is induced. Cross-check "
         "against AVL before committing a design."
     )
+
+
+#: A downstream surface closer than this to the wing's own plane, as a fraction of
+#: the wing's MAC, sits in its trailing vortex sheet and the induced drag is wrong.
+WAKE_PLANE_MAC = 0.10
+
+
+def _check_wake_plane(derived: Derived, c: Check) -> None:
+    """A tail level with the wing sits in its wake sheet, and the drag halves.
+
+    The wing's trailing vortices leave at its own height and run downstream. Put a
+    horizontal tail at exactly that height and its control points sit on the sheet,
+    which is singular; flow5 does not complain, it returns a number.
+
+    Measured on an AR 12 wing of 0.25 m chord with a 0.9 x 0.15 m tail 1.2 m behind,
+    inviscid, at alpha 6, moving only the tail's z:
+
+    | tail z | as a fraction of chord | induced drag | span efficiency |
+    |---|---|---|---|
+    | 0.000 | 0 | 0.00483 | **1.93 — impossible** |
+    | 0.001 | 0.4 % | 0.00734 | 1.27 — impossible |
+    | 0.005 | 2 % | 0.00935 | 0.996 |
+    | 0.010 | 4 % | 0.00964 | 0.966 |
+    | 0.020 | 8 % | 0.00977 | 0.953 |
+
+    Two centimetres of offset **doubles** the induced drag, to a value that then
+    matches AVL within 3 %. So this is not a small sensitivity to a modelling
+    choice: at zero offset the answer is out by a factor of two, in the optimistic
+    direction, with nothing in the output to say so.
+
+    Real aircraft rarely sit exactly there, but a design.yaml written as
+    `position: [1.2, 0, 0]` does, and that is an easy thing to type.
+    """
+    main = derived.main
+    if main is None:
+        return
+    mac = derived.reference_chord
+    if not mac:
+        return
+    z_wing = main.position_m[2]
+    for s in derived.surfaces:
+        if s is main or s.wing.role == "fin":
+            continue                      # a fin is vertical; it has no such plane
+        if s.position_m[0] <= main.position_m[0]:
+            continue                      # a canard is upstream of the sheet
+        gap = abs(s.position_m[2] - z_wing)
+        if gap >= WAKE_PLANE_MAC * mac:
+            continue
+        name = s.wing.name or s.wing.role
+        c.warn(
+            f"{name} sits {gap:.3g} m from the wing's own height, which is "
+            f"{gap / mac:.0%} of the MAC, and it is behind the wing. That puts it in "
+            "the wing's trailing vortex sheet, where the induced drag comes out "
+            "wrong and flow5 says nothing. Measured on a comparable layout: at zero "
+            "offset the induced drag was half its converged value and the span "
+            "efficiency read 1.93, which is impossible; moving the tail 2 cm — 8 % "
+            f"of chord — doubled it and brought it within 3 % of AVL. Offset {name} "
+            "vertically by at least a tenth of the MAC, or model the height it "
+            "actually has."
+        )
 
 
 def _check_extra_surfaces(derived: Derived, c: Check) -> None:

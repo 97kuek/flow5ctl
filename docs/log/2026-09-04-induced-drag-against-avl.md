@@ -156,3 +156,45 @@ modelled drag is unbiased".
   [Japanese translation](../ja/DESIGN-GUIDE.md) carry the table.
 - §9 of the guide already said to cross-check against AVL before committing a design.
   It now says what that cross-check found.
+
+
+## 6. A multi-surface aircraft, and a trap found on the way
+
+The single-wing comparison says nothing about the interference between a wing and a
+tail, which is most of what a real analysis is doing. The same three-surface aircraft
+— AR 12 rectangular wing, a 0.9 × 0.15 m tail 1.2 m behind, a fin — was built in both.
+
+**They agree.** flow5 gives CDi 0.00977 at CL 0.5926; AVL gives 0.01008 at 0.5884,
+3 % apart, and the neutral point comes out at 0.184 m in flow5 against **0.1833 m**
+in AVL. The pitching moments agree to 2 % once referenced to the same point. So the
+interference is handled correctly, and the stability number — the one a design
+decision rests on — is right.
+
+**Except that the first attempt said the induced drag was 52 % low, and that was our
+own test geometry's fault.** The tail had been put at `z = 0`, exactly the wing's own
+height. The wing's trailing vortices leave at that height and run downstream, so the
+tail's control points sat on the vortex sheet. flow5 does not complain; it returns a
+number. Moving the tail by two centimetres:
+
+| tail z | as a fraction of the 0.25 m chord | CD_induced | span efficiency |
+|---|---|---|---|
+| 0.000 | 0 | 0.004830 | **1.932 — impossible** |
+| 0.001 | 0.4 % | 0.007337 | 1.271 — impossible |
+| 0.005 | 2 % | 0.009352 | 0.996 |
+| 0.010 | 4 % | 0.009642 | 0.966 |
+| 0.015 | 6 % | 0.009736 | 0.957 |
+| 0.020 | 8 % | 0.009772 | 0.953 |
+| 0.400 | 160 % | 0.009746 | 0.963 |
+
+Two centimetres **doubles** the induced drag, to the value that then matches AVL.
+
+Real aircraft rarely sit exactly on that plane, but `position: [1.2, 0, 0]` in a
+`design.yaml` does, and that is an easy thing to type. `analyze` now warns when a
+surface behind the wing is within a tenth of the MAC of the wing's height. Both
+shipped examples are clear of it.
+
+**The claim this section nearly made was wrong**, and it is recorded because the
+correction is the useful part: a solver that returns a confident number for a
+singular configuration is exactly the failure mode this project is built around, and
+the first reading of the evidence blamed the solver's physics for what was a
+geometry anybody could type.

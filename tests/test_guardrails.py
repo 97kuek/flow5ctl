@@ -630,3 +630,78 @@ class TestInducedDragBias:
         d = self._derived(3.0, 0.25)                      # AR 12
         text = " ".join(guardrails.check_geometry(d, presets.load("rc-glider")).warnings)
         assert "induced drag is about" not in text
+
+
+class TestWakePlane:
+    """A tail level with the wing sits in its trailing vortex sheet.
+
+    The wing's trailing vortices leave at its own height and run downstream; a
+    horizontal tail at exactly that height has its control points on the sheet,
+    which is singular. flow5 does not complain - it returns a number, and the number
+    is out by a factor of two in the optimistic direction.
+
+    Measured on an AR 12 wing of 0.25 m chord with a 0.9 x 0.15 m tail 1.2 m behind,
+    inviscid at alpha 6, moving only the tail's z: induced drag 0.00483 at z = 0
+    (span efficiency 1.93, which is impossible), 0.00977 at z = 0.02, which then
+    matches AVL within 3 %. Two centimetres doubled it.
+    """
+
+    def _design(self, tail_z: float, tail_x: float = 1.2) -> Design:
+        return Design.model_validate({
+            "name": "W", "preset": "custom", "requirements": {"cruise_speed": 15.0},
+            "mass": {"components": [{"tag": "b", "mass": 1.0, "at": [0.05, 0.0, 0.0]},
+                                    {"tag": "l", "mass": 0.2, "at": [0.05, -1.0, 0.0]},
+                                    {"tag": "r", "mass": 0.2, "at": [0.05, 1.0, 0.0]}]},
+            "airfoils": [{"name": "N", "source": "naca:0012"}],
+            "wing": {"airfoil": "N", "planform": {"span": 3.0, "root_chord": 0.25}},
+            "tail": {"type": "conventional", "elevator": {
+                "airfoil": "N", "position": [tail_x, 0.0, tail_z],
+                "planform": {"span": 0.9, "root_chord": 0.15}}},
+        })
+
+    def _warnings(self, **kw) -> str:
+        d = geometry.solve(self._design(**kw))
+        return " ".join(guardrails.check_geometry(d, presets.load("custom")).warnings)
+
+    def test_a_tail_level_with_the_wing_is_called_out(self):
+        text = self._warnings(tail_z=0.0)
+        assert "trailing vortex sheet" in text
+        assert "impossible" in text
+
+    def test_an_offset_of_a_tenth_of_the_mac_is_enough(self):
+        # MAC is 0.25, so 0.03 is 12 % - past the measured convergence at 8 %
+        assert "trailing vortex sheet" not in self._warnings(tail_z=0.03)
+
+    def test_a_hair_off_the_plane_is_still_called_out(self):
+        """0.005 m is 2 % of chord, where the span efficiency still read 0.996."""
+        assert "trailing vortex sheet" in self._warnings(tail_z=0.005)
+
+    def test_a_surface_ahead_of_the_wing_is_not_in_its_wake(self):
+        assert "trailing vortex sheet" not in self._warnings(tail_z=0.0, tail_x=-0.6)
+
+    def test_a_fin_is_vertical_and_has_no_such_plane(self):
+        d = geometry.solve(Design.model_validate({
+            "name": "W", "preset": "custom", "requirements": {"cruise_speed": 15.0},
+            "mass": {"components": [{"tag": "b", "mass": 1.0, "at": [0.05, 0.0, 0.0]},
+                                    {"tag": "l", "mass": 0.2, "at": [0.05, -1.0, 0.0]},
+                                    {"tag": "r", "mass": 0.2, "at": [0.05, 1.0, 0.0]}]},
+            "airfoils": [{"name": "N", "source": "naca:0012"}],
+            "wing": {"airfoil": "N", "planform": {"span": 3.0, "root_chord": 0.25}},
+            "tail": {"type": "conventional", "fin": {
+                "airfoil": "N", "position": [1.2, 0.0, 0.0],
+                "planform": {"span": 0.3, "root_chord": 0.18}}},
+        }))
+        text = " ".join(guardrails.check_geometry(d, presets.load("custom")).warnings)
+        assert "trailing vortex sheet" not in text
+
+    def test_the_shipped_examples_are_clear_of_it(self):
+        import pathlib
+
+        import yaml
+        root = pathlib.Path(__file__).resolve().parent.parent / "examples"
+        for name in ("rc-glider.yaml", "hpa.yaml"):
+            raw = yaml.safe_load((root / name).read_text(encoding="utf-8"))
+            raw["name"] = name
+            d = geometry.solve(Design.model_validate(raw))
+            text = " ".join(guardrails.check_geometry(d, presets.load(d_preset := raw.get("preset", "custom"))).warnings)
+            assert "trailing vortex sheet" not in text, f"{name} ({d_preset})"
