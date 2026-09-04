@@ -204,3 +204,37 @@ class TestProgressIsBestEffort:
             async def report_progress(self, *a, **k):
                 raise RuntimeError("no progress token")
         await mcp._progress(Broken(), 1, 2, "half way")
+
+
+class TestTheGuidesShipInTheWheel:
+    """A client installed with `uvx` has no source tree.
+
+    The design guide was read from `../../docs/`, so an installed client got a
+    981-character summary of a 28,000-character document - and that document is
+    where every measured limit lives, including that no aircraft carrying a person
+    should be committed to build on a potential-flow analysis alone. It is the
+    reader named by Phase 3's exit criterion who was getting the summary.
+    """
+
+    def test_the_english_guide_is_the_real_one(self):
+        from flow5ctl.mcp_server import design_guide
+        text = design_guide()
+        assert len(text) > 15000
+        assert "no separation model" in text
+        assert "potential-flow analysis alone" in text
+
+    def test_the_japanese_guide_is_the_real_one(self):
+        from flow5ctl.mcp_server import design_guide_ja
+        text = design_guide_ja()
+        assert len(text) > 8000
+        assert "設計ガイド" in text
+
+    def test_both_are_force_included_into_the_wheel(self):
+        """A build that drops them would fall back silently to the summary."""
+        import pathlib
+        import tomllib
+        root = pathlib.Path(__file__).resolve().parent.parent
+        cfg = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+        inc = cfg["tool"]["hatch"]["build"]["targets"]["wheel"]["force-include"]
+        assert inc["docs/DESIGN-GUIDE.md"] == "flow5ctl/guides/DESIGN-GUIDE.md"
+        assert inc["docs/ja/DESIGN-GUIDE.md"] == "flow5ctl/guides/DESIGN-GUIDE.ja.md"

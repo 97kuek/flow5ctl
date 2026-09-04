@@ -311,15 +311,21 @@ that cannot be checked will not be adopted.
 | URI | Content |
 |---|---|
 | `flow5://status` | Same as `doctor`, readable without a tool call |
+| `flow5://guide/design` | [DESIGN-GUIDE.md](DESIGN-GUIDE.md) — the aerodynamic guardrails |
+| `flow5://guide/design.ja` | [The same in Japanese](ja/DESIGN-GUIDE.md) |
+| `flow5://schema/design` | The `design.yaml` schema, generated from the model |
 | `flow5://presets/{name}` | Preset defaults and thresholds |
 | `flow5://design/{name}` | The current `design.yaml` |
 | `flow5://results/{design}/{polar}` | Full operating-point data |
-| `flow5://guide/design` | [DESIGN-GUIDE.md](DESIGN-GUIDE.md) — the aerodynamic guardrails |
-| `flow5://airfoils` | Catalogue of bundled low-Re airfoils |
+
+The last three are URI templates, so they appear under `resources/templates/list`
+rather than `resources/list`.
 
 `flow5://guide/design` is deliberately a resource: a client that reads it before
-designing makes far fewer physically wrong requests, and it can be updated without
-shipping a new server.
+designing makes far fewer physically wrong requests. **Both guides ship inside the
+wheel**, because a client installed with `uvx` has no source tree and was being
+served a 981-character summary of a 28,000-character document — and the Japanese
+version exists precisely for readers who would not get the English one.
 
 ## Prompts (MCP)
 

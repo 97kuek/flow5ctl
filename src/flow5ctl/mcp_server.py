@@ -429,13 +429,33 @@ async def status_resource() -> str:
     return json.dumps(await doctor(), indent=2)
 
 
+def _guide(packaged: str, source: str) -> str | None:
+    """The guide, from the wheel if it is there and the source tree otherwise.
+
+    An MCP client installed with `uvx` has no source tree, so reading it from
+    `../../docs/` served a 981-character summary of a 28,000-character document -
+    to exactly the reader this project's Phase 3 exit criterion names. It is
+    force-included into the wheel from the one copy in `docs/`.
+    """
+    from importlib import resources
+
+    try:
+        f = resources.files("flow5ctl") / "guides" / packaged
+        if f.is_file():
+            return f.read_text(encoding="utf-8")
+    except (FileNotFoundError, ModuleNotFoundError, OSError):
+        pass
+    path = Path(__file__).parent.parent.parent / source
+    return path.read_text(encoding="utf-8") if path.is_file() else None
+
+
 @server.resource("flow5://guide/design", mime_type="text/markdown",
                  description="Aerodynamic guardrails. Read this before drawing "
                              "conclusions from any result.")
 def design_guide() -> str:
-    path = Path(__file__).parent.parent.parent / "docs" / "DESIGN-GUIDE.md"
-    if path.is_file():
-        return path.read_text(encoding="utf-8")
+    text = _guide("DESIGN-GUIDE.md", "docs/DESIGN-GUIDE.md")
+    if text is not None:
+        return text
     return (
         "# Design guide\n\n"
         "The full guide ships with the source tree at docs/DESIGN-GUIDE.md and is "
@@ -455,6 +475,18 @@ def design_guide() -> str:
         "- No aircraft carrying a person should be committed to build on a "
         "potential-flow analysis alone.\n"
     )
+
+
+@server.resource("flow5://guide/design.ja", mime_type="text/markdown",
+                 description="The same aerodynamic guardrails in Japanese "
+                             "(日本語版の設計ガイド). The Birdman Rally community "
+                             "this tool was built for is largely Japanese-speaking.")
+def design_guide_ja() -> str:
+    text = _guide("DESIGN-GUIDE.ja.md", "docs/ja/DESIGN-GUIDE.md")
+    if text is not None:
+        return text
+    return ("# 設計ガイド\n\n全文は docs/ja/DESIGN-GUIDE.md にあります。"
+            "英語版は `flow5://guide/design` から読めます。\n")
 
 
 @server.resource("flow5://presets/{name}", mime_type="application/json",

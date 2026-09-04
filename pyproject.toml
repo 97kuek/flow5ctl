@@ -45,6 +45,15 @@ dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "ruff>=0.6"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/flow5ctl"]
 
+# The design guide is the safety-relevant document - it is where every measured
+# limit lives, and where it says no aircraft carrying a person should be committed
+# to build on a potential-flow analysis alone. An MCP client installed with `uvx`
+# has no source tree, and was being served a 981-character summary of a 28,000
+# character document. It ships in the wheel now, from the one copy in docs/.
+[tool.hatch.build.targets.wheel.force-include]
+"docs/DESIGN-GUIDE.md" = "flow5ctl/guides/DESIGN-GUIDE.md"
+"docs/ja/DESIGN-GUIDE.md" = "flow5ctl/guides/DESIGN-GUIDE.ja.md"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

@@ -102,7 +102,7 @@ build the tool do it too.
 
 ## Phase 3 — MCP, and Claude Desktop ✅ done 2026-09-03
 
-- [x] MCP server on stdio — 13 tools, 6 resources, 4 prompts
+- [x] MCP server on stdio — 13 tools, 7 resources, 4 prompts
 - [x] Workspace management for clients with no filesystem: designs are addressed by
       name, and a name containing a separator or a traversal is rejected rather than
       resolved

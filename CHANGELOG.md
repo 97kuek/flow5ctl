@@ -6,6 +6,22 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Added
+
+- **Both design guides ship inside the wheel**, and the Japanese one is served as
+  `flow5://guide/design.ja`. A client installed with `uvx` has no source tree, so it
+  was being handed a **981-character summary of a 28,000-character document** — the
+  document where every measured limit lives, and where it says no aircraft carrying a
+  person should be committed to build on a potential-flow analysis alone. The reader
+  getting the summary was exactly the one Phase 3's exit criterion names.
+
+### Fixed
+
+- The documented MCP resource list was wrong in two ways: it advertised
+  `flow5://airfoils`, which does not exist, and omitted `flow5://schema/design`,
+  which does. Seven resources, three of them URI templates.
+
+
 ### Fixed
 
 - **The drag reconstruction's conclusion changed with the wake.** DESIGN-GUIDE §1a

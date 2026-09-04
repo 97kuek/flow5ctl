@@ -12,7 +12,7 @@ It ships as one Python package with two front-ends:
 | **MCP server** | `flow5ctl mcp` | Claude Desktop, and any MCP-capable client |
 | **CLI** | `flow5ctl <verb>` | Claude Code, Codex, humans, CI |
 
-13 tools, 6 resources and 4 prompts over MCP; the same capabilities as CLI verbs.
+13 tools, 7 resources and 4 prompts over MCP; the same capabilities as CLI verbs.
 Both are thin adapters over one core, so neither can drift ahead of the other.
 
 > **Status: the CLI and the MCP server both work.**
