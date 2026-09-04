@@ -236,6 +236,12 @@ number. Moving the tail by two centimetres:
 
 Two centimetres **doubles** the induced drag, to the value that then matches AVL.
 
+> Re-measured with the wake at 20 spans instead of flow5's 30 chords: 0.005145 at
+> z = 0 (span efficiency **1.809**), 0.010070 at z = 0.020 (0.922). The effect is the
+> same, and the converged value now matches AVL's 0.010075 to **0.05 %** against 3 %
+> while the wake was short — the short wake was under-reading the whole
+> configuration, not only the isolated wings.
+
 Real aircraft rarely sit exactly on that plane, but `position: [1.2, 0, 0]` in a
 `design.yaml` does, and that is an easy thing to type. `analyze` now warns when a
 surface behind the wing is within a tenth of the MAC of the wing's height. Both
