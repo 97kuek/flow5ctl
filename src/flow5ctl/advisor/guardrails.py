@@ -335,15 +335,19 @@ def _check_extra_surfaces(derived: Derived, c: Check) -> None:
 def _check_spanwise_mesh(derived: Derived, c: Check) -> None:
     """Induced drag is set by the span, and a coarse span makes it optimistic.
 
-    Measured on rectangular wings at AR 10 and AR 40, inviscid, varying only the
-    spanwise panel count. Span efficiency comes out **above 1** on a coarse mesh —
-    impossible for a planar wing — and falls monotonically, linearly in 1/N:
+    Measured on a rectangular AR 10 wing, inviscid, varying only the spanwise panel
+    count, with the wake at the 20 spans this tool now writes:
 
-    | spanwise per semi-span | how optimistic the induced drag is |
-    |---|---|
-    | 20 | about 3 % |
-    | 40 | about 1.5 % |
-    | 80 | about 0.7 % |
+    | spanwise per semi-span | span efficiency | how optimistic the induced drag is |
+    |---|---|---|
+    | 10 | **1.010 — impossible** | 5 % |
+    | 20 | 0.985 | 2.4 % |
+    | 40 | 0.973 | 1.2 % |
+    | 80 | 0.967 | 0.6 % |
+    | 120 | 0.966 | 0.4 % |
+    | ∞ (extrapolated) | 0.962 | — |
+
+    The converged 0.962 is within **0.2 %** of AVL's 0.9596 on the same wing.
 
     Chordwise panels make no difference to this at all: 7, 13 and 21 chordwise agree
     to four decimal places. So the fix is always to spend the panels on the span.
@@ -356,10 +360,10 @@ def _check_spanwise_mesh(derived: Derived, c: Check) -> None:
         return
     c.note(
         f"the wing has {spanwise} spanwise panels per semi-span. Induced drag is set "
-        "by the span, and below about 25 it is optimistic — measured 3 % at 20 "
-        "panels, with the span efficiency coming out above 1, which is impossible "
-        "for a planar wing. Chordwise panels do not help this; 40 spanwise brings it "
-        "inside 1.5 %."
+        "by the span, and below about 25 it is optimistic — measured 2.4 % at 20 "
+        "panels on a rectangular AR 10 wing, and 5 % at 10, where the span "
+        "efficiency comes out above 1 and is then impossible for a planar wing. "
+        "Chordwise panels do not help; 40 spanwise brings it inside 1.2 %."
     )
 
 

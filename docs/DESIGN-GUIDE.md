@@ -56,11 +56,16 @@ returns confident numbers that are wrong. Most of this document is about the edg
 
   | spanwise panels per semi-span | span efficiency, AR 10 | how optimistic |
   |---|---|---|
-  | 10 | 1.035 | ~5 % |
-  | 20 | 1.009 | ~3 % |
-  | 40 | 0.999 | ~1.5 % |
-  | 80 | 0.991 | ~0.7 % |
-  | ∞ (extrapolated) | 0.984 | — |
+  | 10 | **1.010 — impossible** | 5 % |
+  | 20 | 0.985 | 2.4 % |
+  | 40 | 0.973 | 1.2 % |
+  | 80 | 0.967 | 0.6 % |
+  | 120 | 0.966 | 0.4 % |
+  | ∞ (extrapolated) | 0.962 | — |
+
+  That converged 0.962 is within **0.2 %** of AVL's 0.9596 on the same wing. It was
+  2.5 % apart while the wake was 30 chords; fixing the wake fixed the disagreement
+  on the rectangular wing as well as the elliptic ones.
 
   **Chordwise panels do not affect this at all** — 7, 13 and 21 chordwise agree to
   four decimal places — so always spend the panels on the span. The defaults are now

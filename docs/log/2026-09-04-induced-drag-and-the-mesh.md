@@ -1,5 +1,14 @@
 # 2026-09-04 — Span efficiency above 1 was the mesh, not the physics
 
+> **Partly superseded.** The mesh effect below is real and the conclusion — spend
+> panels on the span, not the chord — still holds. But every run here used flow5's
+> default 30-chord wake, which was itself under-reading the induced drag, so the
+> absolute values are all about 0.023 too high. Re-measured at the 20-span wake this
+> tool now writes: 1.010 at 10 spanwise, 0.985 at 20, 0.973 at 40, 0.967 at 80,
+> 0.966 at 120, extrapolating to **0.962** — which is within 0.2 % of AVL's 0.9596,
+> against 2.5 % apart before. See
+> [the wake log](2026-09-04-the-wake-was-too-short.md).
+
 **Question:** a rectangular wing came back with a span efficiency of 1.008–1.012.
 For a planar wing 1.0 is the elliptic limit, so the number was impossible and
 [DESIGN-GUIDE.md](../DESIGN-GUIDE.md) carried it as evidence that induced drag from

@@ -96,6 +96,25 @@ Its mesh is coarser than the runs above — 24 sections at 4 panels each rather 
 
 Flat across each row, converging to 1.000 down the column.
 
+## 4b. It also closes the rectangular-wing disagreement
+
+The [mesh log](2026-09-04-induced-drag-and-the-mesh.md) left flow5 extrapolating to
+a span efficiency of 0.984 on a rectangular AR 10 wing where AVL gave 0.9596 — 2.5 %
+apart, and unexplained. Re-run at the 20-span wake:
+
+| spanwise per semi-span | span efficiency |
+|---|---|
+| 10 | 1.0102 |
+| 20 | 0.9854 |
+| 40 | 0.9733 |
+| 80 | 0.9674 |
+| 120 | 0.9655 |
+| ∞ (extrapolated) | **0.9617** |
+
+Against AVL's **0.9596** — **0.2 % apart**. The two solvers agree on the rectangular
+wing as well as the elliptic ones once they are asked the same question, and the
+residual the mesh log could not account for was the same wake.
+
 ## 5. Why the earlier investigation missed it
 
 The controls looked exhaustive — mesh density, spanwise distribution, chordwise

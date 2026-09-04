@@ -6,6 +6,22 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Fixed
+
+- **Every measurement taken under the old wake, re-taken under the new one.** The
+  wake-plane check and the spanwise-mesh study were both run with flow5's 30-chord
+  default, which this release replaced — a change that invalidated the conditions
+  its own earlier measurements were made under. Both hold up, and both improved:
+
+  | | before | after |
+  |---|---|---|
+  | tail level with the wing | e 1.932, matching AVL to 3 % once offset | e **1.809**, matching AVL to **0.05 %** |
+  | rectangular AR 10, converged | e 0.984, 2.5 % from AVL | e **0.962**, **0.2 %** from AVL |
+
+  The rectangular-wing disagreement the mesh log could not account for was the same
+  wake. flow5 and AVL now agree on both planforms.
+
+
 ## [0.1.2] — 2026-09-04
 
 ### Fixed — from a second reviewer
