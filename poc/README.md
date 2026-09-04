@@ -58,6 +58,7 @@ Each case writes to `work/<case>/` — gitignored, and safe to delete.
 | `case_e_polartypes.py` | On-the-fly XFoil failing on a 3-surface aircraft (expected to be abandoned, not to pass) |
 | `case_f_glider2pass.py` | Five polar types on a 3 m glider in 1.3 s; op-point directory duplication |
 | `case_g_wide.py` | That T2/T3/T7 need a wider 2D Re mesh, and succeed with one |
+| `case_k_wake.py` | That flow5's default wake (30 × MAC = 30/AR spans) is what makes induced drag look aspect-ratio dependent, and that the error is set by the wake in **spans** alone |
 | `case_h_hpa.py` | 34 m HPA: mesh convergence, ground effect, timing |
 | `case_i_inertia_body_multi.py` | `Use_plane_inertia` semantics, NURBS fuselage, multi-plane runs |
 | `case_j_project.py` | `load_project_file` loads but cannot be extended |

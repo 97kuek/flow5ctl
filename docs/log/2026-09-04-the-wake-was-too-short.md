@@ -73,6 +73,29 @@ is the signature of the whole thing, and it is why the earlier investigation's
 observation that "lift is unaffected" pointed at the induced-drag calculation when it
 should have pointed at the wake.
 
+## 4a. Reproducing it
+
+[`poc/case_k_wake.py`](../../poc/case_k_wake.py) builds the elliptic wing through the
+frozen harness rather than through flow5ctl, so the finding does not rest on the
+library it caused a change in:
+
+```
+cd poc && python3 case_k_wake.py
+```
+
+Its mesh is coarser than the runs above — 24 sections at 4 panels each rather than
+100–120 spanwise — so the absolute values differ a little (1.2345 against 1.2103 at
+30 × MAC). The structure is identical, which is the part that matters:
+
+| wake (spans) | AR 10 | AR 20 | AR 30 | AR 40 | AR 50 |
+|---|---|---|---|---|---|
+| 0.75 | 1.2499 | 1.2396 | 1.2364 | 1.2345 | 1.2332 |
+| 3 | 1.0279 | 1.0276 | 1.0267 | 1.0259 | 1.0252 |
+| 10 | 1.0045 | 1.0044 | 1.0036 | 1.0029 | 1.0022 |
+| 30 | 1.0023 | 1.0022 | 1.0014 | 1.0007 | 1.0000 |
+
+Flat across each row, converging to 1.000 down the column.
+
 ## 5. Why the earlier investigation missed it
 
 The controls looked exhaustive — mesh density, spanwise distribution, chordwise

@@ -32,6 +32,11 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 - `RELEASING.md` said `git push --tags`, which pushes every unpushed local `v*` tag.
 - `DOMAIN-MODEL.md` still listed 20 spanwise panels for the rc-glider and uav
   presets after the default moved to 40.
+- **`poc/case_k_wake.py`** reproduces the wake finding through the frozen harness
+  rather than through flow5ctl, because `poc/README.md` promises every measured claim
+  in `docs/` can be re-run and the wake tables could not be. Coarser mesh, so the
+  absolute values differ a little; the structure is identical — flat across each row,
+  converging to 1.000 down the column.
 
 
 ## [0.1.1] — 2026-09-04
