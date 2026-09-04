@@ -6,6 +6,8 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+## [0.1.5] — 2026-09-04
+
 ### Fixed
 
 - **34 broken links on the PyPI project page.** PyPI renders `README.md` and does
