@@ -6,8 +6,18 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
-The core library, the CLI and the MCP server all work — see
-[docs/ROADMAP.md](docs/ROADMAP.md).
+## [0.1.0] — 2026-09-04
+
+First release. The core library, the CLI and the MCP server all work — see
+[docs/ROADMAP.md](docs/ROADMAP.md). **macOS only**: nothing in the package is
+platform-specific, but every measured claim about flow5 was made on macOS, and
+claiming an untested platform is exactly this project's failure mode.
+
+Read [docs/DESIGN-GUIDE.md](docs/DESIGN-GUIDE.md) — or
+[its Japanese translation](docs/ja/DESIGN-GUIDE.md) — before trusting a number from
+this. The largest known error is that flow5's induced drag is low by about 12–19 %
+at the aspect ratios human-powered aircraft fly, which the tool warns about but does
+not correct.
 
 ### Added — Phase 4
 
