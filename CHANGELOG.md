@@ -6,8 +6,50 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
-The core library and CLI work. The MCP server is not built yet — see
+The core library, the CLI and the MCP server all work — see
 [docs/ROADMAP.md](docs/ROADMAP.md).
+
+### Added — Phase 4
+
+- **A drag budget on every analysis.** A VLM run of a wing and a tail returns the
+  drag of a wing and a tail; the rigging, the fairing and the pilot are a fifth to
+  two fifths of an HPA again and flow5 cannot model them here. Each report now names
+  what its L/D excludes and gives a realistic band, so the modelled figure is not
+  quoted as the aircraft's.
+- **Ground effect in and out from one call** — `analyze --compare-ground`, and
+  `compare_ground` over MCP. Doing it by hand means running twice and changing
+  exactly one flag; two runs at the same height report no difference, which reads
+  like "ground effect does not matter here" rather than like a mistake. Measured on
+  a 32 m aircraft at 2 m: +9 % best L/D, −10 % minimum sink.
+- **Wing root bending moment**, with a closed-form cross-check beside it. The strip
+  table already carried the number a spar is sized from and it was being discarded.
+
+### Changed
+
+- **The 2D polar Reynolds ladder is eight rungs per decade, not three.** Viscous
+  drag is interpolated across it and at low Reynolds the section drag moves fast.
+  Measured on a reconstructed aircraft, best L/D against rung count: 5 rungs 28.10,
+  8 rungs 26.86, 12 rungs 27.05, 16 rungs 27.07, 24 rungs 27.03. It settles near
+  27.0 and the old five-rung default was the outlier, 4 % optimistic.
+- **macOS only.** Linux and Windows are unverified and no longer implied to work.
+  Nothing in the package is platform-specific, but every measured claim about flow5
+  was made on macOS, and claiming an untested platform is exactly this project's
+  failure mode. `poc/verify_platform.py` closes it in one command.
+
+### Fixed
+
+- Twin fins (`tail.fin.count: 2`). flow5 has no twin-fin flag — a plane is a list of
+  `<wing>` elements with no cap — so two fins are two entries at ±y.
+- Airfoil files in Lednicer format, which is how the UIUC database serves every
+  section. They could not be read at all.
+- Sideslip (T5) polars reported longitudinal numbers, including a 593 % static
+  margin, and none of the lateral derivatives the polar exists to measure. flow5
+  signs both lateral moment coefficients opposite the textbook; they are converted.
+- The spanwise strips were read at whichever operating-point file sorted to the
+  middle of the directory — six degrees from the operating point on a real run.
+- Rejected edits and invalid design files surfaced Pydantic tracebacks.
+- The interpolation-failure message named the Reynolds range as the cause when it
+  cannot know which axis failed.
 
 ### Added — MCP server (Phase 3)
 

@@ -16,6 +16,12 @@ classifiers = [
   "Intended Audience :: Science/Research",
   "Programming Language :: Python :: 3.11",
   "Topic :: Scientific/Engineering :: Physics",
+  # macOS only, deliberately. The package is pure Python and nothing in it is
+  # platform-specific, but every measured claim about flow5 in docs/ was made on
+  # macOS against 7.57, and this project's failure mode is confident wrong numbers.
+  # Claiming a platform nobody has run would be exactly that. poc/verify_platform.py
+  # turns verifying one into a single command; until someone runs it, this stays.
+  "Operating System :: MacOS",
 ]
 dependencies = [
   "mcp>=2.1.1",

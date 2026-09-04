@@ -62,7 +62,7 @@ Establish that this is possible and write down what was learned.
 Beyond the criteria, the derived Reynolds envelope turned the PoC's worst failure —
 a T2 polar returning 1 of 6 points — into 4 of 4 without the user specifying anything.
 
-## Phase 2 — CLI, and the first real user ✅ done 2026-09-03 (except Linux)
+## Phase 2 — CLI, and the first real user ✅ done 2026-09-03 (macOS)
 
 - [x] `doctor`, `init`, `list`, `show`, `presets`, `analyze`
 - [x] `set` (field-level edit, refusing to create fields), `airfoil add`/`list`,
@@ -79,7 +79,9 @@ a T2 polar returning 1 of 6 points — into 4 of 4 without the user specifying a
 - [x] `poc/verify_platform.py` — one command that checks every documented flow5
       behaviour and prints a pasteable report, so verifying a platform costs a
       contributor a minute rather than an afternoon
-- [ ] **Linux verification; Windows verification** — the only outstanding item, and
+- [ ] **Linux verification; Windows verification** — *decided 2026-09-04: not a
+      release blocker. flow5ctl is offered for macOS only until someone runs the
+      script below on another platform.* Still the largest single unknown, and
       the largest remaining risk in the project. We do not own those machines; the
       script above and the platform-report template are how it gets closed.
 
@@ -128,13 +130,27 @@ someone who did not build it.
 `trim`, `sweep`, T7 mode reporting, spanwise loading plots and multi-design comparison
 were all pulled forward into Phases 1-3. What is left:
 
-- [ ] Ground-effect reporting in and out of ground effect in one call, for HPA
+- [x] Ground-effect reporting in and out of ground effect in one call, for HPA —
+      `analyze --compare-ground`. Running it by hand twice and changing one flag is
+      easy to get silently wrong: two runs at the same height report no difference,
+      which reads like "ground effect does not matter here"
+- [x] A drag-budget view that names what is missing from the model — interference,
+      surface finish, rigging, the pilot's body — rather than leaving the reader to
+      remember that the total is optimistic. Every analysis of an HPA or a glider
+      now says what its L/D excludes and what a realistic figure would be
 - [ ] A `trim`-aware sweep: solve the trim at each point rather than reporting the
       untrimmed polar
-- [ ] A drag-budget view that names what is missing from the model — interference,
-      surface finish, rigging, the pilot's body — rather than leaving the reader to
-      remember that the total is optimistic
-- [ ] Structural sanity from the strip table's bending-moment column
+- [x] Structural sanity from the strip table's bending-moment column — the wing
+      root bending moment is reported with a closed-form cross-check beside it
+      (elliptic loading puts the load centroid at 4s/3π). Measured on a 32 m
+      aircraft: 2,772 N·m against an estimate of 2,964, which is the right side of
+      elliptic for a constant-chord inner panel with washout
+- [ ] **More than three lifting surfaces.** The schema is fixed at wing, elevator
+      and fin. A real user's flow5 project kept as a reference (`26-el3.xfl`) has a
+      `Second Wing` as well, so a tandem or biplane layout cannot be expressed today.
+      flow5 itself has no cap — `xmlplanereader.cpp` calls `addWing()` once per
+      `<wing>` element — and the twin-fin work already proved extra surfaces solve
+      correctly, so this is a schema change rather than an adapter one
 
 ## Phase 5 — Community
 
@@ -175,5 +191,6 @@ were all pulled forward into Phases 1-3. What is left:
 | A parser change silently drops operating points | Row count is validated against flow5's own declared count ([ADR-0010](adr/0010-treat-solver-output-as-hostile.md)) |
 | Agents report unstable/stalled results as valid | Guardrails in the tool plus [DESIGN-GUIDE.md](DESIGN-GUIDE.md); refuse the bad combinations outright |
 | Someone builds a piloted aircraft on an unvalidated result | Stated limits in every report; cross-check guidance; the tool says so |
-| Linux/Windows behave differently | Isolated in `probe/`; explicitly unverified until tested |
+| Linux/Windows behave differently | Isolated in `probe/`; **decided 2026-09-04 to offer macOS only** rather than claim a platform nobody has run. `poc/verify_platform.py` closes it in one command when someone does |
+| **Absolute drag is 16–28 % below what published aircraft imply** | Unexplained, and the leading candidates are ruled out: alpha-step refinement moves it 0.2 %, an eight-fold finer Reynolds ladder moves it 4 % the *wrong* way, and adding the missing rigging and fairing drag moves it further away again. Either the reconstructions are wrong somewhere, or the published thrust figures are design targets. Every report now states what its L/D excludes, so nobody quotes it as the aircraft's |
 | Maintainer bandwidth | Presets and airfoils are data, not code, so the community can contribute without touching the solver layer |

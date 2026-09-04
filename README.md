@@ -22,10 +22,13 @@ Both are thin adapters over one core, so neither can drift ahead of the other.
 > generates and validates flow5's XML, computes 2D airfoil polars and caches them,
 > drives the solver through the two passes it requires, solves trim conditions, runs
 > parameter studies, and draws charts. 276 tests, 19 of them against a real flow5 7.57.
-> Phases 1–3 of the [roadmap](docs/ROADMAP.md) are done bar Linux verification.
+> Phases 1–3 of the [roadmap](docs/ROADMAP.md) are done.
 >
-> Verified on **macOS only**, against **flow5 7.57** — Linux and Windows are the
-> largest remaining risk. The [verification log](docs/log/2026-09-03-poc-verification.md)
+> **macOS only.** Verified against **flow5 7.57** on macOS, and that is the only
+> platform it is offered for. Nothing in the package is platform-specific, but every
+> measured claim in `docs/` was made on macOS, and this project's failure mode is
+> confident wrong numbers — so Linux and Windows are stated as unverified rather
+> than assumed to work. The [verification log](docs/log/2026-09-03-poc-verification.md)
 > records what was found on the way, including a reproducible flow5 crash and seven
 > ways its output misleads a naive reader; re-run any of it from [`poc/`](poc).
 
@@ -136,7 +139,25 @@ flow5ctl analyze Glider --type T1 --speed 12 --alpha=-2,8,2
 ```
 
 The 2D airfoil polars it needs are computed automatically the first time and cached
-afterwards, so the first run takes about twelve seconds and later ones under a second.
+afterwards, so the first run takes about twenty seconds and later ones under a second.
+
+Every report says what its lift-to-drag figure **excludes** — a VLM run of a wing and
+a tail returns the drag of a wing and a tail, and on a human-powered aircraft the
+rigging and the fairing are a fifth to two fifths of the aeroplane again. It also
+reports the wing root bending moment, which is the number a spar is sized from, with
+a closed-form cross-check beside it.
+
+For an aircraft that flies in ground effect, one call does both:
+
+```bash
+flow5ctl analyze Albatross --compare-ground --ground-height 2.0
+```
+
+```
+                      free air   in ground    change
+  best L/D               28.83       31.43    +9.0 %
+  min sink m/s          0.2394      0.2142   -10.5 %
+```
 
 ### Solve, don't sweep
 
@@ -264,8 +285,12 @@ Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) · Working with AI agents in th
   with new analyses. So T6 control polars are out of reach through this interface.
   This matters if you fly camber-changing RC gliders; see
   [the verification log](docs/log/2026-09-03-poc-verification.md), findings 9 and 10.
-- **Verified on macOS only.** Linux and Windows are expected to work and are
-  untested — reports very welcome.
+- **macOS only.** Linux and Windows are unverified and not claimed. The package is
+  pure Python and has no platform-specific code, so it may well work — but flow5's
+  behaviour is what this tool encodes, and none of it has been measured on another
+  platform. [`poc/verify_platform.py`](poc/verify_platform.py) checks every
+  documented behaviour in one command and prints a pasteable report; a run from a
+  Linux or Windows user is what would change this.
 - **flow5's own defects are inherited.** Dutch-roll and short-period frequencies are
   unreliable in 7.57 and are deliberately not reported.
 
