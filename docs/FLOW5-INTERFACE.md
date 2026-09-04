@@ -781,7 +781,7 @@ modes are damped, and sweep the CG to find where the sign settles.
 | `Panel analysis completed successfully` | success |
 | `Panel analysis completed ... Errors encountered` | ran but failed |
 | `LLT analysis completed successfully` / `... Errors encountered` | as above, LLT |
-| `Counted N elements` | panel count — use it for the mesh budget |
+| `Counted N elements` | panel count — use it for the mesh budget. **Every surface is doubled, a fin included**, even though a fin is written with `<symmetric>false</symmetric>`: measured on a 34 m aircraft, varying only the fin's spanwise count, flow5's total exceeded the sum of the surfaces' own panels by exactly the fin's panels every time. Whether it uses that mirrored half is not visible from outside — the side force behaves as one fin — but the matrix it builds is the doubled size |
 | `----- Script completed -----` | end of run |
 
 > **Trap — scope the "0 valid analysis pairs" match to `(plane, polar)`.** **[run]**

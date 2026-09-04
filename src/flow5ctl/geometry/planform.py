@@ -249,6 +249,17 @@ def surface_geometry(wing: Wing, sections: list[Section], length_to_m: float) ->
         tip_chord=sections[-1].chord,
         aspect_ratio=span * span / area if area else 0.0,
         taper_ratio=sections[-1].chord / sections[0].chord if sections[0].chord else 0.0,
+        # Two, always - not `int(mirror)`. flow5's own element count doubles every
+        # surface, a fin included, and ours only doubled the mirrored ones. Measured
+        # on a 34 m aircraft, varying only the fin's spanwise count: our total was
+        # short by exactly the fin's panels every time (56 -> 56, 112 -> 112,
+        # 168 -> 168), so flow5 allocates a mirrored half for a fin that
+        # `<symmetric>false</symmetric>` says it should not have. Whether it then
+        # uses that half is not visible from here; the side force behaves as one fin
+        # (two fins of double the area gave 1.92x, not 3.8x), so it probably does
+        # not. What matters for this number is the matrix flow5 actually builds,
+        # because that is what the panel budget is protecting and what the
+        # documented cross-check compares against.
         panel_count=sum((s.chordwise or 0) * (s.spanwise or 0) for s in sections[:-1])
-        * int(mirror),
+        * 2,
     )

@@ -50,7 +50,9 @@ Establish that this is possible and write down what was learned.
    wing gives CL_α 0.08525 /deg, static margin −0.59 % MAC and 520 panels, matching
    the PoC exactly. Pinned in [`tests/test_end_to_end.py`](../tests/test_end_to_end.py).
 2. ✅ Geometry confirmed against flow5's own output three ways: `panel_count` matches
-   flow5's `Counted 520 elements`, `reynolds_at_mac` matches every strip's `Re`
+   flow5's `Counted 520 elements` (**a wing alone**; with a fin the two disagreed
+   until 0.1.8 — flow5 doubles every surface, a fin included, and our count doubled
+   only the mirrored ones), `reynolds_at_mac` matches every strip's `Re`
    column, and the strip `y` column matches the panel distribution.
    **Still to do:** a direct comparison against a GUI-exported polar.
 3. ✅ CL_α within 10 % of theory — measured **−5.2 %** against Helmbold.

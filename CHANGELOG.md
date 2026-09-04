@@ -6,6 +6,18 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Fixed
+
+- **The panel count disagreed with flow5's whenever there was a fin.** ADR-0010 and
+  the Phase 0 log record that `panel_count` matches flow5's own
+  `Counted N elements` — established on a rectangular wing, where it does. flow5
+  doubles **every** surface, a fin included, and ours doubled only the mirrored
+  ones. Measured on a 34 m aircraft varying only the fin's spanwise count, our total
+  was short by exactly the fin's panels every time (56, 112, 168). It matters twice:
+  the documented cross-check was false for any aircraft with a fin, and the
+  `max_panels` budget under-reported the matrix flow5 actually builds.
+
+
 ## [0.1.7] — 2026-09-04
 
 ### Fixed

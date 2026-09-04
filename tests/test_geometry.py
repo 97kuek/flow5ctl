@@ -329,3 +329,55 @@ def test_lednicer_falls_back_to_the_blank_line_when_the_counts_are_wrong():
 def test_a_file_that_is_not_coordinates_is_refused():
     with pytest.raises(DesignError, match="declares|normalised coordinates|no coordinates"):
         airfoils._parse_dat("1200 340\n1300 350\n1400 360\n", "junk")
+
+
+class TestPanelCountMatchesFlow5:
+    """The documented cross-check was only ever verified without a fin.
+
+    ADR-0010 and the Phase 0 log say `panel_count` matches flow5's own
+    `Counted N elements`. That was established on a rectangular wing, where it does.
+    With a fin present it did not: flow5's count doubles every surface, a fin
+    included, and ours doubled only the mirrored ones.
+
+    Measured on a 34 m aircraft, varying only the fin's spanwise count - our total
+    was short by exactly the fin's panels each time:
+
+    | fin panels | ours (before) | flow5 |
+    |---|---|---|
+    | 56 | 1236 | 1292 |
+    | 112 | 1292 | 1404 |
+    | 168 | 1348 | 1516 |
+    """
+
+    def _design(self, fin_spanwise: int | None) -> Design:
+        raw = {
+            "name": "P", "preset": "custom", "requirements": {"cruise_speed": 12.0},
+            "mass": {"components": [{"tag": "b", "mass": 1.0, "at": [0.1, 0.0, 0.0]},
+                                    {"tag": "l", "mass": 0.2, "at": [0.1, -0.7, 0.0]},
+                                    {"tag": "r", "mass": 0.2, "at": [0.1, 0.7, 0.0]}]},
+            "airfoils": [{"name": "N", "source": "naca:0012"}],
+            "wing": {"airfoil": "N", "planform": {"span": 3.0, "root_chord": 0.2},
+                     "panels": {"chordwise": 13, "spanwise": 20}},
+        }
+        if fin_spanwise is not None:
+            raw["tail"] = {"type": "conventional", "fin": {
+                "airfoil": "N", "position": [1.0, 0.0, 0.05],
+                "planform": {"span": 0.25, "root_chord": 0.12},
+                "panels": {"chordwise": 7, "spanwise": fin_spanwise}}}
+        return Design.model_validate(raw)
+
+    def test_a_wing_alone_is_unchanged(self):
+        """13 x 20 mirrored is 520, which is what the PoC pinned."""
+        assert geometry.solve(self._design(None)).panel_count == 520
+
+    def test_a_fin_costs_twice_its_own_panels(self):
+        for spanwise in (8, 16, 24):
+            d = geometry.solve(self._design(spanwise))
+            assert d.panel_count == 520 + 7 * spanwise * 2, spanwise
+
+    def test_a_twin_fin_costs_four_times(self):
+        raw = self._design(8).model_dump(mode="json", by_alias=True, exclude_none=True)
+        raw["tail"]["fin"]["count"] = 2
+        raw["tail"]["fin"]["position"] = [1.0, 0.3, 0.05]
+        d = geometry.solve(Design.model_validate(raw))
+        assert d.panel_count == 520 + 7 * 8 * 2 * 2
