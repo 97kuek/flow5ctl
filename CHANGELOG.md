@@ -6,6 +6,34 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Fixed — from a second reviewer
+
+- **A stability verdict was given on a number that was not the static margin.** When
+  the reference-height pass produces no polar, `static_margin` still holds the pitch
+  stiffness — the code said so in a warning and then judged it against the band
+  anyway. On an aircraft whose CG hangs below the wing that term is worth tens of
+  points, so the failure direction was **reading an unstable aircraft as stable**,
+  inside the guardrail added in 0.1.0 to stop exactly that silence. No verdict is
+  given now, and the warning says why.
+- **The wake-plane check compared surface origins**, ignoring the height dihedral
+  gives the wing. It now uses the chord-weighted mean height (`mac_z`), which is what
+  the CG-height separation already used.
+- **`structure.py` contradicted its own disclaimer** — it opened by saying spar
+  sizing needs a section, a material and a safety factor, then called the 1 g
+  level-flight load "the load a spar is sized from". It is not; the wording says so.
+- **The release workflow never installed what it built.** `RELEASING.md` says that is
+  the check that catches a packaged `.yaml` failing to ship, and it was a manual step
+  for the first release only. It now installs the wheel, runs it, loads the presets
+  and asserts the reported version matches `pyproject.toml`.
+- **Every GitHub action is pinned by commit SHA**, including the one that receives
+  PyPI's publishing authority.
+- The GitHub release notes linked to `CHANGELOG.md` on `main`, so an old release
+  would eventually point at a different file. They link to the tag.
+- `RELEASING.md` said `git push --tags`, which pushes every unpushed local `v*` tag.
+- `DOMAIN-MODEL.md` still listed 20 spanwise panels for the rc-glider and uav
+  presets after the default moved to 40.
+
+
 ## [0.1.1] — 2026-09-04
 
 ### Fixed

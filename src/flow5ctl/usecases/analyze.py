@@ -390,15 +390,19 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
 
     # Separate the classical static margin from the pitch stiffness about the real CG.
     summary.pitch_stiffness_margin = summary.static_margin
+    # True while `static_margin` is the classical figure. With no CG height offset
+    # the two are the same number and it already is; with one, it only becomes so if
+    # the reference-height pass produced a polar we could read.
+    classical_margin = reference_run is None
     if reference_run is not None:
-        ref_csv = (ws.project_dir(f"{req.name}__zref") / design.name
-                   / f"{req.name}__zref.csv")
-        if ref_csv.is_file():
+        ref_csv = reference_polar(ws, req.name, design.name)
+        if ref_csv is not None:
             ref = summarise(parse_polar(ref_csv), mac=derived.reference_chord,
                             cg_x=cg_actual[0], cg_height_offset_mac=0.0)
             warnings.extend(w for w in ref.warnings if w not in warnings)
             summary.static_margin = ref.static_margin
             summary.neutral_point_x = ref.neutral_point_x or summary.neutral_point_x
+            classical_margin = summary.static_margin is not None
             if (summary.static_margin is not None
                     and summary.pitch_stiffness_margin is not None):
                 gap = summary.pitch_stiffness_margin - summary.static_margin
@@ -417,18 +421,26 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
         else:
             warnings.append(
                 "the reference-height pass produced no polar, so the reported static "
-                "margin still includes the CG-height term. Treat it as pitch stiffness."
+                "margin still includes the CG-height term. Treat it as pitch "
+                "stiffness, and note that no stability verdict is given below: on an "
+                "aircraft whose CG hangs below the wing that term is worth tens of "
+                "points, so checking this number against a band would pass an "
+                "unstable aircraft."
             )
 
     strips_data = _strip_data(ws, req.name, design.name,
                               at_alpha=summary.best_ld.alpha if summary.best_ld
                               else summary.trim_alpha)
-    warnings.extend(stability.notes(
-        summary,
-        required=design.requirements.static_margin,
-        preset_band=preset.band("static_margin"),
-        design=design.name,
-    ))
+    # Only when `static_margin` really is the classical figure. Diagnosing the
+    # pitch stiffness against a static-margin band reads an aircraft as stable that
+    # a textbook would call unstable, which is the one direction that must not fail.
+    if classical_margin:
+        warnings.extend(stability.notes(
+            summary,
+            required=design.requirements.static_margin,
+            preset_band=preset.band("static_margin"),
+            design=design.name,
+        ))
 
     # A sideslip polar holds alpha and sweeps beta, so there is no operating point
     # in the longitudinal sense and nothing to read a wing loading at. The summary
@@ -613,6 +625,19 @@ def _strip_data(ws: Workspace, polar_name: str, plane: str,
             continue
         out["surfaces"][wing] = {c: [r[i] for r in table.rows] for c, i in keep.items()}
     return out if out["surfaces"] else None
+
+
+def reference_polar(ws: Workspace, polar_name: str, plane: str) -> Path | None:
+    """The reference-height pass's polar, or None if it did not produce one.
+
+    Separated out because what happens when it is missing matters: the reported
+    static margin is then still the pitch stiffness, and anything that judges it as
+    a classical margin will read an aircraft with a low-slung CG as more stable than
+    it is. A one-line indirection makes that branch testable without faking the
+    filesystem out from under the solver.
+    """
+    path = ws.project_dir(f"{polar_name}__zref") / plane / f"{polar_name}__zref.csv"
+    return path if path.is_file() else None
 
 
 def _lift_at(summary: Summary, derived: Derived, speed: float | None) -> float | None:

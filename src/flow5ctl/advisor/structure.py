@@ -1,8 +1,12 @@
 """The one structural number an aerodynamic run already contains.
 
 flow5's strip table carries a `Bending.mom` column, and its value at the root is
-what a human-powered aircraft's main spar is sized from. It is right there in every
-analysis and was being thrown away.
+the aerodynamic load a human-powered aircraft's main spar has to carry at that
+operating point. It is right there in every analysis and was being thrown away.
+
+It is **not** the load a spar is sized from: that needs a manoeuvre and gust
+envelope, a safety factor, and the spar's own section and material. This is one
+point on one flight condition, and the rest of this module is about saying which.
 
 This does not size a spar — that needs the spar's own section, material and safety
 factor, none of which this project knows. What it does is surface the aerodynamic
@@ -56,7 +60,7 @@ ELLIPTIC_CENTROID = 4.0 / (3.0 * math.pi)
 _DISAGREEMENT = 0.35
 
 #: A load factor further than this from 1 is not level flight, and the bending
-#: moment is not the one a spar is sized from.
+#: moment is not the 1 g level-flight one people read it as.
 _LEVEL = 0.15
 
 
@@ -109,8 +113,11 @@ def root_load(strips: dict[str, Any] | None, *, mass_kg: float | None,
             out["not_level_flight"] = (
                 f"this operating point carries {factor:.2f}x the aircraft's weight "
                 f"({lift_N:.1f} N of lift against {weight:.1f} N), so the root bending "
-                f"moment of {peak:.1f} N·m is the load there, not the level-flight "
-                "load a spar is sized from. Trim it first (`flow5ctl trim`), or run a "
+                f"moment of {peak:.1f} N·m is the load there, not the 1 g "
+                "level-flight one. (Which is not the load a spar is sized from "
+                "either — that needs a manoeuvre and gust envelope and a safety "
+                "factor — but it is the one this number is usually mistaken for.) "
+                "Trim it first (`flow5ctl trim`), or run a "
                 "fixed-lift (T2) polar, which flies every point at the aircraft's own "
                 "weight."
             )

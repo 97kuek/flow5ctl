@@ -269,3 +269,37 @@ def test_a_sideslip_polar_reports_no_root_bending_moment(install, rect_design, w
     assert out["structure"] is None
     assert any("no root bending moment from a sideslip polar" in n
                for n in out["notes"])
+
+
+def test_no_stability_verdict_without_a_classical_margin(install, rect_design,
+                                                         workspace, monkeypatch):
+    """When the reference-height pass yields no polar, do not judge the number.
+
+    `static_margin` still holds the pitch stiffness there, and on an aircraft whose
+    CG hangs below the wing that is worth tens of points. Checking it against a
+    static-margin band would read an unstable aircraft as stable, which is the one
+    direction this guardrail must not fail in.
+    """
+    raw = dict(rect_design)
+    raw["mass"] = {"components": [
+        {"tag": "pilot", "mass": 5.0, "at": [0.05, 0.0, -0.6]},
+        {"tag": "l", "mass": 0.5, "at": [0.05, -0.8, 0.0]},
+        {"tag": "r", "mass": 0.5, "at": [0.05, 0.8, 0.0]},
+    ]}
+    raw["tail"] = {"type": "conventional", "elevator": {
+        "airfoil": "NACA0012", "position": [0.8, 0.0, 0.05],
+        "planform": {"span": 0.5, "root_chord": 0.1}}}
+    define.create("LowCG", raw)
+    project = Project.resolve("LowCG")
+
+    # the case the branch exists for: the reference-height pass produced no polar
+    monkeypatch.setattr(analyze_uc, "reference_polar", lambda *a, **k: None)
+
+    out = analyze_uc.analyze(project, analyze_uc.Request(
+        name="t1", polar_type="T1", speed=15.0, alpha=(0.0, 6.0, 2.0), viscous=False))
+    text = " ".join(out["warnings"])
+    assert "no stability verdict is given" in text
+    assert "Treat it as pitch stiffness" in text
+    # and none of stability.py's verdicts appear
+    assert "diverges in pitch" not in text
+    assert "asks for" not in text

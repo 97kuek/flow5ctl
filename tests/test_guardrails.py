@@ -400,7 +400,9 @@ class TestRootBendingMoment:
         assert out["load_factor"] == pytest.approx(4.45, abs=0.05)
         text = out["not_level_flight"]
         assert "4.45x the aircraft's weight" in text
-        assert "not the level-flight load" in text
+        assert "not the 1 g level-flight one" in text
+        # and it does not then claim that IS what a spar is sized from
+        assert "not the load a spar is sized from either" in text
         assert structure.notes(out) == [text]
 
     def test_a_fixed_lift_polar_comes_out_at_exactly_one(self):

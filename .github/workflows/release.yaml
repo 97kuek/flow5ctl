@@ -17,8 +17,8 @@ jobs:
     name: Build and check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
         with:
           enable-cache: true
 
@@ -54,7 +54,25 @@ jobs:
       - name: Check metadata
         run: uvx twine check dist/*
 
-      - uses: actions/upload-artifact@v5
+      # RELEASING.md says building and importing is not the same as installing:
+      # the presets are .yaml files inside the package, so one that fails to ship
+      # makes the wheel useless while every test still passes, because the tests
+      # read them from the source tree. Doing it by hand before the first release
+      # is not protection for the ones after it.
+      - name: The wheel works when installed, not just when built
+        run: |
+          uv venv /tmp/relcheck
+          uv pip install --python /tmp/relcheck/bin/python "$(echo dist/*.whl)"
+          /tmp/relcheck/bin/flow5ctl --version
+          # presets are packaged data; this fails loudly if they did not ship
+          /tmp/relcheck/bin/flow5ctl presets | grep -q hpa
+          # and the design schema builds, which exercises the model end to end
+          FLOW5CTL_WORKSPACE=/tmp/relcheck-ws \
+            /tmp/relcheck/bin/flow5ctl init smoke --file examples/rc-glider.yaml
+          test "$(/tmp/relcheck/bin/flow5ctl --version)" = \
+               "flow5ctl $(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)"
+
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: dist
           path: dist/
@@ -68,11 +86,11 @@ jobs:
     permissions:
       id-token: write   # PyPI trusted publishing; no API token is stored anywhere
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           name: dist
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
 
   github_release:
     name: GitHub release
@@ -82,8 +100,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           name: dist
           path: dist/
@@ -93,4 +111,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" dist/* \
             --title "$GITHUB_REF_NAME" \
-            --notes "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md)."
+            --notes "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/CHANGELOG.md) as it stood at this tag."

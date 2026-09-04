@@ -185,7 +185,7 @@ sanity thresholds the advisor uses.
 | Ground effect | **on by default** (`ground_effect_height`) | off | off |
 | Default method | VLM2 | VLM2 | VLM2 |
 | Static margin band | 5–15 % MAC | 5–12 % MAC | 10–20 % MAC |
-| Panels (chord × semi-span) | 13 × 40 | 13 × 20 | 13 × 20 |
+| Panels (chord × semi-span) | 13 × 40 | 13 × 40 | 13 × 40 |
 | Extra checks | tail volume, spanwise loading vs elliptic, structural span-mass | ballast range, flap effectiveness | — |
 
 Presets are data (`presets/*.yaml`), not code, so the community can contribute more

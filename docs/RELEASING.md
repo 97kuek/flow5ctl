@@ -50,7 +50,7 @@ python3 tools/check_docs.py
 # 4. Commit, tag, push.
 git commit -am "chore: release 0.1.0"
 git tag -a v0.1.0 -m "0.1.0"
-git push && git push --tags
+git push && git push origin v0.1.0    # the one tag, not every local v*
 ```
 
 The workflow then checks the tag against the packaged version, lints, runs the

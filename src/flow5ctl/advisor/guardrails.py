@@ -279,13 +279,18 @@ def _check_wake_plane(derived: Derived, c: Check) -> None:
     mac = derived.reference_chord
     if not mac:
         return
-    z_wing = main.position_m[2]
+    # The sheet leaves the wing at the height its lift is centred on, not at the
+    # root. Dihedral lifts that by a useful amount on a 34 m wing - `mac_z` is the
+    # chord-weighted mean height and is what the CG-height separation already uses -
+    # so comparing the two roots would miss a tail level with a dihedral wing's root
+    # and flag one level with its mean height.
+    z_wing = main.position_m[2] + main.geom.mac_z
     for s in derived.surfaces:
         if s is main or s.wing.role == "fin":
             continue                      # a fin is vertical; it has no such plane
         if s.position_m[0] <= main.position_m[0]:
             continue                      # a canard is upstream of the sheet
-        gap = abs(s.position_m[2] - z_wing)
+        gap = abs(s.position_m[2] + s.geom.mac_z - z_wing)
         if gap >= WAKE_PLANE_MAC * mac:
             continue
         name = s.wing.name or s.wing.role

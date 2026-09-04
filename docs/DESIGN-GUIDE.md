@@ -303,7 +303,7 @@ handed a polar with most of its points missing.
 
 Results depend on the mesh. Before believing a number, know that it has converged.
 
-- Start at the preset defaults (13 chordwise × 20–40 per semi-span).
+- Start at the preset defaults (13 chordwise × 40 per semi-span).
 - Chordwise panels drive pitching moment accuracy more than lift.
 - Use `COSINE` chordwise, and `COSINE` spanwise on a wing with strong taper or a
   tip that matters.
