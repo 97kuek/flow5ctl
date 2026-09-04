@@ -46,6 +46,14 @@ The core library, the CLI and the MCP server all work — see
 
 ### Fixed
 
+- **Span efficiency above 1 was the mesh, not the physics.** A rectangular wing came
+  back at 1.008–1.012, impossible for a planar wing, and the design guide carried
+  that as evidence that induced drag was only good to ±5 %. Refining the spanwise
+  panels makes it fall monotonically below 1 — measured at AR 10 and again at AR 40,
+  extrapolating to 0.984 and 0.975 — while chordwise panels make no difference at
+  all, agreeing to four decimal places across 7, 13 and 21. The default spanwise
+  count is now **40 rather than 20**, where induced drag was about 3 % optimistic,
+  and an analysis says so if a design goes below 25.
 - **A negative static margin was reported in silence.** `requirements.static_margin`
   and the preset bands both existed and neither was ever compared against a result.
   The shipped HPA example analysed at **−10.1 % MAC** against its own declared

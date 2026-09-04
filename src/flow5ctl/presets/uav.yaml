@@ -12,7 +12,7 @@ defaults:
     static_margin: [0.10, 0.20]
   wing_panels:
     chordwise: 13
-    spanwise: 20
+    spanwise: 40
     chord_distribution: COSINE
     span_distribution: COSINE
   tail_panels:

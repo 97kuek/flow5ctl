@@ -37,7 +37,7 @@ wing:
     dihedral: 3.0
     washout: -1.5
     breaks: [0.70]
-  panels: {chordwise: 13, spanwise: 22}
+  panels: {chordwise: 13, spanwise: 40}   # induced drag needs the span, not the chord
 
 tail:
   type: conventional

@@ -47,10 +47,31 @@ returns confident numbers that are wrong. Most of this document is about the edg
   one model, say what is missing from the model, and put a comparison beside it. A
   comparison between two designs run identically — same airfoil, same ncrit, same
   method — cancels most of this and is what the tool is actually good at.
-- **Induced drag to better than a few percent.** A rectangular wing came back with a
-  span efficiency of 1.008–1.012 — physically impossible for a planar wing, where 1.0
-  is the elliptic limit. The error is small, but it means induced drag is good to
-  roughly ±5 %, not exactly.
+- **Induced drag to better than a few percent** — and **not at all on a coarse
+  span**. A rectangular wing came back with a span efficiency of 1.008–1.012, which
+  is impossible for a planar wing. That turned out to be the mesh, not the physics:
+  refine the spanwise panels and it falls monotonically below 1. Measured at AR 10
+  and again at AR 40, varying only the panel count
+  ([log](log/2026-09-04-induced-drag-and-the-mesh.md)):
+
+  | spanwise panels per semi-span | span efficiency, AR 10 | how optimistic |
+  |---|---|---|
+  | 10 | 1.035 | ~5 % |
+  | 20 | 1.009 | ~3 % |
+  | 40 | 0.999 | ~1.5 % |
+  | 80 | 0.991 | ~0.7 % |
+  | ∞ (extrapolated) | 0.984 | — |
+
+  **Chordwise panels do not affect this at all** — 7, 13 and 21 chordwise agree to
+  four decimal places — so always spend the panels on the span. The defaults are now
+  40 spanwise, and an analysis says so if a design goes below 25.
+
+  Even converged there is a residual: classical lifting line gives 0.921 for the
+  same AR 10 wing against flow5's 0.984, and the disagreement is concentrated at the
+  tip where the lifting-line assumption is weakest. flow5's answer is the more
+  believable one — it is a Trefftz-plane far-field value, verified in the source —
+  but two methods disagreeing at the tip is why induced drag is good to a few
+  percent rather than exactly.
 - **Structural deflection.** A 34 m HPA wing bends several percent of span in flight.
   flow5 analyses the rigid shape you gave it.
 

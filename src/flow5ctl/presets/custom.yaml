@@ -11,7 +11,7 @@ defaults:
   requirements: {}
   wing_panels:
     chordwise: 13
-    spanwise: 20
+    spanwise: 40
     chord_distribution: COSINE
     span_distribution: COSINE
   tail_panels:

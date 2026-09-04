@@ -433,3 +433,51 @@ class TestStaticMarginIsChecked:
     def test_no_band_anywhere_still_catches_instability(self):
         assert stability.notes(self._S(-0.01)) != []
         assert stability.notes(self._S(0.30)) == []
+
+
+class TestSpanwiseMesh:
+    """Induced drag is set by the span, and a coarse span makes it optimistic.
+
+    A rectangular wing came back with a span efficiency of 1.008-1.012, which is
+    impossible for a planar wing, and that was recorded in the design guide as
+    evidence that induced drag was only good to +-5 %. It was the mesh. Refining the
+    span makes it fall monotonically below 1, at AR 10 and at AR 40 alike, and
+    chordwise panels make no difference at all.
+    """
+
+    def _design(self, spanwise: int) -> Design:
+        return Design.model_validate({
+            "name": "M", "preset": "custom",
+            "requirements": {"cruise_speed": 15.0},
+            "mass": {"components": [{"tag": "b", "mass": 1.0, "at": [0.05, 0.0, 0.0]}]},
+            "airfoils": [{"name": "NACA0012", "source": "naca:0012"}],
+            "wing": {"airfoil": "NACA0012",
+                     "planform": {"span": 2.0, "root_chord": 0.2},
+                     "panels": {"chordwise": 13, "spanwise": spanwise}},
+        })
+
+    def _notes(self, spanwise: int) -> list[str]:
+        d = geometry.solve(self._design(spanwise))
+        return guardrails.check_geometry(d, presets.load("custom")).notes
+
+    def test_a_coarse_span_is_called_out(self):
+        text = " ".join(self._notes(20))
+        assert "20 spanwise panels per semi-span" in text
+        assert "impossible" in text
+        assert "Chordwise panels do not help" in text
+
+    def test_an_adequate_span_says_nothing_about_the_mesh(self):
+        assert not any("spanwise panels" in n for n in self._notes(40))
+
+    def test_the_default_is_no_longer_the_coarse_one(self):
+        """20 was the default and 20 is measurably wrong, so the default moved."""
+        d = Design.model_validate({
+            "name": "M", "preset": "custom",
+            "requirements": {"cruise_speed": 15.0},
+            "mass": {"components": [{"tag": "b", "mass": 1.0, "at": [0.05, 0.0, 0.0]}]},
+            "airfoils": [{"name": "NACA0012", "source": "naca:0012"}],
+            "wing": {"airfoil": "NACA0012",
+                     "planform": {"span": 2.0, "root_chord": 0.2}},
+        })
+        assert d.wing.panels.spanwise == 40
+        assert d.wing.panels.spanwise >= guardrails.MIN_SPANWISE

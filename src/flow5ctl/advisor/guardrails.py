@@ -179,6 +179,8 @@ def check_geometry(derived: Derived, preset: Preset) -> Check:
                 "aircraft rather than against the band."
             )
 
+    _check_spanwise_mesh(derived, c)
+
     if derived.tail_volume_h is None and len(derived.surfaces) == 1:
         c.note("wing only — no tail, so pitch trim and stability cannot be assessed.")
 
@@ -204,6 +206,42 @@ def check_geometry(derived: Derived, preset: Preset) -> Check:
     if derived.cg_percent_mac is not None:
         c.note(f"CG is at {derived.cg_percent_mac * 100:.1f} % MAC.")
     return c
+
+
+#: Below this many spanwise panels per semi-span, induced drag is measurably
+#: optimistic. See docs/log/2026-09-04-induced-drag-and-the-mesh.md.
+MIN_SPANWISE = 25
+
+
+def _check_spanwise_mesh(derived: Derived, c: Check) -> None:
+    """Induced drag is set by the span, and a coarse span makes it optimistic.
+
+    Measured on rectangular wings at AR 10 and AR 40, inviscid, varying only the
+    spanwise panel count. Span efficiency comes out **above 1** on a coarse mesh —
+    impossible for a planar wing — and falls monotonically, linearly in 1/N:
+
+    | spanwise per semi-span | how optimistic the induced drag is |
+    |---|---|
+    | 20 | about 3 % |
+    | 40 | about 1.5 % |
+    | 80 | about 0.7 % |
+
+    Chordwise panels make no difference to this at all: 7, 13 and 21 chordwise agree
+    to four decimal places. So the fix is always to spend the panels on the span.
+    """
+    main = derived.main
+    if main is None:
+        return
+    spanwise = getattr(main.wing.panels, "spanwise", None)
+    if not spanwise or spanwise >= MIN_SPANWISE:
+        return
+    c.note(
+        f"the wing has {spanwise} spanwise panels per semi-span. Induced drag is set "
+        "by the span, and below about 25 it is optimistic — measured 3 % at 20 "
+        "panels, with the span efficiency coming out above 1, which is impossible "
+        "for a planar wing. Chordwise panels do not help this; 40 spanwise brings it "
+        "inside 1.5 %."
+    )
 
 
 def _check_coincident_surfaces(derived: Derived, c: Check) -> None:

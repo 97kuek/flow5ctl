@@ -98,7 +98,11 @@ class Airfoil(Base):
 
 class Panels(Base):
     chordwise: Annotated[int, Field(ge=2, le=40)] = 13
-    spanwise: Annotated[int, Field(ge=1, le=120)] = 20
+    # 40, not 20: induced drag is set by the span, and at 20 panels per
+    # semi-span it comes out about 3 % optimistic with a span efficiency
+    # above 1, which is impossible for a planar wing. Measured at AR 10 and
+    # AR 40 - docs/log/2026-09-04-induced-drag-and-the-mesh.md.
+    spanwise: Annotated[int, Field(ge=1, le=120)] = 40
     """Total panels across the semi-span, distributed over the sections."""
     chord_distribution: Distribution = "COSINE"
     span_distribution: Distribution = "COSINE"
