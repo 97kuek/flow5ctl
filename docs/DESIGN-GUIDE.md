@@ -286,11 +286,26 @@ Make sure the 2D polar mesh **brackets** the Re the wing actually sees, root to 
 8 m/s spans a factor of ~2 in local Re, and the tip is the low-Re end where the
 airfoil is worst behaved.
 
-This is not a refinement. Measured: a mesh covering Re 50 k–250 k produced a T2 polar
-with **1 of 6** points and a T7 polar with **none**; widening it to 20 k–400 k gave
-5 of 5 and a working T7. The cause is that a fixed-lift polar solves a *lower* speed
-at high CL — α=8° came out at 4.69 m/s, putting the tip at Re ≈ 40 k, below the mesh.
-Derive the range from the **minimum** flight speed and the **tip** chord, then widen it.
+This is not a refinement. It is what a fixed-lift polar does: it solves a *lower*
+speed at high CL, so α = 8° came out at 4.69 m/s and put the tip at Re ≈ 40 k, below
+a mesh that started at 50 k. The polar came back with **1 of 6** points and the T7
+with **none** — silently, because flow5 drops the operating points it cannot
+interpolate and reports the rest.
+
+**flow5ctl refuses that run now rather than letting it degrade.** Setting the mesh
+by hand on [`examples/hpa.yaml`](../examples/hpa.yaml) to 50 k–250 k and asking for a
+T2 polar:
+
+```
+error: Local Reynolds numbers between 253,658 and 728,219 were reached, outside the
+2D polar mesh which covers 50,000 to 250,000. Widen the airfoil polar Reynolds
+range, or narrow the alpha sweep.
+```
+
+Left to derive the range itself it gives **6 of 6** points, and so does an explicitly
+wide 20 k–2 M mesh. So the advice still holds — derive the range from the **minimum**
+flight speed and the **tip** chord, then widen it — but you will be told rather than
+handed a polar with most of its points missing.
 
 ## 4. Panels and convergence
 

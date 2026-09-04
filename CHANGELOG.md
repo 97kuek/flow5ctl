@@ -188,6 +188,7 @@ not correct.
   | best L/D against CG | "22.8 throughout" | **23.668 to five figures at every CG**, while trimmed L/D goes 7.72 → 17.78 |
   | interpolated vs on-the-fly XFoil | 10–25 % | **19–28 %**, and on-the-fly is consistently the lower of the two |
   | the CG-height term | "29 points" on a reconstruction | **+13.5 points** on `hpa.yaml` (margin +8.7 %, stiffness +22.2 %); 29 kept as the top of the range seen, marked as not reproducible from this repo |
+  | a too-narrow Reynolds mesh | "1 of 6 points" | still the cause, but **the run is now refused** with the range that was reached; derived it gives 6 of 6 |
 - **The version was declared in two places and they drifted.** `pyproject.toml` was
   bumped to 0.1.0 while `__init__.py` still said `0.1.0.dev0`, so the wheel was built
   correctly and `flow5ctl --version`, `doctor` and the `flow5://status` resource all
