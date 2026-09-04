@@ -6,6 +6,8 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+## [0.1.14] — 2026-09-05
+
 ### Added
 
 - **`dcm_dcl_about_cg`**, so neither of the two margin identities is false. A
