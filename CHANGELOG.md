@@ -6,6 +6,8 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+## [0.1.12] — 2026-09-05
+
 ### Fixed
 
 - **The elliptic reference on the spanwise chart went to zero before the tip.** It
