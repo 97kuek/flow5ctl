@@ -6,6 +6,8 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+## [0.1.15] — 2026-09-05
+
 ### Fixed
 
 - **A success phrase quoted inside an error message read as a completed analysis.**
