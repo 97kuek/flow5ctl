@@ -458,8 +458,9 @@ def design_guide() -> str:
         return text
     return (
         "# Design guide\n\n"
-        "The full guide ships with the source tree at docs/DESIGN-GUIDE.md and is "
-        "not bundled in this installation. The essentials:\n\n"
+        "The full guide is bundled with this package and could not be read, which "
+        "should not happen - report it. It is also at\n"
+        "https://github.com/97kuek/flow5ctl/blob/main/docs/DESIGN-GUIDE.md\n\nThe essentials:\n\n"
         "- flow5 is a potential-flow solver with 2D viscous data layered on. It has "
         "no separation model, so results at or past stall are fiction. Keep alpha "
         "sweeps inside roughly ±10°.\n"
@@ -485,7 +486,8 @@ def design_guide_ja() -> str:
     text = _guide("DESIGN-GUIDE.ja.md", "docs/ja/DESIGN-GUIDE.md")
     if text is not None:
         return text
-    return ("# 設計ガイド\n\n全文は docs/ja/DESIGN-GUIDE.md にあります。"
+    return ("# 設計ガイド\n\n全文は次にあります:\n"
+            "https://github.com/97kuek/flow5ctl/blob/main/docs/ja/DESIGN-GUIDE.md\n\n"
             "英語版は `flow5://guide/design` から読めます。\n")
 
 

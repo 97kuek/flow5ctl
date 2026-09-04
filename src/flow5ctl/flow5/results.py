@@ -160,7 +160,7 @@ def parse_polar(path: Path) -> Polar:
         raise ParseError(
             f"{path.name}: recovered {len(columns)} column labels but rows have {ncol} "
             "fields. flow5's label formatting may have changed; see "
-            "docs/FLOW5-INTERFACE.md section 5.2."
+            "https://github.com/97kuek/flow5ctl/blob/main/docs/FLOW5-INTERFACE.md section 5.2."
         )
 
     # self-check: flow5 states how many points it wrote. Trust that over our parsing.
@@ -174,7 +174,7 @@ def parse_polar(path: Path) -> Polar:
             raise ParseError(
                 f"{path.name}: recovered {len(rows)} operating points but the file "
                 f"declares {want}. Points were dropped — refusing to report a partial "
-                "polar. See docs/adr/0010-treat-solver-output-as-hostile.md."
+                "polar. See https://github.com/97kuek/flow5ctl/blob/main/docs/adr/0010-treat-solver-output-as-hostile.md."
             )
 
     nonfinite = [

@@ -64,7 +64,7 @@ def check_polar_type(polar_type: str, *, wants_stability: bool = False,
             "plane XML has no hinge elements — a flap belongs to flow5's Foil object, "
             "which a .dat file cannot carry. Planes loaded from a GUI-made project "
             "cannot be paired with new analyses either, so there is no way in. "
-            "See docs/FLOW5-INTERFACE.md section 3.3."
+            "See https://github.com/97kuek/flow5ctl/blob/main/docs/FLOW5-INTERFACE.md section 3.3."
         )
 
     if wants_stability and pt not in STABILITY_TYPES:

@@ -6,6 +6,14 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Fixed
+
+- **Messages that told the user to read a file they do not have.** Three refusals
+  and warnings cited `docs/FLOW5-INTERFACE.md` and `docs/adr/0010-…`, which is a dead
+  end for anyone who ran `pip install` rather than cloning. They carry URLs now.
+  Docstrings keep the repo-relative paths, because those are read in the source tree.
+
+
 ## [0.1.4] — 2026-09-04
 
 ### Added

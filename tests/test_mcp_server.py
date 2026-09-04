@@ -229,6 +229,32 @@ class TestTheGuidesShipInTheWheel:
         assert len(text) > 8000
         assert "設計ガイド" in text
 
+    def test_the_messages_that_cite_docs_carry_a_url(self):
+        """An installed user has no docs/ directory to be sent to.
+
+        Three refusals and warnings said "see docs/FLOW5-INTERFACE.md" or
+        "docs/adr/0010-...", which is a dead end for anyone who ran `pip install`.
+        Docstrings may stay repo-relative - they are read in the source tree - but
+        anything the user sees has to be reachable from where they are.
+        """
+        import pathlib
+
+        import pytest as _pytest
+
+        from flow5ctl.advisor import guardrails
+        from flow5ctl.errors import UnsupportedByFlow5
+        with _pytest.raises(UnsupportedByFlow5) as exc:
+            guardrails.check_polar_type("T6", wants_stability=False)
+        assert "https://github.com/97kuek/flow5ctl" in str(exc.value)
+
+        # The two parser messages. Docstrings in the same file still cite the repo
+        # path, which is right - they are read in the source tree.
+        from flow5ctl.flow5 import results
+        source = pathlib.Path(results.__file__).read_text(encoding="utf-8")
+        base = "https://github.com/97kuek/flow5ctl/blob/main/docs"
+        assert f"{base}/FLOW5-INTERFACE.md section 5.2" in source
+        assert f"{base}/adr/0010-treat-solver-output-as-hostile.md" in source
+
     def test_both_are_force_included_into_the_wheel(self):
         """A build that drops them would fall back silently to the summary."""
         import pathlib
