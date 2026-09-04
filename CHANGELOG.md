@@ -6,6 +6,16 @@ versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onw
 
 ## [Unreleased]
 
+### Fixed
+
+- **A design whose name contains `=` could not be given positionally to `set`,** and
+  the error was about the current directory rather than about that. `init "a=b"` is
+  legal, so the error now says to use `--design` and why a leading argument with an
+  `=` in it is read as an assignment. Probed alongside the other ambiguities the
+  disambiguation could have got wrong — a design named `naca:2412`, an airfoil named
+  `AG=35`, `--design` combined with each positional form — and those four are read
+  correctly.
+
 ### Changed
 
 - **`sweep --trimmed` no longer calls its result "level, trimmed numbers" flatly.**

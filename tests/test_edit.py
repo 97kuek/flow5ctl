@@ -338,6 +338,39 @@ class TestAirfoilAddTakesTheDesignPositionally:
         with pytest.raises(Flow5ctlError, match="given twice"):
             cmd_airfoil(self._args("Rect", "AG35", "naca:2409", design="Rect"))
 
+    def test_a_design_name_containing_an_equals_says_to_use_the_flag(self, project):
+        """`flow5ctl init "a=b"` is legal, and then `set` cannot take it positionally.
+
+        The first positional is read as an assignment, so resolution falls back to
+        the current directory and fails for a reason that has nothing to do with the
+        design name. Rare, but the error should not send the reader looking at the
+        wrong thing.
+        """
+        import argparse
+
+        from flow5ctl.cli import cmd_set
+        from flow5ctl.errors import Flow5ctlError
+        args = argparse.Namespace(assignment=["a=b", "wing.planform.taper=0.6"],
+                                  design=None, json=True)
+        with pytest.raises(Flow5ctlError) as exc:
+            cmd_set(args)
+        assert "pass it with `--design`" in str(exc.value)
+        assert "cannot be given positionally" in str(exc.value)
+
+    def test_a_genuine_missing_design_is_not_dressed_up(self, project, monkeypatch):
+        """One assignment and no design is the ordinary case, and keeps its error."""
+        import argparse
+
+        from flow5ctl.cli import cmd_set
+        from flow5ctl.errors import Flow5ctlError
+        monkeypatch.chdir(project.root.parent)
+        args = argparse.Namespace(assignment=["wing.planform.taper=0.6"],
+                                  design=None, json=True)
+        with pytest.raises(Flow5ctlError) as exc:
+            cmd_set(args)
+        assert "--design" not in str(exc.value).split("\n\n")[-1] or \
+            "no design.yaml" in str(exc.value)
+
     def test_a_source_flag_makes_two_positionals_design_and_name(self, project):
         """`airfoil add Rect AG35 --naca 2409` is the natural way to type it.
 

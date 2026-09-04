@@ -391,7 +391,21 @@ def cmd_set(args: argparse.Namespace) -> int:
             f"{', '.join(repr(b) for b in bad)} is not a `path=value` assignment. "
             "Write `wing.planform.taper=0.6`, with no spaces around the `=`."
         )
-    project = Project.resolve(design)
+    try:
+        project = Project.resolve(design)
+    except Flow5ctlError as exc:
+        # A design whose name contains an `=` cannot be given positionally here: the
+        # first positional is read as an assignment, so resolution falls back to the
+        # current directory and fails for a reason that has nothing to do with it.
+        # Rare, and legal - `flow5ctl init "a=b"` works - so say what to do.
+        if design is None and len(assignments) > 1 and "=" in args.assignment[0]:
+            raise Flow5ctlError(
+                f"{exc}\n\nIf {args.assignment[0].split('=')[0]!r} is the design "
+                "rather than a field, pass it with `--design` — a leading argument "
+                "containing an `=` is read as an assignment, so a design name with "
+                "one in it cannot be given positionally."
+            ) from exc
+        raise
     _emit(edit_uc.set_fields(project, assignments), args.json)
     return 0
 
