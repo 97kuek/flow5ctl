@@ -154,10 +154,13 @@ For an aircraft that flies in ground effect, one call does both:
 flow5ctl analyze Albatross --compare-ground --ground-height 2.0
 ```
 
+Run on [`examples/hpa.yaml`](examples/hpa.yaml), so you can reproduce it:
+
 ```
                       free air   in ground    change
-  best L/D               28.83       31.43    +9.0 %
-  min sink m/s          0.2394      0.2142   -10.5 %
+  best L/D               43.66       50.64   +16.0 %
+  min sink m/s          0.1599      0.1330   -16.8 %
+  CL_alpha /deg        0.10791     0.11129    +3.1 %
 ```
 
 ### Solve, don't sweep
@@ -282,6 +285,17 @@ Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) · Working with AI agents in th
 
 ## Known limitations
 
+- **flow5's induced drag is low, and the shortfall grows with aspect ratio.** This is
+  the largest known error in the tool, and it is worst exactly where this project's
+  main users fly. Checked against AVL 3.40 and against the one case with an exact
+  answer — an elliptic planar wing has a span efficiency of 1.0 and cannot exceed it
+  — flow5 returns **1.024 at AR 10 and 1.210 at AR 40**, where AVL returns 0.997 and
+  0.996. Human-powered aircraft at AR 30–45 are missing **12–19 % of their induced
+  drag**, which is most of their drag budget. It is not the mesh, the panel
+  distribution or the method; lift is unaffected. `analyze` warns above AR 15 with
+  the figure for that aircraft, and does not correct the number — a fudge factor on
+  a solver's output would hide the problem.
+  [The measurements](docs/log/2026-09-04-induced-drag-against-avl.md).
 - **Flaps and control surfaces are not supported, and cannot be.** flow5 has no flap
   or hinge elements in its plane XML — a flap belongs to flow5's Foil object, which a
   `.dat` file cannot carry, and planes loaded from a GUI-made project cannot be paired
