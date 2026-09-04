@@ -176,12 +176,16 @@ not correct.
 - **Measured claims re-measured against the shipped examples.** Several figures
   quoted in warnings and in the guides came from aircraft the reader does not have,
   and some predated this release's own changes to the Reynolds ladder and the
-  spanwise panel default — both of which move the drag. Ground effect was quoted at
-  +18 to +20 % on best L/D and is **+16.0 %** on `examples/hpa.yaml` at h = 2.0 m and
-  **+15.2 %** on `examples/rc-glider.yaml` at h = 0.30 m. An inviscid run was said to
-  omit 93 % of the drag "at Re 2e5" and omits **98 %** on the shipped glider at α = 0
-  (CD 0.000332 against 0.017991). Every replacement is something a reader can re-run
-  from this repository, which is the point.
+  spanwise panel default — both of which move the drag. Every replacement is
+  something a reader can re-run from this repository, which is the point.
+
+  | claim | was | re-measured |
+  |---|---|---|
+  | ground effect, best L/D | +18 to +20 % | **+16.0 %** (`hpa.yaml`, h = 2.0 m), **+15.2 %** (`rc-glider.yaml`, h = 0.30 m) |
+  | inviscid drag omitted | 93 % "at Re 2e5" | **98 %** (glider at α = 0: CD 0.000332 against 0.017991) |
+  | mesh convergence at best L/D | 0.4 % over 544→3172 panels | **0.3 %** over 612→4032 |
+  | mesh convergence at α = 0 | 6 % | **8.4 %**, and still climbing at 4032 panels |
+  | best L/D against CG | "22.8 throughout" | **23.668 to five figures at every CG**, while trimmed L/D goes 7.72 → 17.78 |
 - **The version was declared in two places and they drifted.** `pyproject.toml` was
   bumped to 0.1.0 while `__init__.py` still said `0.1.0.dev0`, so the wheel was built
   correctly and `flow5ctl --version`, `doctor` and the `flow5://status` resource all
