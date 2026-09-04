@@ -57,6 +57,36 @@ returns confident numbers that are wrong. Most of this document is about the edg
 State these limits when reporting results. An agent that says "L/D is 38" without
 saying "rigid, no interference drag, attached flow only" is misleading its user.
 
+## 1a. What the L/D does not include
+
+A VLM run of a wing and a tail returns the drag of a wing and a tail. On a
+human-powered aircraft that is most of the lift and a good deal less than all of
+the drag: the rigging wires, the fairing, the pilot's body, the wheel and every
+joint are not in the model, and flow5 cannot put them there through this interface.
+
+| Missing from the model | Share of the modelled drag | What moves it |
+|---|---|---|
+| rigging wires | 10–30 % | bare wire runs near Cd 1.0; fairing halves it |
+| pilot and fairing | 8–20 % | a bad fairing separates and is worse than none |
+| interference at joints | 3–8 % | wing root, tail boom, every strut end |
+| surface finish, rib stitching | 2–6 % | film over ribs is not the 2D aerofoil |
+| undercarriage | 1–4 % | small if dropped, not small if left hanging |
+
+**The total is not the sum of those highs** — no aircraft is at every worst case at
+once. Published whole-aircraft budgets put everything outside the lifting surfaces
+at **20–40 %** of the modelled drag for an HPA, and 8–20 % for an RC glider or UAV,
+where there is no rigging and the fuselage dominates.
+
+flow5ctl reports this on every analysis, so a modelled L/D of 27 is shown alongside
+a realistic 19–23. **Compare a published aircraft's figure against that band**, not
+against the modelled number.
+
+> This does not explain every discrepancy, and it is worth knowing why. Against
+> three reconstructed aircraft the modelled L/D came out 16–28 % *below* what the
+> published thrust implies, and adding the missing drag moves it further away, not
+> closer. Something else is going on there — see the drag section of
+> [ROADMAP.md](ROADMAP.md).
+
 ## 2. Choosing the analysis type
 
 | The question | Polar type | Notes |

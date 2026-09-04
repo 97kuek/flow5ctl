@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..advisor import guardrails
+from ..advisor import dragbudget, guardrails, structure
 from ..errors import InternalError, SolverError
 from ..flow5 import airfoils as foil_io
 from ..flow5 import foilpolar, xmlgen
@@ -177,12 +177,29 @@ def _ensure_foil_polars(ws: Workspace, install: probe_mod.Flow5Install, design: 
     }
 
 
-def _log_ladder(lo: float, hi: float, per_decade: int = 3) -> list[float]:
+def _log_ladder(lo: float, hi: float, per_decade: int = 8) -> list[float]:
     """A Reynolds ladder that BRACKETS [lo, hi], on values a human recognises.
 
     The endpoints are rounded outwards, never inwards. A mesh that stops just short
     of the Reynolds number the wing actually reaches is the difference between five
     converged operating points and one — measured, see ADR-0009.
+
+    **Density was 3 per decade and that was too coarse to trust.** Viscous drag is
+    interpolated across this ladder, and at low Reynolds the section drag it is
+    interpolating moves fast. Measured on a reconstructed 25 m aircraft over
+    Re 1e5-2e6, best L/D against the number of rungs:
+
+        5 rungs  28.10      12 rungs  27.05
+        8 rungs  26.86      16 rungs  27.07
+                            24 rungs  27.03
+
+    It settles at about 27.0 from twelve rungs on; the five-rung answer was the
+    outlier, 4 % optimistic. A real user's own flow5 project, kept as a reference,
+    carries about thirty-four rungs with many of them packed between Re 8e4 and
+    7.5e5 - which is where a human-powered aircraft's wing actually lives.
+
+    Eight per decade gives twelve rungs over that range and costs about twenty
+    seconds of XFoil for four airfoils. Accuracy is worth that here.
     """
     import math
 
@@ -403,6 +420,22 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
                 "margin still includes the CG-height term. Treat it as pitch stiffness."
             )
 
+    strips_data = _strip_data(ws, req.name, design.name,
+                              at_alpha=summary.best_ld.alpha if summary.best_ld
+                              else summary.trim_alpha)
+    root_load = structure.root_load(
+        strips_data,
+        mass_kg=derived.mass.total,
+        semi_span_m=derived.reference_span / 2.0 if derived.reference_span else None,
+    )
+    if (w := structure.warning(root_load)):
+        warnings.append(w)
+
+    if summary.best_ld is not None:
+        note = dragbudget.warning(preset.name, summary.best_ld.value)
+        if note:
+            warnings.append(note)
+
     if run.discarded:
         warnings.append(
             f"{run.discarded} operating point(s) failed to converge and were discarded "
@@ -437,6 +470,17 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
         "summary": summary.as_dict(),
         "geometry": derived.as_dict(),
         "airfoil_polars": polars_report,
+        # What the drag figure does NOT contain. A VLM run of a wing and a tail
+        # returns the drag of a wing and a tail; on an HPA the rigging and the pilot
+        # are a fifth to two fifths of the aeroplane again, and flow5 has no way to
+        # model them here. Leaving the reader to remember that is how a number gets
+        # quoted as if it were the aircraft's.
+        # The strip table already carries the wing root bending moment - the number a
+        # spar is sized from - and it was being thrown away with the rest of the
+        # columns. Reported with a closed-form cross-check beside it.
+        "structure": root_load,
+        "drag_budget": dragbudget.budget(
+            preset.name, summary.best_ld.value if summary.best_ld else None),
         "warnings": warnings,
         "notes": notes,
         "data": None,
@@ -447,9 +491,7 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
             **payload,
             "columns": polar.columns,
             "rows": polar.rows,
-            "strips": _strip_data(ws, req.name, design.name,
-                                  at_alpha=summary.best_ld.alpha if summary.best_ld
-                                  else summary.trim_alpha),
+            "strips": strips_data,
         })
         payload["data"] = str(stored.relative_to(project.root))
         project.update_state(

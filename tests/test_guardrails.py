@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from flow5ctl.advisor import guardrails
+from flow5ctl.advisor import dragbudget, guardrails, structure
 from flow5ctl.errors import DesignError, UnsupportedByFlow5
 from flow5ctl.flow5 import markers
 from flow5ctl.geometry import derived as geometry
@@ -246,3 +246,95 @@ class TestInterpolationDiagnostic:
             "Viscous interpolation failures\n", 0)
         assert "fixed-lift polar" not in d.hint
         assert "Either the Reynolds range or the lift range" in d.hint
+
+
+class TestDragBudget:
+    """A VLM run of a wing and a tail returns the drag of a wing and a tail.
+
+    On a human-powered aircraft the rigging, the fairing and the pilot are a fifth
+    to two fifths of the aeroplane again, and flow5 cannot model them through this
+    interface. Quoting the modelled L/D as if it were the aircraft's is the mistake
+    this exists to prevent.
+    """
+
+    def test_an_hpa_gets_a_band_below_the_modelled_figure(self):
+        b = dragbudget.budget("hpa", 27.0)
+        assert b is not None
+        assert b["realistic_best_LD"]["high"] < 27.0
+        assert b["realistic_best_LD"]["low"] < b["realistic_best_LD"]["high"]
+
+    def test_rigging_is_named_for_an_hpa_and_not_for_a_glider(self):
+        hpa = [i.name for i in dragbudget.items_for("hpa")]
+        glider = [i.name for i in dragbudget.items_for("rc-glider")]
+        assert "rigging wires" in hpa
+        assert "rigging wires" not in glider
+        assert "fuselage" in glider
+
+    def test_the_total_is_not_the_sum_of_the_per_item_highs(self):
+        """Summing them assumes every item is at its worst at once."""
+        items = dragbudget.items_for("hpa")
+        summed = sum(i.high for i in items)
+        b = dragbudget.budget("hpa", 27.0)
+        assert b["missing_fraction"]["high"] < summed
+
+    def test_custom_gets_no_budget_because_it_assumes_no_airframe(self):
+        assert dragbudget.items_for("custom") == ()
+        assert dragbudget.budget("custom", 27.0) is None
+
+    def test_no_l_over_d_means_no_claim(self):
+        assert dragbudget.budget("hpa", None) is None
+        assert dragbudget.warning("hpa", 0.0) is None
+
+    def test_the_warning_says_it_is_an_estimate_not_a_measurement(self):
+        text = dragbudget.warning("hpa", 27.0)
+        assert "not in the model" in text
+        assert "Published estimates" in text
+
+
+class TestRootBendingMoment:
+    """The strip table already carries the number a spar is sized from.
+
+    It was being discarded with the rest of the columns. This does not size a spar -
+    that needs the section, the material and a safety factor - but it surfaces the
+    aerodynamic load and checks it against the closed form, so a figure that is wrong
+    by a factor is caught before it reaches a laminate schedule.
+    """
+
+    def _strips(self, moments: list[float], ys: list[float]) -> dict:
+        return {"alpha": 0.0,
+                "surfaces": {"Main": {"y(m)": ys, "Bending.mom": moments}}}
+
+    def test_the_peak_and_where_it_is(self):
+        s = self._strips([0.0, 1500.0, 2804.0, 1500.0, 0.0],
+                         [-16.0, -8.0, 0.1, 8.0, 16.0])
+        out = structure.root_load(s, mass_kg=89.0, semi_span_m=16.0)
+        assert out["root_bending_moment_Nm"] == pytest.approx(2804.0)
+        assert out["at_y_m"] == pytest.approx(0.1)
+
+    def test_it_agrees_with_the_elliptic_estimate_on_a_real_aircraft(self):
+        """Measured: 2804 N.m from flow5 against 2961 from the closed form."""
+        s = self._strips([0.0, 2804.0, 0.0], [-16.0, 0.0, 16.0])
+        out = structure.root_load(s, mass_kg=89.0, semi_span_m=16.0)
+        assert out["elliptic_estimate_Nm"] == pytest.approx(2961.0, abs=5.0)
+        assert out["ratio_to_estimate"] == pytest.approx(0.947, abs=0.01)
+        assert "disagreement" not in out
+
+    def test_a_load_that_cannot_be_the_same_aircraft_is_called_out(self):
+        s = self._strips([0.0, 12000.0, 0.0], [-16.0, 0.0, 16.0])
+        out = structure.root_load(s, mass_kg=89.0, semi_span_m=16.0)
+        assert "disagreement" in out
+        assert structure.warning(out) is not None
+
+    def test_no_strips_or_no_column_means_no_claim(self):
+        assert structure.root_load(None, mass_kg=89.0, semi_span_m=16.0) is None
+        assert structure.root_load({"surfaces": {}}, mass_kg=89.0,
+                                   semi_span_m=16.0) is None
+        bare = {"surfaces": {"Main": {"y(m)": [0.0], "Cl": [1.0]}}}
+        assert structure.root_load(bare, mass_kg=89.0, semi_span_m=16.0) is None
+
+    def test_without_a_mass_the_load_is_reported_but_not_checked(self):
+        s = self._strips([0.0, 2804.0, 0.0], [-16.0, 0.0, 16.0])
+        out = structure.root_load(s, mass_kg=None, semi_span_m=16.0)
+        assert out["root_bending_moment_Nm"] == pytest.approx(2804.0)
+        assert "elliptic_estimate_Nm" not in out
+        assert structure.warning(out) is None
