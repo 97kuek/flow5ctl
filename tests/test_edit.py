@@ -304,3 +304,36 @@ class TestSetTakesTheDesignPositionally:
                                   design="Rect", json=True)
         assert cmd_set(args) == 0
         assert project.load().wing.planform.taper == pytest.approx(0.4)
+
+
+class TestAirfoilAddTakesTheDesignPositionally:
+    """`airfoil list` takes the design positionally and so does every other verb.
+
+    `airfoil add` did not, so `flow5ctl airfoil add MyGlider AG35 naca:2409` read
+    the design name as the airfoil name. Two positionals cannot be told apart from
+    (name, source) without guessing, so three are accepted and mean
+    (design, name, source).
+    """
+
+    def _args(self, name, source=None, third=None, design=None):
+        import argparse
+        return argparse.Namespace(airfoil_command="add", name=name, source=source,
+                                  third=third, design=design, naca=None, file=None,
+                                  url=None, reynolds=None, ncrit=None,
+                                  polar_alpha=None, replace=False, json=True)
+
+    def test_three_positionals_mean_design_name_source(self, project):
+        from flow5ctl.cli import cmd_airfoil
+        assert cmd_airfoil(self._args("Rect", "AG35", "naca:2409")) == 0
+        assert "AG35" in {a.name for a in project.load().airfoils}
+
+    def test_two_positionals_keep_their_old_meaning(self, project):
+        from flow5ctl.cli import cmd_airfoil
+        assert cmd_airfoil(self._args("AG35", "naca:2409", design="Rect")) == 0
+        assert "AG35" in {a.name for a in project.load().airfoils}
+
+    def test_the_design_given_twice_is_refused_rather_than_guessed(self, project):
+        from flow5ctl.cli import cmd_airfoil
+        from flow5ctl.errors import Flow5ctlError
+        with pytest.raises(Flow5ctlError, match="given twice"):
+            cmd_airfoil(self._args("Rect", "AG35", "naca:2409", design="Rect"))

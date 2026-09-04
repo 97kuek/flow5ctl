@@ -173,6 +173,11 @@ not correct.
   `build/out` and are usually the most recent thing there, so `export` handed back a
   different aircraft than the one asked about, under a name close enough to be
   missed. They are skipped by default, still usable by name, and labelled when used.
+- **`airfoil add` now takes the design name positionally too.** `airfoil list`
+  does, and so does every other verb, so `flow5ctl airfoil add MyGlider AG35
+  naca:2409` read the design name as the airfoil name. Two positionals cannot be
+  told apart from `(name, source)` without guessing, so three are accepted and mean
+  `(design, name, source)`; giving the design twice is refused rather than resolved.
 - **`set` now takes the design name positionally**, like every other verb. It did
   not, so `flow5ctl set Glider wing.planform.taper=0.6` read as three assignments
   and failed with "no design.yaml in the current directory" — an error about the

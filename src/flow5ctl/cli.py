@@ -364,6 +364,16 @@ def cmd_expand(args: argparse.Namespace) -> int:
 
 
 def cmd_airfoil(args: argparse.Namespace) -> int:
+    if getattr(args, "third", None) is not None:
+        # `airfoil add <design> <name> <source>`. Two positionals stay (name, source)
+        # because that is what they have always meant and it cannot be told apart
+        # from (design, name) without guessing.
+        if args.design:
+            raise Flow5ctlError(
+                "the design was given twice: once as the first argument and once as "
+                "--design. Use one or the other."
+            )
+        args.design, args.name, args.source = args.name, args.source, args.third
     project = Project.resolve(args.design)
     if args.airfoil_command == "list":
         _emit(edit_uc.list_airfoils(project), args.json)
@@ -557,8 +567,14 @@ def build_parser() -> argparse.ArgumentParser:
     p = add("airfoil", help="add or list airfoils")
     apsub = p.add_subparsers(dest="airfoil_command", required=True)
     ap_add = apsub.add_parser("add", help="add an airfoil to the design")
+    # `airfoil list` takes the design positionally and every other verb does too, so
+    # people write `airfoil add MyGlider AG35 naca:2409`. With two positionals that
+    # is ambiguous with (name, source), so three are accepted and mean
+    # (design, name, source); two keep the old meaning. See cmd_airfoil.
     ap_add.add_argument("name")
     ap_add.add_argument("source", nargs="?", help="naca:2412 / file:foo.dat / url:...")
+    ap_add.add_argument("third", nargs="?", metavar="SOURCE",
+                        help=argparse.SUPPRESS)
     ap_add.add_argument("--naca", metavar="NNNN")
     ap_add.add_argument("--file", metavar="PATH")
     ap_add.add_argument("--url", metavar="URL")
