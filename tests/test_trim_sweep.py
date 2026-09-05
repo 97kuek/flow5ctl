@@ -537,3 +537,87 @@ def test_a_second_airfoils_alpha_range_is_not_dropped():
     # the widest start, the widest end, the finest step — never narrower than any one
     assert _alpha_union(_D([(-10.0, 16.0, 0.5), (-6.0, 20.0, 0.25)])) == (-10.0, 20.0, 0.25)
     assert _alpha_union(_D([])) == (-10.0, 16.0, 0.5)
+
+
+class TestGroundComparison:
+    """`ground.compare` runs two analyses and reports both.
+
+    Its body had no test at all — `ground.py` read 71 % with the solver tests
+    deselected and 71 % with them included, so not even a real flow5 run reached
+    it. The +22.5 % ground-effect gain the tool reports for an HPA, which is the
+    figure a Birdman Rally team would design against, came out of code nothing had
+    ever executed. These stub `analyze` so the comparison logic can be tested
+    without a solver.
+    """
+
+    @staticmethod
+    def _stub(monkeypatch, free: dict, near: dict):
+        calls = []
+
+        def fake(project, req, *, flow5=None, store=True, design=None):
+            calls.append((req.name, req.ground_effect, req.ground_height, store))
+            return near if req.ground_effect else free
+
+        monkeypatch.setattr(ground.analyze_uc, "analyze", fake)
+        return calls
+
+    @staticmethod
+    def _run(free_ld=40.0, near_ld=50.0, free_warnings=(), near_warnings=(),
+             free_notes=(), near_notes=()):
+        def side(ld, warnings, notes):
+            return {
+                "summary": {"best_LD": {"value": ld}, "min_sink": {"value": 0.2},
+                            "cl_alpha_per_deg": 0.09},
+                "warnings": list(warnings), "notes": list(notes), "data": {},
+            }
+        return side(free_ld, free_warnings, free_notes), side(near_ld, near_warnings, near_notes)
+
+    def test_it_changes_only_the_ground_settings_between_the_two_runs(
+            self, project, rect_design, monkeypatch):
+        free, near = self._run()
+        calls = self._stub(monkeypatch, free, near)
+        ground.compare(project, analyze.Request(name="cruise"), height=2.0)
+
+        assert calls == [
+            ("cruise__free", False, None, False),
+            ("cruise", True, 2.0, True),
+        ], "the two runs must differ only in the ground settings and the stored name"
+
+    def test_it_reports_the_gain(self, project, rect_design, monkeypatch):
+        free, near = self._run(free_ld=40.0, near_ld=50.0)
+        self._stub(monkeypatch, free, near)
+        out = ground.compare(project, analyze.Request(name="cruise"), height=2.0)
+
+        assert out["change_pct"]["best_LD"] == pytest.approx(25.0)
+        assert out["free_air"]["best_LD"] == 40.0
+        assert out["in_ground_effect"]["best_LD"] == 50.0
+        assert out["ground_height"] == 2.0
+
+    def test_the_free_air_runs_warnings_are_not_discarded(
+            self, project, rect_design, monkeypatch):
+        """Half the computation's warnings were being thrown away.
+
+        `warnings` was `near.get("warnings")` alone. A mesh problem, a drag-budget
+        caveat or a convergence failure raised by the free-air run reached nobody,
+        even though its number is reported and the percentage change is computed
+        from it. A warning about a figure the reader is shown must reach the reader.
+        """
+        free, near = self._run(
+            free_warnings=["the free-air run had too few spanwise panels"],
+            near_warnings=["the in-ground-effect run is close to the wake plane"],
+        )
+        self._stub(monkeypatch, free, near)
+        out = ground.compare(project, analyze.Request(name="cruise"), height=2.0)
+
+        assert any("free-air run had too few" in w for w in out["warnings"]), (
+            "a warning from the free-air run never reached the caller"
+        )
+        assert any("close to the wake plane" in w for w in out["warnings"])
+
+    def test_a_missing_figure_does_not_become_a_percentage(
+            self, project, rect_design, monkeypatch):
+        free, near = self._run()
+        free["summary"]["best_LD"] = None
+        self._stub(monkeypatch, free, near)
+        out = ground.compare(project, analyze.Request(name="cruise"), height=2.0)
+        assert out["change_pct"]["best_LD"] is None

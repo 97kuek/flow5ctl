@@ -36,6 +36,30 @@ def _pct(free: float | None, near: float | None) -> float | None:
     return round((near - free) / abs(free) * 100.0, 1)
 
 
+def _merge(free: list[str], near: list[str]) -> list[str]:
+    """Everything both runs said, each thing once, and whose it was when they differ.
+
+    This used to report `near`'s warnings alone and drop the free-air run's on the
+    floor. Both runs' numbers are in the output and the percentage change is computed
+    from both, so a caveat about either one is a caveat about a figure the reader is
+    being shown. A mesh warning, a drag-budget caveat or a convergence failure raised
+    only in free air reached nobody.
+
+    Most messages are identical between the two runs — same geometry, same mass, same
+    alpha range — so they are reported once and unlabelled. One that appears in only
+    one of the runs is labelled with which, because "too few spanwise panels" means
+    something different when it is true of only the free-air case.
+    """
+    both = [m for m in near if m in free]
+    only_near = [m for m in near if m not in free]
+    only_free = [m for m in free if m not in near]
+    return [
+        *both,
+        *[f"in ground effect: {m}" for m in only_near],
+        *[f"free air: {m}" for m in only_free],
+    ]
+
+
 def compare(project: Project, req: analyze_uc.Request, *, height: float | None = None,
             flow5: str | None = None) -> dict[str, Any]:
     """Run the same analysis free-air and in ground effect, and report both.
@@ -75,12 +99,13 @@ def compare(project: Project, req: analyze_uc.Request, *, height: float | None =
             "cl_alpha_per_deg": _pct(fs.get("cl_alpha_per_deg"),
                                  ns.get("cl_alpha_per_deg")),
         },
-        "warnings": near.get("warnings", []),
+        "warnings": _merge(free.get("warnings", []), near.get("warnings", [])),
         "notes": [
             # The single-run guardrail tells an HPA to report the other case as well.
             # This IS the other case, so keeping it would tell the reader to do what
             # they have just done.
-            *[n for n in near.get("notes", []) if "out-of-ground-effect" not in n],
+            *[n for n in _merge(free.get("notes", []), near.get("notes", []))
+              if "out-of-ground-effect" not in n],
             f"free-air and in-ground-effect at h = {height} m, same geometry, mass "
             "and alpha range. The stored result is the in-ground-effect run.",
         ],
