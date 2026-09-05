@@ -58,7 +58,18 @@ def set_fields(project: Project, assignments: list[str]) -> dict[str, Any]:
             node = node[key]
         leaf = parts[-1]
         if isinstance(node, list):
-            node[int(leaf)] = value
+            # The same guard the intermediate keys have. Without it `--set
+            # mass.components.oops=1` raised ValueError and `...components.99=1`
+            # raised IndexError, both as raw tracebacks: `main` catches Flow5ctlError
+            # and nothing else, so a mistyped index printed a stack trace at a person
+            # who had simply counted wrong.
+            try:
+                node[int(leaf)] = value
+            except (ValueError, IndexError):
+                raise DesignError(
+                    f"{path!r}: {leaf!r} is not a valid index into a list of "
+                    f"{len(node)} (they start at 0)."
+                ) from None
         elif isinstance(node, dict):
             if leaf not in node:
                 raise DesignError(

@@ -495,3 +495,29 @@ class TestOpenNamesTheRightOperation:
         from flow5ctl.usecases import gui
         with pytest.raises(DesignError, match="run `analyze` first"):
             gui.open_in_flow5(project, launch=False)
+
+
+class TestListIndexAtTheLeaf:
+    """A bad list index at the end of a path raised a raw traceback.
+
+    The intermediate keys of a path already caught this — `mass.components.oops.mass`
+    was refused properly — but the leaf did not, so `mass.components.oops` raised
+    ValueError and `mass.components.99` raised IndexError. `cli.main` catches
+    Flow5ctlError and nothing else, so both reached the user as a Python stack trace
+    for what is simply a miscounted index.
+    """
+
+    def test_a_non_numeric_index_is_refused(self, rect_design, workspace):
+        define.create("Rect", rect_design)
+        with pytest.raises(DesignError, match="not a valid index"):
+            edit.set_fields(Project.resolve("Rect"), ["mass.components.oops=1"])
+
+    def test_an_out_of_range_index_says_how_many_there_are(self, rect_design, workspace):
+        define.create("Rect", rect_design)
+        with pytest.raises(DesignError, match="not a valid index"):
+            edit.set_fields(Project.resolve("Rect"), ["mass.components.99=1"])
+
+    def test_a_valid_index_still_works(self, rect_design, workspace):
+        define.create("Rect", rect_design)
+        out = edit.set_fields(Project.resolve("Rect"), ["mass.components.0.mass=0.5"])
+        assert out["applied"]
