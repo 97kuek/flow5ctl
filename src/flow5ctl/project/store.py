@@ -7,6 +7,7 @@ server. See ADR-0003.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
@@ -34,7 +35,7 @@ build/
 
 
 def _write_atomic(path: Path, text: str) -> None:
-    """Write `text` to `path` so that an interrupted run cannot leave it truncated.
+    """Replace `path` with `text` so that no failure can leave a partial file.
 
     `Path.write_text` opens with O_TRUNC, so a process killed between the truncate
     and the write leaves an empty or half-written file. For `build/` output that
@@ -43,16 +44,61 @@ def _write_atomic(path: Path, text: str) -> None:
     temporary file and renaming it means the old contents stay intact until the new
     ones are complete, because rename within a directory is atomic.
 
-    The temporary file carries the pid so two processes cannot collide on it, and is
-    removed if the write itself fails.
+    What each step is for, since the recipe is easy to copy without the parts that
+    make it work:
+
+    - `fsync` on the file, before the rename, so the bytes are on the disk and not
+      only in the page cache. Without it the rename can be recorded while the data
+      it points at is not, which is how a crash produces a file of the right name
+      full of zeroes. Renaming is atomic with respect to *other processes*, which is
+      a different guarantee from surviving a power cut.
+    - `fsync` on the directory, after the rename, so the new directory entry itself
+      is durable.
+    - The destination's mode is carried over. A fresh temporary file gets
+      `0666 & ~umask`, so without this a `0600` design would silently become
+      readable by everyone the first time it was edited under a permissive umask.
+    - The pid is in the temporary name so two processes cannot collide on it. Two
+      *threads* of one process still can, which is why nothing here is a substitute
+      for `Project.lock`.
+    - Cleanup cannot mask the real error: if removing the temporary file fails too,
+      the original exception is the one that propagates.
+
+    A process killed with SIGKILL still leaves the temporary file behind. That is
+    why `.*.tmp` is in the project `.gitignore` — it is litter, not lost data.
     """
     tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     try:
-        tmp.write_text(text, encoding="utf-8")
+        mode = path.stat().st_mode & 0o777
+    except FileNotFoundError:
+        mode = None
+    try:
+        with open(tmp, "w", encoding="utf-8") as fh:
+            fh.write(text)
+            fh.flush()
+            os.fsync(fh.fileno())
+        if mode is not None:
+            os.chmod(tmp, mode)
         os.replace(tmp, path)
     except BaseException:
-        tmp.unlink(missing_ok=True)
+        # Never let cleanup replace the error the caller needs to see.
+        with contextlib.suppress(OSError):
+            tmp.unlink(missing_ok=True)
         raise
+    _fsync_dir(path.parent)
+
+
+def _fsync_dir(directory: Path) -> None:
+    """Make a rename durable. Not every platform lets us, and that is not fatal."""
+    try:
+        fd = os.open(directory, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        # Windows and some network filesystems refuse; the rename still happened.
+        with contextlib.suppress(OSError):
+            os.fsync(fd)
+    finally:
+        os.close(fd)
 
 
 def workspace_root() -> Path:

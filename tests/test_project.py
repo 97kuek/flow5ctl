@@ -228,30 +228,64 @@ class TestTheBundledExamples:
 
 
 # The MCP server addresses designs by name only, so `resolve_in_workspace` is the
-# boundary between a client's string and this machine's filesystem. It had no test:
-# probing it by hand was the only way to establish where the boundary was, and every
-# early probe passed for the wrong reason — nothing existed at those paths, so the
-# refusal came from the missing-design check rather than from any validation. These
-# create the target first, so a name that escapes would reach a real design.
+# boundary between a client's string and this machine's filesystem.
+#
+# These tests were written once already and were worthless. Every case was refused,
+# but with `safe_name` removed nine of the ten were still refused — by the
+# containment check or by the missing-`design.yaml` branch — so they would not have
+# noticed the validation disappearing. A test that passes for a reason other than the
+# one it names is worse than no test, because it is counted as coverage.
+#
+# The fix is to give every name a real target, then measure which layer does the
+# refusing. Two layers do, and they are separated below because they fail differently
+# and could be broken independently.
+
+
+def _plant(root, name: str) -> None:
+    """Put a real design where `name` would land, so absence cannot do the refusing."""
+    d = root / name
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "design.yaml").write_text("name: Planted\n", encoding="utf-8")
+
+
+# Verified by deleting `safe_name` and re-running: each of these then resolves to the
+# planted design. They are what holds the whitelist in place.
 @pytest.mark.parametrize(
     "name",
     [
-        "../outside",           # traversal
-        "./../outside",         # traversal behind a no-op
-        "a/b",                  # POSIX separator
-        "a\\b",                 # Windows separator
-        "",                     # empty
-        "   ",                  # whitespace only
-        ".",
-        "..",
-        "a\x00b",               # NUL, which the filesystem call would reject anyway
-        "ａ",                    # full-width: outside the ASCII whitelist
+        "a/b",      # POSIX separator — lands inside the workspace, so containment allows it
+        "a\\b",     # on POSIX this is one filename, not a path
+        "",         # empty — resolves to the workspace root itself
+        "   ",      # whitespace only
+        ".",        # also the workspace root
+        "ａ",        # full-width: outside the ASCII whitelist
     ],
 )
-def test_a_name_that_is_not_a_name_is_refused(rect_design, workspace, tmp_path, name):
+def test_the_name_whitelist_is_what_refuses_these(rect_design, workspace, name):
     from flow5ctl.project.store import resolve_in_workspace
 
-    define.create("Rect", rect_design)  # something must exist for the lookup to reach
+    workspace.mkdir(parents=True, exist_ok=True)
+    # A design at the workspace root makes "" and "." reachable; without it those two
+    # would be refused for being empty of a design, which is the old mistake again.
+    (workspace / "design.yaml").write_text("name: Planted\n", encoding="utf-8")
+    if name.strip(" ") not in ("", "."):
+        _plant(workspace, name)
+
+    with pytest.raises(DesignError, match="not a valid design name"):
+        resolve_in_workspace(name)
+
+
+# These are refused by the containment check rather than by the whitelist: with
+# `safe_name` removed they still raise, and the message says so. They are kept
+# separate precisely because they do not test what the group above tests.
+@pytest.mark.parametrize("name", ["../outside", "./../outside", ".."])
+def test_containment_refuses_a_traversal_to_a_real_design(rect_design, workspace, name):
+    from flow5ctl.project.store import resolve_in_workspace
+
+    workspace.mkdir(parents=True, exist_ok=True)
+    _plant(workspace.parent, "outside")
+    (workspace.parent / "design.yaml").write_text("name: Planted\n", encoding="utf-8")
+
     with pytest.raises(DesignError):
         resolve_in_workspace(name)
 
@@ -277,6 +311,17 @@ def test_a_symlink_out_of_the_workspace_is_refused(rect_design, workspace, tmp_p
     (workspace / "Linked").symlink_to(outside)
     with pytest.raises(DesignError, match="outside the workspace"):
         resolve_in_workspace("Linked")
+
+
+def test_safe_name_accepts_what_the_documentation_promises(rect_design, workspace):
+    """The whitelist is the thing being guarded, so assert it directly too."""
+    from flow5ctl.project.store import safe_name
+
+    for ok in ("Rect", "rect-wing_2", "A design 1.0", "0", "a" * 64):
+        assert safe_name(ok) == ok
+    for bad in ("-leading", ".hidden", " leading", "a" * 65, "a:b"):
+        with pytest.raises(DesignError):
+            safe_name(bad)
 
 
 def test_the_cli_resolver_takes_a_path_on_purpose(rect_design, workspace, tmp_path):
