@@ -387,8 +387,30 @@ Birdman Rally aircraft fly a few metres above water. Ground effect is not a deta
 there; it can cut induced drag by 20–40 % at a height of half a span or less, and
 induced drag is most of the drag budget on a high-AR aircraft.
 
-- Enable it: `ground_effect: true`, `ground_height` = height of the **CG above the
-  water**, positive.
+- Enable it: `ground_effect: true`, `ground_height`, positive. **It is the height of
+  the design's z = 0 datum above the water, not of the CG and not of the wing.**
+  flow5 mirrors the influence points across a plane at `z = -Ground_Height` in the
+  model's own coordinates; it does not infer the CG or the mean wing height, and
+  flow5ctl passes the number through unchanged. This guide used to call it the CG
+  height, which is wrong twice over: it is not what flow5 does, and the CG is not the
+  physically relevant height either — ground effect depends on how high the *lifting
+  surface* is.
+
+  On [`examples/hpa.yaml`](../examples/hpa.yaml) the difference is not small. With
+  `ground_effect_height: 2.0`:
+
+  | | height above the ground plane |
+  |---|---|
+  | the z = 0 datum — what the number sets | 2.0 m |
+  | the wing's chord-weighted mean height (`mac_z` = +0.259) | **2.259 m** |
+  | the CG (`cg_z` = −0.391 — the pilot hangs below the wing) | 1.609 m |
+
+  So h/b is 0.066, not the 0.059 the declared number suggests, and the CG and the
+  wing are 0.65 m apart — a third of the declared height. `analyze --compare-ground`
+  reports all three so the figure it gives can be read against the right height.
+
+  The measured percentages below are unaffected: they are correct for the geometry
+  that was analysed. It was the label that was wrong, not the physics.
 - The `hpa` preset enables it by default.
 - Report *both* in and out of ground effect. Take-off, cruise near the water, and
   any climb are different problems.

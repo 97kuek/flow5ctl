@@ -57,8 +57,13 @@ flight in ground effect a few metres above water. The tool currently reports a
 **+22.5 % L/D gain** for `examples/hpa.yaml`, and that number, more than any other,
 is what a team would design against.
 
-A review was launched and **lost to a rate limit** before returning. Nothing here has
-been checked by anyone but its author.
+Two reviews have now been lost to usage limits here. The second got one finding out
+before dying — that flow5 mirrors across `z = -Ground_Height` in model coordinates and
+infers nothing about the CG or the wing, which turned out to mean the guide's
+description of the input was wrong ([log](log/2026-09-05-the-ground-height-was-not-the-cg.md)).
+
+**Question 2 below is still unanswered and is the more important half.** Whether the
+magnitude is right has been checked by nobody.
 
 Worse: `ground.compare` — the whole body of the comparison, lines 48–63 — is **never
 executed by any test**, including the ones that run a real flow5. `ground.py` sits at
@@ -71,8 +76,13 @@ Ask:
    mirrored panels, a ground panel), does our XML request that correctly, and is the
    height reference physically the right one? We pass a chord-weighted `mac_z` and
    document a residual of 0.8 points against a load-weighted height.
-2. Is +22.5 % defensible at that height-to-span ratio against Wieselsberger, Hoerner
-   and modern panel data, or is it out by enough that a team would build to it?
+2. Is +22.5 % defensible against Wieselsberger, Hoerner and modern panel data, or is
+   it out by enough that a team would build to it? Use **h/b = 0.066** for the HPA,
+   not the 0.059 the declared height suggests — the wing sits above the datum. Note
+   that an L/D gain is not an induced-drag reduction: profile drag does not change, so
+   the gain has to be consistent with the induced-drag fraction of this aircraft's
+   drag at the best-L/D point. Confusing those two is the most likely way this number
+   is wrong.
 
 ### 2. Structural root load
 

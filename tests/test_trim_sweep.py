@@ -621,3 +621,32 @@ class TestGroundComparison:
         self._stub(monkeypatch, free, near)
         out = ground.compare(project, analyze.Request(name="cruise"), height=2.0)
         assert out["change_pct"]["best_LD"] is None
+
+    def test_it_reports_what_height_each_part_is_actually_at(
+            self, project, rect_design, monkeypatch):
+        """`ground_height` positions the plane, not the wing.
+
+        flow5 mirrors the influence points across z = -Ground_Height in the model's
+        own coordinates, so the number is the height of the design's z = 0 datum.
+        The design guide called it the CG height, which is wrong twice: it is not
+        what flow5 does, and ground effect depends on how high the lifting surface
+        is, not the CG. On the shipped HPA the wing sits 0.26 m above the datum and
+        the CG 0.39 m below it — 0.65 m apart against a declared height of 2.0 m.
+        """
+        free, near = self._run()
+        self._stub(monkeypatch, free, near)
+        out = ground.compare(project, analyze.Request(name="cruise"), height=2.0)
+
+        from flow5ctl.geometry import derived as geometry
+
+        g = geometry.solve(project.load())
+        h = out["heights_above_ground_m"]
+        assert h["datum"] == 2.0
+        assert h["wing_mean"] == pytest.approx(2.0 + g.reference_height, abs=1e-4)
+        assert h["cg"] == pytest.approx(2.0 + g.mass.cg[2], abs=1e-4)
+        # h/b is what every published ground-effect result is indexed on, so the
+        # wing's ratio has to be derivable from the output and not left to the reader
+        # to work out from a height that is not the wing's.
+        assert out["h_over_b"]["wing_mean"] == pytest.approx(
+            (2.0 + g.reference_height) / g.reference_span, abs=1e-4
+        )

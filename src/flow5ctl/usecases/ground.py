@@ -26,6 +26,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..errors import DesignError
+from ..geometry import derived as geometry
 from ..project.store import Project
 from . import analyze as analyze_uc
 
@@ -71,6 +72,7 @@ def compare(project: Project, req: analyze_uc.Request, *, height: float | None =
     """
     design = project.load()
     height = resolve_height(design, req, height)
+    derived = geometry.solve(design)
 
     free_req = replace_ground(req, effect=False, height=None, suffix="__free")
     near_req = replace_ground(req, effect=True, height=height, suffix=None)
@@ -89,6 +91,27 @@ def compare(project: Project, req: analyze_uc.Request, *, height: float | None =
         "design": design.name,
         "polar": req.name,
         "ground_height": height,
+        # `ground_height` sets where the plane goes, not how high anything on the
+        # aircraft is. flow5 mirrors the influence points across z = -Ground_Height
+        # in the model's own coordinates, so the number is the height of the design's
+        # z = 0 datum. On the shipped HPA the wing sits 0.26 m above that datum and
+        # the CG 0.39 m below it — 0.65 m apart, a third of a 2 m declared height.
+        # The guide called this the CG height and it is neither. Reporting the three
+        # separately is the only way a reader can check the gain against the height
+        # it actually belongs to, and h/b is what every published ground-effect
+        # result is indexed on.
+        "heights_above_ground_m": {
+            "datum": round(height, 4),
+            "wing_mean": round(height + derived.reference_height, 4),
+            "cg": round(height + derived.mass.cg[2], 4),
+            "note": ("`ground_height` positions the ground plane relative to the "
+                     "design's z = 0 datum. These are what that puts each part at."),
+        },
+        "h_over_b": {
+            "datum": round(height / derived.reference_span, 4),
+            "wing_mean": round((height + derived.reference_height)
+                               / derived.reference_span, 4),
+        } if derived.reference_span else None,
         "free_air": {"best_LD": fld, "min_sink": fsink,
                      "cl_alpha_per_deg": fs.get("cl_alpha_per_deg")},
         "in_ground_effect": {"best_LD": nld, "min_sink": nsink,
