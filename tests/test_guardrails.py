@@ -855,3 +855,74 @@ class TestTheRunnerClassification:
     def test_no_output_at_all_is_not_success(self):
         from flow5ctl.flow5 import markers
         assert markers.diagnose("", 0).outcome is not markers.Outcome.OK
+
+
+class TestRootLoadStationAlignment:
+    """`root_load` reports the spanwise station the peak bending moment is at.
+
+    It found the index in the *unfiltered* moment list and used it on the
+    *filtered* y list. flow5 writes non-finite values often enough that
+    `summary` carries a dedicated warning for them, and every one of them shifts
+    the two lists out of step — so the reported station belongs to a different
+    strip than the load does. Nothing downstream could notice: the number is a
+    plausible spanwise position either way.
+    """
+
+    @staticmethod
+    def _strips(moments, ys):
+        return {"alpha": 3.0, "surfaces": {"Main": {"Bending.mom": moments, "y(m)": ys}}}
+
+    def test_the_station_is_right_when_every_value_is_finite(self):
+        from flow5ctl.advisor.structure import root_load
+
+        out = root_load(
+            self._strips([10.0, 30.0, 20.0], [0.0, 1.0, 2.0]),
+            mass_kg=1.0, semi_span_m=3.0,
+        )
+        assert out["root_bending_moment_Nm"] == 30.0
+        assert out["at_y_m"] == 1.0
+
+    def test_a_non_finite_moment_does_not_move_the_station(self):
+        from flow5ctl.advisor.structure import root_load
+
+        nan = float("nan")
+        out = root_load(
+            self._strips([nan, 10.0, 30.0, 20.0], [0.0, 1.0, 2.0, 3.0]),
+            mass_kg=1.0, semi_span_m=4.0,
+        )
+        assert out["root_bending_moment_Nm"] == 30.0
+        assert out["at_y_m"] == 2.0
+
+    def test_a_non_finite_y_no_longer_crashes(self):
+        """This raised IndexError — a raw exception, not a refusal.
+
+        The moment column was filtered for non-finite values and the y column was
+        filtered separately, then an index taken in the *unfiltered* moment list was
+        used on the *filtered* y list. One NaN in y made the lists different lengths
+        and the lookup ran off the end.
+        """
+        from flow5ctl.advisor.structure import root_load
+
+        nan = float("nan")
+        out = root_load(
+            self._strips([10.0, 20.0, 30.0], [0.0, nan, 2.0]),
+            mass_kg=1.0, semi_span_m=3.0,
+        )
+        assert out["root_bending_moment_Nm"] == 30.0
+        assert out["at_y_m"] == 2.0, "the strip with the NaN y is dropped, not the peak"
+
+    def test_a_surface_carrying_download_reports_its_largest_load(self):
+        """`max()` returned the least-loaded strip when every moment was negative.
+
+        Moments of -30, -20, -5 gave -5 — the tip — while the root carried -30. A
+        tail almost always carries download, and a wing does at the negative end of
+        an alpha sweep. The sign is kept so the direction is still readable.
+        """
+        from flow5ctl.advisor.structure import root_load
+
+        out = root_load(
+            self._strips([-30.0, -20.0, -5.0], [0.0, 1.0, 2.0]),
+            mass_kg=1.0, semi_span_m=3.0,
+        )
+        assert out["root_bending_moment_Nm"] == -30.0
+        assert out["at_y_m"] == 0.0

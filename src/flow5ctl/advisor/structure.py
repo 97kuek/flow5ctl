@@ -87,13 +87,26 @@ def root_load(strips: dict[str, Any] | None, *, mass_kg: float | None,
     main = strips["surfaces"].get("Main") or next(iter(strips["surfaces"].values()), None)
     if not main:
         return None
-    moments = _finite(main.get("Bending.mom") or [])
-    ys = _finite(main.get("y(m)") or [])
-    if not moments or not ys:
+    # Filter the two columns TOGETHER. They used to be filtered separately and then
+    # indexed across each other — `main["Bending.mom"].index(peak)` used on the
+    # already-filtered `ys` — so a single non-finite y raised IndexError, and a
+    # shorter y column raised it too. flow5 writes non-finite values often enough
+    # that `summary` carries a dedicated warning for them.
+    pairs = [
+        (m, y) for m, y in zip(main.get("Bending.mom") or [], main.get("y(m)") or [],
+                               strict=False)
+        if isinstance(m, (int, float)) and math.isfinite(m)
+        and isinstance(y, (int, float)) and math.isfinite(y)
+    ]
+    if not pairs:
         return None
 
-    peak = max(moments)
-    at_y = ys[main["Bending.mom"].index(peak)] if peak in main["Bending.mom"] else 0.0
+    # By MAGNITUDE, not by value. `max()` on a surface carrying download returns the
+    # least-loaded strip: for moments of -30, -20, -5 it answered -5, which is the
+    # tip, while the root was carrying -30. A tail almost always carries download,
+    # and a wing does at the negative end of an alpha sweep. The sign is kept in the
+    # reported figure so the direction of the load is still visible.
+    peak, at_y = max(pairs, key=lambda p: abs(p[0]))
     out: dict[str, Any] = {
         "root_bending_moment_Nm": round(peak, 1),
         "at_y_m": round(at_y, 3),
