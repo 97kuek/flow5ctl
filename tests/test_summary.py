@@ -243,3 +243,38 @@ class TestSideslipPolar:
                       mac=0.2, cg_x=0.05)
         assert s.sideslip_sweep is False
         assert s.cl_alpha_per_deg is not None
+
+
+def test_the_reference_height_gate_is_tight_enough_to_not_change_the_answer():
+    """The gate decides when a reported static margin is the classical one.
+
+    It was 0.05 MAC, picked for cost rather than measured. Measured afterwards on
+    examples/rc-glider.yaml, one real analysis per offset with only the CG height
+    moved:
+
+        offset (MAC)    static margin     error
+         0.000           0.0976            —
+         0.010           0.0961           -0.0015
+         0.025           0.0938           -0.0038
+         0.049           0.0902           -0.0074
+        -0.049           0.1051           +0.0075
+
+    Linear at about 0.151 margin points per MAC of offset. The last row is the one
+    that matters: a CG below the wing's mean height makes the margin look bigger
+    than it is, and the advisor calls any positive margin stable. At the old gate a
+    design whose true margin was -0.005 could be reported at +0.0025 and described
+    as "stable, but with less margin than intended".
+
+    This asserts the gate keeps that error below the precision the margin is printed
+    at, so the approximation cannot change a digit the reader sees.
+    """
+    from flow5ctl.flow5.summary import REFERENCE_PASS_ABOVE
+
+    measured_points_per_mac = (0.1051 - 0.0902) / (2 * 0.049)
+    assert measured_points_per_mac == pytest.approx(0.152, abs=0.005)
+
+    worst_error = REFERENCE_PASS_ABOVE * measured_points_per_mac
+    assert worst_error < 0.0005, (
+        f"a CG offset of {REFERENCE_PASS_ABOVE} MAC admits {worst_error:.5f} of "
+        "static margin error, which shows up in the fourth decimal that is reported"
+    )

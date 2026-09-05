@@ -23,7 +23,7 @@ from ..flow5 import probe as probe_mod
 from ..flow5.markers import explain_interpolation_failure
 from ..flow5.results import owning_polar, parse_polar, parse_strips
 from ..flow5.runner import DEFAULT_TIMEOUT, Workspace, run_script
-from ..flow5.summary import Summary, summarise
+from ..flow5.summary import REFERENCE_PASS_ABOVE, Summary, summarise
 from ..geometry import derived as geometry
 from ..geometry.derived import Derived
 from ..model import presets
@@ -100,7 +100,7 @@ def _ensure_foil_polars(ws: Workspace, install: probe_mod.Flow5Install, design: 
         reynolds = _log_ladder(lo, hi)
 
     ncrit = req.ncrit if req.ncrit is not None else float(preset.analysis.get("ncrit", 9.0))
-    alpha_spec = design.airfoils[0].polars.alpha if design.airfoils else (-10.0, 16.0, 0.5)
+    alpha_spec = _alpha_union(design)
 
     key = _polar_key(design, reynolds, alpha_spec, ncrit, coords)
     manifest = ws.xfoil_polars / MANIFEST
@@ -175,6 +175,25 @@ def _ensure_foil_polars(ws: Workspace, install: probe_mod.Flow5Install, design: 
         "gap_warning": gap_warning,
         "seconds": round(result.elapsed, 1),
     }
+
+
+def _alpha_union(design: Design) -> tuple[float, float, float]:
+    """One alpha sweep covering every airfoil's requested range.
+
+    flow5's foil pass takes a single alpha specification for all the foils in the
+    script, so a design with two airfoils cannot have two sweeps. This used to read
+    `design.airfoils[0].polars.alpha` and silently drop what the others asked for —
+    an inconsistency with the Reynolds numbers a few lines above, which are unioned
+    across every airfoil. A second airfoil that needed alpha out to 20° got the
+    first one's 16° and the 3D run then interpolated off the end of its polar.
+
+    Widening costs solver time and never loses data, so the union takes the lowest
+    start, the highest end and the finest step.
+    """
+    specs = [a.polars.alpha for a in design.airfoils if a.polars.alpha]
+    if not specs:
+        return (-10.0, 16.0, 0.5)
+    return (min(s[0] for s in specs), max(s[1] for s in specs), min(s[2] for s in specs))
 
 
 def _log_ladder(lo: float, hi: float, per_decade: int = 8) -> list[float]:
@@ -355,7 +374,7 @@ def analyze(project: Project, req: Request, *, flow5: str | None = None,
 
         reference_run = None
         z_offset = (cg_actual[2] - derived.reference_height) / derived.reference_chord
-        if abs(z_offset) > 0.05:
+        if abs(z_offset) > REFERENCE_PASS_ABOVE:
             # dCm/dCL about a vertically offset CG is not the classical static margin:
             # as alpha rises the force vector tilts, and its line of action moves
             # relative to the CG. Re-running with the moment referenced to the wing's

@@ -60,6 +60,35 @@ def _zero_crossing(xs: list[float], ys: list[float]) -> float | None:
     return None
 
 
+#: Above this CG height offset (in MAC) the reference-height pass is run so that the
+#: reported static margin is the classical one. It used to be 0.05, which was chosen
+#: for cost rather than from any measurement, and it was wrong by a factor of fifteen.
+#:
+#: Measured on examples/rc-glider.yaml (MAC 0.190 m, reference height 0.0354 m), one
+#: analysis per row, everything but the CG height held fixed:
+#:
+#:     offset (MAC)   reported static margin   error against the classical value
+#:      0.000          0.0976                   —
+#:      0.010          0.0961                  -0.0015
+#:      0.025          0.0938                  -0.0038
+#:      0.049          0.0902                  -0.0074
+#:     -0.049          0.1051                  +0.0075
+#:
+#: The force-tilt term is linear in the offset at about 0.151 margin points per MAC,
+#: and the sign that matters is the last row: a CG *below* the wing's mean height
+#: makes the margin look BIGGER than it is. At the old gate that was +0.75 points of
+#: false margin, reported to four decimals as though it were exact. An aircraft whose
+#: true margin is -0.005 would have been reported at +0.0025, and the advisor says
+#: "It is stable" for any positive margin.
+#:
+#: 0.003 holds the error below 0.0005 — under the last digit reported — at the
+#: measured sensitivity. The coefficient will differ between aircraft, so this is not
+#: a bound; it is a threshold small enough that the term cannot change the answer at
+#: the precision the answer is given in. The cost of being wrong here is a person
+#: flying an aircraft that diverges in pitch; the cost of being right is one extra
+#: 3D pass with the expensive 2D polars already cached.
+REFERENCE_PASS_ABOVE = 0.003
+
 @dataclass(slots=True)
 class Extremum:
     value: float
@@ -417,7 +446,7 @@ def summarise(polar: Polar, *, mac: float | None = None, cg_x: float | None = No
     # low CG additionally carries the force-tilt term.
     reported = polar.header_float("Static margin")
     offset_matters = (cg_height_offset_mac is not None
-                      and abs(cg_height_offset_mac) > 0.05)
+                      and abs(cg_height_offset_mac) > REFERENCE_PASS_ABOVE)
     if reported is not None and s.static_margin is not None and not offset_matters:
         theirs = static_margin_from_flow5(reported)
         if abs(theirs - s.static_margin) > max(0.01, abs(s.static_margin) * 0.25):
