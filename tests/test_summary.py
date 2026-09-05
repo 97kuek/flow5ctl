@@ -278,3 +278,26 @@ def test_the_reference_height_gate_is_tight_enough_to_not_change_the_answer():
         f"a CG offset of {REFERENCE_PASS_ABOVE} MAC admits {worst_error:.5f} of "
         "static margin error, which shows up in the fourth decimal that is reported"
     )
+
+
+class TestMultipleTrimPoints:
+    """Cm(alpha) can cross zero more than once, and only the first was reported."""
+
+    def test_one_crossing_is_reported_as_before(self):
+        from flow5ctl.flow5.summary import _zero_crossings
+
+        assert _zero_crossings([0.0, 1.0, 2.0], [1.0, -1.0, -2.0]) == [pytest.approx(0.5)]
+
+    def test_every_crossing_is_found(self):
+        from flow5ctl.flow5.summary import _zero_crossings
+
+        # down through zero, back up through it, down again
+        got = _zero_crossings([0.0, 1.0, 2.0, 3.0, 4.0], [1.0, -1.0, 1.0, -1.0, -3.0])
+        assert got == [pytest.approx(0.5), pytest.approx(1.5), pytest.approx(2.5)]
+
+    def test_a_non_finite_value_does_not_end_the_search(self):
+        from flow5ctl.flow5.summary import _zero_crossings
+
+        nan = float("nan")
+        got = _zero_crossings([0.0, 1.0, 2.0, 3.0], [1.0, nan, 1.0, -1.0])
+        assert got == [pytest.approx(2.5)]

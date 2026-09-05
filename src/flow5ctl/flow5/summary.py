@@ -48,16 +48,30 @@ def _at(xs: list[float], ys: list[float], x: float) -> float | None:
     return None
 
 
-def _zero_crossing(xs: list[float], ys: list[float]) -> float | None:
-    """First linear interpolation of y = 0, for trim angle."""
+def _zero_crossings(xs: list[float], ys: list[float]) -> list[float]:
+    """Every linear interpolation of y = 0, in order.
+
+    The trim angle is the first of these. It used to be the only one computed, so a
+    Cm(alpha) curve that crosses zero more than once — which a statically unstable
+    aircraft does, and a stable one can near stall — reported the first crossing and
+    said nothing about the others. All of them are found now so the caller can say
+    when the answer it gives is one of several.
+    """
+    out: list[float] = []
     for (x0, y0), (x1, y1) in pairwise(list(zip(xs, ys, strict=True))):
         if not (math.isfinite(y0) and math.isfinite(y1)):
             continue
         if y0 == 0.0:
-            return x0
-        if (y0 < 0) != (y1 < 0):
-            return x0 + (x1 - x0) * (-y0) / (y1 - y0)
-    return None
+            out.append(x0)
+        elif (y0 < 0) != (y1 < 0):
+            out.append(x0 + (x1 - x0) * (-y0) / (y1 - y0))
+    return out
+
+
+def _zero_crossing(xs: list[float], ys: list[float]) -> float | None:
+    """First linear interpolation of y = 0, for trim angle."""
+    crossings = _zero_crossings(xs, ys)
+    return crossings[0] if crossings else None
 
 
 #: Above this CG height offset (in MAC) the reference-height pass is run so that the
@@ -394,7 +408,16 @@ def summarise(polar: Polar, *, mac: float | None = None, cg_x: float | None = No
             # Cm is non-dimensionalised by the reference chord, so -dCm/dCL is
             # already the static margin as a fraction of that chord.
             s.static_margin = -fit[0]
-        s.trim_alpha = _zero_crossing(alpha, cm)
+        crossings = _zero_crossings(alpha, cm)
+        s.trim_alpha = crossings[0] if crossings else None
+        if len(crossings) > 1:
+            s.warnings.append(
+                f"Cm crosses zero {len(crossings)} times in this alpha range, at "
+                + ", ".join(f"{c:.2f}°" for c in crossings)
+                + f". The reported trim alpha is the first of them ({crossings[0]:.2f}°); "
+                "it is not the only condition where the aircraft is in pitch "
+                "equilibrium, and the others may be where it actually settles."
+            )
         if s.trim_alpha is not None:
             s.cl_at_trim = _at(alpha, cl, s.trim_alpha)
             if polar.has("CL/CD"):
