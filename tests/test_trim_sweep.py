@@ -508,3 +508,32 @@ class TestRepeatedWarningsAreCollapsed:
 
     def test_a_signed_number_is_not_mistaken_for_a_word(self):
         assert sweep_uc._shape("margin -10.1%") == sweep_uc._shape("margin +8.7%")
+
+
+def test_a_second_airfoils_alpha_range_is_not_dropped():
+    """flow5 runs one alpha sweep for every foil, so the sweep must cover them all.
+
+    This read `design.airfoils[0].polars.alpha` and ignored the rest, while the
+    Reynolds numbers a few lines above were unioned across every airfoil. A tail
+    section asking for alpha out to 20 degrees silently got the wing's 16, and the
+    3D pass then interpolated off the end of its own polar — the failure this
+    project exists to avoid, in the code that prepares the data.
+    """
+    from flow5ctl.usecases.analyze import _alpha_union
+
+    class _P:
+        def __init__(self, a):
+            self.alpha = a
+
+    class _A:
+        def __init__(self, a):
+            self.polars = _P(a)
+
+    class _D:
+        def __init__(self, specs):
+            self.airfoils = [_A(s) for s in specs]
+
+    assert _alpha_union(_D([(-10.0, 16.0, 0.5)])) == (-10.0, 16.0, 0.5)
+    # the widest start, the widest end, the finest step — never narrower than any one
+    assert _alpha_union(_D([(-10.0, 16.0, 0.5), (-6.0, 20.0, 0.25)])) == (-10.0, 20.0, 0.25)
+    assert _alpha_union(_D([])) == (-10.0, 16.0, 0.5)
