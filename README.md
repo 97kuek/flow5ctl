@@ -272,6 +272,7 @@ same picture is in [docs/ARCHITECTURE-ja.md](https://github.com/97kuek/flow5ctl/
 | [docs/FLOW5-INTERFACE.md](https://github.com/97kuek/flow5ctl/blob/main/docs/FLOW5-INTERFACE.md) | Verified reference for flow5's batch/XML interface |
 | [docs/DESIGN-GUIDE.md](https://github.com/97kuek/flow5ctl/blob/main/docs/DESIGN-GUIDE.md) | Aerodynamic guardrails agents must respect |
 | [docs/ROADMAP.md](https://github.com/97kuek/flow5ctl/blob/main/docs/ROADMAP.md) | Phases and milestones |
+| [docs/REVIEW-BACKLOG.md](https://github.com/97kuek/flow5ctl/blob/main/docs/REVIEW-BACKLOG.md) | What still needs an adversarial review, and what to ask |
 | [docs/adr/](https://github.com/97kuek/flow5ctl/tree/main/docs/adr) | Architecture decision records |
 | [docs/log/](https://github.com/97kuek/flow5ctl/tree/main/docs/log) | Investigation and verification log |
 | [poc/](https://github.com/97kuek/flow5ctl/tree/main/poc) | The verification harness — reproduce every measured claim |
