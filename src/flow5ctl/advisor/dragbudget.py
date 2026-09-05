@@ -68,11 +68,28 @@ _SMALL: tuple[Missing, ...] = (
 )
 
 #: The total, taken from published whole-aircraft drag budgets rather than by summing
-#: the per-item highs above. Summing them assumes every item is simultaneously at its
-#: worst, which no flying aircraft is: for a Daedalus-class HPA the lifting surfaces
-#: are roughly three quarters of the total drag, putting everything else near 25-35 %
-#: of the modelled figure. The per-item ranges say where that total comes from and
-#: which choices move it; they are not meant to be added up.
+#: the per-item ranges above. It does not reconcile with them in either direction, and
+#: both discrepancies are deliberate:
+#:
+#: - Summing the *highs* assumes every item is simultaneously at its worst, which no
+#:   flying aircraft is. For a Daedalus-class HPA the lifting surfaces are roughly
+#:   three quarters of the total drag, putting everything else near 25-35 % of the
+#:   modelled figure; the band is opened to 20-40 % because a Birdman Rally aircraft
+#:   is not a Daedalus and the class spans more than that.
+#: - Summing the *lows* gives 24 % for an HPA and 10 % for a small aircraft, both
+#:   above the totals here. That is not an error: a per-item low is the low *for an
+#:   aircraft that has the item*. A cantilever wing carries no rigging at all, and a
+#:   dropped undercarriage is not 1 %, it is zero. An aircraft that omits an item
+#:   sits below the sum of the lows, which is why the total floor is lower than it.
+#:
+#: The per-item ranges say where the total comes from and which choices move it. They
+#: are not meant to be added up in either direction.
+#:
+#: **These bands are judgement, not measurement.** They come from published budgets
+#: for the class, and this project has one reconstruction to check them against - the
+#: WASA 2013 aircraft, whose published figure sits about 4 % above the band. One data
+#: point cannot separate an error in the band from an error in the reconstruction or
+#: in the published figure, and it is not treated as validation.
 _TOTAL: dict[str, tuple[float, float]] = {
     "hpa": (0.20, 0.40),
     "rc-glider": (0.08, 0.20),
