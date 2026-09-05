@@ -297,20 +297,36 @@ def trim(project: Project, req: TrimRequest, *, flow5: str | None = None) -> dic
                 incidence = i1 - c1 * (i1 - i0) / (c1 - c0)
                 incidence = max(-15.0, min(15.0, incidence))
 
-        final_i, final_cm = history[-1]
+        # The secant iteration is not monotone, so the last step is not necessarily
+        # the best one. Reporting `history[-1]` while telling the reader it was "the
+        # closest found" was simply untrue whenever the iteration overshot.
+        final_i, final_cm = min(history, key=lambda h: abs(h[1]))
+        converged = abs(final_cm) < req.tolerance
         warnings = []
-        if abs(final_cm) >= req.tolerance:
+        if not converged:
             warnings.append(
                 f"the iteration stopped at Cm = {final_cm:+.5f} after "
                 f"{len(history)} runs without reaching the tolerance of "
-                f"{req.tolerance:g}. The result is the closest found."
+                f"{req.tolerance:g}. This is the closest of the {len(history)} "
+                "attempts, not a trimmed condition: the aircraft is not in "
+                "equilibrium at this elevator setting."
             )
         return _payload(
             req, design.name, speed, mass, runs,
+            # `converged` is here because `status` is "ok" for every use case in this
+            # package and so carries no information. A caller reading only the
+            # structured output — which is every MCP client — has no other way to
+            # tell a solved trim from an abandoned one, and the difference is whether
+            # the aeroplane flies.
             solved={"incidence": round(final_i, 4), "alpha": round(alpha_at, 4),
-                    "cm": round(final_cm, 6), "iterations": len(history)},
+                    "cm": round(final_cm, 6), "iterations": len(history),
+                    "converged": converged},
             note=(f"An elevator incidence of {final_i:+.2f}° gives Cm = {final_cm:+.5f} "
-                  f"at alpha = {alpha_at:.2f}°."),
+                  f"at alpha = {alpha_at:.2f}°."
+                  if converged else
+                  f"No trimmed condition was found. The closest of {len(history)} "
+                  f"attempts was an elevator incidence of {final_i:+.2f}°, leaving "
+                  f"Cm = {final_cm:+.5f} at alpha = {alpha_at:.2f}°."),
             warnings=warnings,
             extra={"history": [{"incidence": round(i, 4), "cm": round(c, 6)}
                                for i, c in history]},
