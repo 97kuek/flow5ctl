@@ -24,7 +24,41 @@ EXPECTED_OK = {"7.5", "7.6", "7.7"}
 """Minor series expected to work. Used only to soften the warning."""
 
 KNOWN_BAD: dict[str, str] = {}
-"""version -> reason. Empty so far."""
+"""version -> reason, for an exact version string. Empty so far.
+
+For a range rather than a point, see `_range_problem`."""
+
+#: flow5 changed the sign of the products of inertia in 7.13. `inertia.cpp`
+#: `Ixz_t()` accumulates `pm.mass() * (p.x*p.z)` and carries the comment "Sign
+#: modification of the products of inertia in v7.13 from negative to positive".
+#: flow5ctl writes the positive convention, which is right for 7.13 and later and
+#: sign-flipped for anything earlier.
+#:
+#: Nothing would report this. `Ixz` is written into the analysis XML with
+#: `Use_plane_inertia=false`, flow5 accepts it either way, and only the
+#: lateral-directional modes come out wrong — with a plausible-looking magnitude.
+PRODUCTS_OF_INERTIA_SIGN_CHANGED = (7, 13)
+
+
+def _version_tuple(version: str) -> tuple[int, ...] | None:
+    try:
+        return tuple(int(p) for p in version.split(".")[:2])
+    except ValueError:
+        return None
+
+
+def _range_problem(version: str) -> str | None:
+    """A problem that applies to a range of versions rather than one."""
+    v = _version_tuple(version)
+    if v is not None and v < PRODUCTS_OF_INERTIA_SIGN_CHANGED:
+        return (
+            f"flow5 {version} predates 7.13, which reversed the sign of the products "
+            "of inertia. flow5ctl writes the post-7.13 convention, so Ixz reaches "
+            "this version with the wrong sign and the lateral-directional modes "
+            "(dutch roll, spiral) will be wrong without anything saying so. "
+            "Longitudinal results are unaffected. Upgrade flow5."
+        )
+    return None
 
 def _candidates() -> tuple[str, ...]:
     """Where flow5 usually lands, per platform.
@@ -125,6 +159,8 @@ def probe(explicit: str | os.PathLike[str] | None = None) -> Flow5Install:
 
     if version in KNOWN_BAD:
         return Flow5Install(exe, version, verified=False, note=KNOWN_BAD[version])
+    if (problem := _range_problem(version)) is not None:
+        return Flow5Install(exe, version, verified=False, note=problem)
     if version in VERIFIED:
         return Flow5Install(exe, version, verified=True)
 

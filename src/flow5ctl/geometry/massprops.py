@@ -74,6 +74,14 @@ def solve_mass(mass: Mass, length_unit: str, mass_unit: str) -> MassProperties:
             ixx += m * (dy * dy + dz * dz)
             iyy += m * (dx * dx + dz * dz)
             izz += m * (dx * dx + dy * dy)
+            # POSITIVE product of inertia: +sum(m x z), not -sum(m x z). Both
+            # conventions are in use, and flow5 changed its mind — inertia.cpp
+            # `Ixz_t()` accumulates `pm.mass() * (p.x*p.z)` under the comment "Sign
+            # modification of the products of inertia in v7.13 from negative to
+            # positive". This matches 7.13 and later. Getting it backwards would not
+            # raise anything: flow5 accepts either sign and only the lateral modes
+            # come out wrong, at a plausible magnitude. `flow5.probe` refuses to call
+            # an older flow5 verified for this reason.
             ixz += m * dx * dz
         return MassProperties(total, cg, ixx, iyy, izz, ixz, from_components=True)  # type: ignore[arg-type]
 

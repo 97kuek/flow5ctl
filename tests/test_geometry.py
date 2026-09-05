@@ -381,3 +381,41 @@ class TestPanelCountMatchesFlow5:
         raw["tail"]["fin"]["position"] = [1.0, 0.3, 0.05]
         d = geometry.solve(Design.model_validate(raw))
         assert d.panel_count == 520 + 7 * 8 * 2 * 2
+
+
+def test_the_product_of_inertia_uses_flow5s_sign_convention():
+    """+sum(m x z), which is what flow5 7.13 and later expect.
+
+    Checked against the flow5 source: `inertia.cpp` `Ixz_t()` accumulates
+    `pm.mass() * (p.x*p.z)` and carries the comment "Sign modification of the
+    products of inertia in v7.13 from negative to positive". Both conventions are
+    in use in the literature and flow5 itself switched, so this is asserted rather
+    than left to be inferred from the sign of a number nothing checks.
+
+    A mass high and forward of the CG, and one low and aft, both contribute
+    positively: dx and dz share a sign in each.
+    """
+    from flow5ctl.geometry.massprops import solve_mass
+    from flow5ctl.model.design import Mass, MassComponent
+
+    mp = solve_mass(
+        Mass(components=[
+            MassComponent(tag="a", mass=1.0, at=(1.0, 0.0, 1.0)),
+            MassComponent(tag="b", mass=1.0, at=(-1.0, 0.0, -1.0)),
+        ]),
+        length_unit="m", mass_unit="kg",
+    )
+    assert mp.cg == pytest.approx((0.0, 0.0, 0.0))
+    assert mp.ixz == pytest.approx(2.0), "positive convention: +sum(m x z)"
+
+
+def test_an_old_flow5_is_refused_over_the_inertia_sign():
+    """Below 7.13 our Ixz reaches flow5 with the wrong sign, silently."""
+    from flow5ctl.flow5.probe import _range_problem
+
+    assert _range_problem("7.57") is None
+    assert _range_problem("7.13") is None
+    problem = _range_problem("7.12")
+    assert problem is not None and "products of inertia" in problem
+    assert _range_problem("6.99") is not None
+    assert _range_problem("nonsense") is None
