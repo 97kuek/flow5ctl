@@ -4,6 +4,51 @@ All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning will follow [Semantic Versioning](https://semver.org/) from 0.1.0 onward.
 
+## [0.1.17] — 2026-09-05
+
+### Fixed
+
+- **The static margin could be reported as positive for an aircraft that is not
+  stable.** `-dCm/dCL` about a CG offset vertically from the wing's mean height is
+  not the classical static margin. The threshold deciding when to correct for that
+  was 0.05 MAC, chosen for cost and never measured; measured now, it admitted 0.75
+  points of margin an aircraft does not have — in the direction a pilot's seating
+  position produces, and the advisor calls any positive margin stable. It is 0.003
+  MAC, which holds the error below the last digit reported. See
+  [the log](docs/log/2026-09-05-the-gate-was-too-wide.md).
+- **A failed trim solve was reported as a trimmed aircraft.** `trim` returned the
+  last secant iterate while calling it "the closest found", which was untrue whenever
+  the iteration overshot; it returns the closest now. `status` is `"ok"` for every use
+  case, so a caller reading only the structured output could not tell a solved trim
+  from an abandoned one — `solved.converged` says which.
+- **The root bending moment was wrong for a surface carrying download.** `max()` on
+  all-negative moments returns the least-loaded strip; a tail almost always carries
+  download. It is the largest by magnitude now, sign kept. A non-finite y also raised
+  IndexError, because the moment and y columns were filtered separately and then
+  indexed across each other.
+- **Ground-effect comparison discarded the free-air run's warnings.** Both runs'
+  numbers are reported and the percentage change is computed from both, so a caveat
+  about either one is a caveat about a figure the reader is shown. `ground.compare`
+  also had no test at all — not even the solver tests reached it.
+- **`Cm` crossing zero more than once was never mentioned.** The first crossing was
+  reported as the trim angle with no hint that the aircraft might settle elsewhere.
+- **A second airfoil's alpha range was silently dropped**, while the Reynolds numbers
+  beside it were unioned across every airfoil. A tail asking for alpha to 20° got the
+  wing's 16° and the 3D pass interpolated off the end of its polar.
+- **A pre-7.13 flow5 is no longer treated as merely unverified.** 7.13 reversed the
+  sign of the products of inertia; flow5ctl writes the later convention, so Ixz
+  reaches an older flow5 sign-flipped and only the lateral-directional modes come out
+  wrong.
+- **`design.yaml` writes now fsync** before the rename and carry the destination's
+  permissions, and a bad list index at the end of a `set` path is refused with a
+  sentence rather than a traceback.
+
+### Documentation
+
+- [docs/REVIEW-BACKLOG.md](docs/REVIEW-BACKLOG.md) — what still needs an adversarial
+  review and what to ask, with the two facts that came out of writing it: of eleven
+  numeric constants that shape a user-facing verdict, three are measured.
+
 ## [0.1.16] — 2026-09-05
 
 ### Fixed
