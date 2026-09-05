@@ -65,6 +65,37 @@ Same wing, 120 spanwise, varying only the chordwise count:
 Four decimal places of agreement. Induced drag is set by the trailing vortex sheet,
 which is a spanwise object; spending panels on the chord to improve it is wasted.
 
+### The same is true of the neutral point — measured 2026-09-05
+
+The sentence above was written about span efficiency in an inviscid run, but the
+heading it sits under ("chordwise panels do not matter at all") covers everything,
+and chordwise panels are what resolve the *chordwise* load distribution — which is
+what sets Cm and the neutral point. That part had not been measured. Two thresholds
+in this project have already turned out to be generalisations from a narrower
+measurement than the claim, so it was measured rather than assumed.
+
+`examples/rc-glider.yaml`, everything else held fixed. First varying only the wing's
+chordwise count, then only the tail's — the tail is the surface that sets the neutral
+point, and the shipped example gives its elevator 7 panels rather than the default 13:
+
+| chordwise on the elevator and fin | XNP | static margin | dCm/dCL |
+|---|---|---|---|
+| 3 | 0.09 | 0.0975 | -0.09748 |
+| 5 | 0.09 | 0.0976 | -0.09758 |
+| **7 — what the example ships** | 0.09 | 0.0976 | -0.09762 |
+| 13 | 0.09 | 0.0976 | -0.09764 |
+| 21 | 0.09 | 0.0976 | -0.09765 |
+
+Monotone and converging. From 3 panels to 21 the static margin moves **0.017 points**,
+and the shipped 7 is within 0.003 points of the 21-panel value — a fortieth of the
+error the reference-height gate was admitting before
+[it was measured](2026-09-05-the-gate-was-too-wide.md). Varying the wing's chordwise
+count over 5, 7, 13, 21 and 31 moved dCm/dCL by 3e-5 and left XNP unchanged.
+
+So the claim holds for the quantity it had not been tested on, and `chordwise = 13`
+is not a threshold anyone needs to defend: nothing in the range a user would plausibly
+choose changes an answer.
+
 ## 3. The method is not the cause
 
 Same wing and mesh through flow5's own methods:
